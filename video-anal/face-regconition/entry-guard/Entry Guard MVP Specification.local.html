@@ -1,0 +1,2959 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Entry Guard MVP Specification</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+/* Layout: sticky left contents rail + single reading column; wide tables/diagrams scroll inside their own box */
+:root{
+  --bg:#f6f7f5; --panel:#ffffff; --fg:#1b2420; --muted:#5b6862; --line:#d9dfdb;
+  --accent:#0f6b5c; --accent-soft:#dff0eb; --warn:#a85d00; --warn-soft:#fbeed8; --bad:#a3262a; --bad-soft:#f8e1e1; --good:#1d6b34; --good-soft:#e0f1e5;
+  --code-bg:#eef1ef;
+  --f-body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-disp:'Fraunces',Georgia,serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1513; --panel:#161e1b; --fg:#e3e9e6; --muted:#9aa8a1; --line:#2b3732;
+  --accent:#4fc3a8; --accent-soft:#17332d; --warn:#e0a24a; --warn-soft:#33260f; --bad:#f08084; --bad-soft:#38191b; --good:#6fd08a; --good-soft:#15301f; --code-bg:#1b2521; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1513; --panel:#161e1b; --fg:#e3e9e6; --muted:#9aa8a1; --line:#2b3732;
+  --accent:#4fc3a8; --accent-soft:#17332d; --warn:#e0a24a; --warn-soft:#33260f; --bad:#f08084; --bad-soft:#38191b; --good:#6fd08a; --good-soft:#15301f; --code-bg:#1b2521; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 64px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px}
+nav.toc{position:sticky;top:16px;align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:13px;padding-right:8px}
+nav.toc b{display:block;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
+nav.toc a{display:block;color:var(--fg);text-decoration:none;padding:3px 8px;border-left:2px solid var(--line)}
+nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+main{min-width:0}
+header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:8px}
+h1{font-family:var(--f-disp);font-size:clamp(28px,4vw,40px);line-height:1.15;margin:0 0 8px;text-wrap:balance}
+h2{font-family:var(--f-disp);font-size:26px;margin:56px 0 12px;padding-top:12px;border-top:2px solid var(--fg);text-wrap:balance}
+h3{font-size:17px;margin:28px 0 8px}
+h4{font-size:14px;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+p,li{max-width:78ch}
+.lede{font-size:17px;color:var(--muted);max-width:70ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:12px}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:3px}
+pre{font-family:var(--f-mono);font-size:12.5px;line-height:1.5;background:var(--code-bg);padding:14px 16px;border-radius:4px;overflow-x:auto;margin:12px 0}
+pre code{background:none;padding:0}
+.scroll{overflow-x:auto;margin:12px 0;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:8px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--code-bg);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td:first-child{font-family:var(--f-mono);font-size:12.5px;white-space:nowrap}
+.fig{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px;margin:16px 0;overflow-x:auto}
+.fig figcaption{font-size:13px;color:var(--muted);margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.fig pre.mermaid{background:none;padding:0;margin:0;text-align:center;font-family:var(--f-body)}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:16px 0;border-radius:0 4px 4px 0}
+.callout.warn{border-color:var(--warn);background:var(--warn-soft)}
+.callout.bad{border-color:var(--bad);background:var(--bad-soft)}
+.callout p{margin:4px 0}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid currentColor}
+.p-must{color:var(--bad)}.p-should{color:var(--warn)}.p-could{color:var(--muted)}.p-mvp{color:var(--good)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px 16px;min-width:0}
+.card h3{margin-top:0}
+ul,ol{padding-left:22px}
+a{color:var(--accent)}
+footer{margin-top:64px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}nav.toc{position:static;max-height:none;border-bottom:1px solid var(--line);padding-bottom:12px}}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <b>Start</b>
+  <a href="#v05">C. Latest update (v0.5)</a>
+  <a href="#v04">B. Update v0.4</a>
+  <a href="#v03">A. Update v0.3</a>
+  <a href="#v02">0. Earlier update (v0.2)</a>
+  <a href="#summary">1. Executive summary</a>
+  <a href="#legal">2. Privacy and legal</a>
+  <b>Requirements</b>
+  <a href="#srs">3. SRS</a>
+  <a href="#usecases">4. Use cases</a>
+  <b>Design</b>
+  <a href="#arch">5. Architecture</a>
+  <a href="#engine">6. Model engine</a>
+  <a href="#flows">7. Flows and states</a>
+  <a href="#data">8. Data model</a>
+  <a href="#api">9. API and events</a>
+  <a href="#models">10. Model choices</a>
+  <a href="#hw">11. Hardware and camera</a>
+  <a href="#deploy">12. Deployment</a>
+  <b>Delivery</b>
+  <a href="#plan">13. Development plan</a>
+  <a href="#test">14. Test and evaluation</a>
+  <a href="#sec">15. Security</a>
+  <a href="#ops">16. Operations</a>
+  <a href="#risk">17. Risks</a>
+  <a href="#repo">18. Repo and ADRs</a>
+  <a href="#future">19. Roadmap</a>
+  <a href="#glossary">20. Glossary</a>
+</nav>
+
+<main>
+<header class="top">
+  <h1>Entry Guard: apartment entrance face recognition</h1>
+  <p class="lede">MVP plan, software requirements specification, architecture, diagrams and delivery plan for a camera at the apartment entrance that tells residents from unknown people, built around swappable AI models.</p>
+  <div class="meta"><span>Version 0.5 draft</span><span>Prepared 2026-11-09</span><span>Owner: building operator</span><span>Format: IEEE 830 style SRS plus design docs</span></div>
+</header>
+
+<h2 id="v05">C. Latest update (v0.5): IP camera, tablet camera registration, banking-style login</h2>
+<div class="callout"><p><b>New facts:</b> the door uses an <b>IP camera</b> for tracking. You register faces with the <b>Android tablet's own camera</b> in the browser. Your router cannot give the PC a fixed name or address. The web app must be secured <b>like a banking app</b>: the admin chooses password, PIN or face (fingerprint or face unlock of the tablet). The old-CPU question is parked: the one-hour benchmark stays in the plan and nothing more.</p></div>
+
+<h3>C.1 What changes</h3>
+<div class="scroll"><table>
+<tr><th>Topic</th><th>Decision</th><th>Reason</th></tr>
+<tr><td>Door camera</td><td>IP camera over RTSP. The engine runs inside WSL. USB webcam option is dropped.</td><td>Matches the final install and keeps everything except Caddy in Linux.</td></tr>
+<tr><td>Registering faces</td><td>In the browser on the tablet, with the tablet camera. Needs HTTPS, camera permission and a fresh unlock (step-up).</td><td>Browser camera works only on HTTPS. Registration is a sensitive action.</td></tr>
+<tr><td>Name and certificate</td><td>Private name <code>guard.internal</code>, a small DNS server on the PC, and Caddy's own local certificate authority. No domain, no outside service.</td><td>Nothing leaves the network. You install one public certificate file on the tablet and the Mac. Details in C.2.</td></tr>
+<tr><td>Login</td><td>New <b>Auth service</b> (Python) in front of PocketBase: password, optional authenticator-app code, passkeys (fingerprint, face or screen lock), PIN, auto-lock, step-up, device list.</td><td>PocketBase has no passkey support and no PIN or device logic. This service adds it without changing PocketBase rules.</td></tr>
+<tr><td>Tablet account</td><td>No separate <code>monitor</code> account. The tablet is a registered device of your admin account, with Shield mode when locked.</td><td>You register faces on the tablet, so it needs admin rights. Safety comes from locking and step-up, not from a weaker account. This replaces the <code>monitor</code> role in B.8.</td></tr>
+<tr><td>PC network</td><td>Use an Ethernet cable from the PC to the router.</td><td>A server on Wi-Fi drops out more often.</td></tr>
+</table></div>
+
+<h3>C.2 Name, address and certificate, fully local</h3>
+<div class="callout"><p><b>Nothing is forwarded and nothing outside can reach the system.</b> That has been the design from the start: no inbound port at all. The domain option I recommended in the first v0.5 draft still contacted outside services (Let's Encrypt and Cloudflare) to get a certificate, so it is <b>dropped</b>. This section is the replacement: a private name, a private DNS answer and a private certificate, all on your PC.</p></div>
+
+<h4>What crosses your network edge</h4>
+<div class="scroll"><table>
+<tr><th>Direction</th><th>What</th><th>Can be turned off?</th></tr>
+<tr><td>Inbound from the internet</td><td><b>Nothing.</b> No port forwarding, UPnP off, no DMZ, no dynamic DNS, no tunnel, no remote desktop. Windows firewall allows 443 (and 53, see below) only from the local subnet.</td><td>Not applicable</td></tr>
+<tr><td>Outbound: Telegram</td><td>Short text alerts (and security alerts) sent by the PC to Telegram</td><td>Yes. Without it the system still works; alerts show on the tablet and in the app only.</td></tr>
+<tr><td>Outbound: updates</td><td>Only when <i>you</i> run <code>git pull</code>, <code>docker pull</code> or Windows Update</td><td>Yes. You can update by hand when you choose.</td></tr>
+<tr><td>Outbound: certificates</td><td>None. The certificate is made by your own local authority.</td><td>Already off</td></tr>
+<tr><td>Outbound: IP camera</td><td>None if you turn off the camera's cloud, P2P and UPnP features</td><td>Yes, in the camera settings</td></tr>
+<tr><td>Outbound: time sync</td><td>Normal Windows clock sync. Keep it, because authenticator codes and certificates need a correct clock.</td><td>Possible, but then set the clock by hand now and then</td></tr>
+</table></div>
+<p>With the internet cable unplugged the whole system keeps running: recognition, logs, login, tablet and registration. Only Telegram stops.</p>
+
+<h4>How the tablet finds the PC without a router setting</h4>
+<ol>
+  <li><b>Private name:</b> <code>guard.internal</code>. The <code>.internal</code> ending is reserved for private networks, so it can never exist on the public internet.</li>
+  <li><b>Fixed PC address:</b> router reservation if it has one, otherwise set it in Windows (PowerShell commands further down). Example 192.168.1.200.</li>
+  <li><b>Tiny DNS server on the PC:</b> CoreDNS (one small program, run as a Windows service). It answers <code>guard.internal</code> with the PC's address and passes every other name to the router. It only answers questions from your local subnet.</li>
+  <li><b>Tablet:</b> in the Wi-Fi network settings choose Advanced, IP settings Static. Enter a free address (for example 192.168.1.201), the router as gateway, DNS 1 = the PC, DNS 2 = the router. Set Private DNS to Off or Automatic.</li>
+  <li><b>Mac:</b> add the line <code>192.168.1.200 guard.internal</code> to <code>/etc/hosts</code>. Nothing else is needed.</li>
+  <li><b>Certificate:</b> Caddy's own local authority signs the site certificate (<code>tls internal</code>). Copy only the public file <code>root.crt</code> to the tablet and the Mac and install it (Android: Settings, Security, Encryption and credentials, Install a certificate, CA certificate). Android shows a warning that the network may be monitored; that is expected for a private authority.</li>
+</ol>
+<pre><code># Corefile for CoreDNS on the Windows PC
+.:53 {
+    bind 192.168.1.200
+    hosts {
+        192.168.1.200 guard.internal
+        fallthrough
+    }
+    forward . 192.168.1.1          # your router, for every other name
+    cache 30
+}
+</code></pre>
+<ul>
+  <li><b>Trade-off:</b> the PC now also answers DNS on the LAN (port 53). Allow it in the firewall for the local subnet only. If the PC is off, <code>guard.internal</code> does not resolve, which is fine because the system is off too; other websites still work through DNS 2.</li>
+  <li><b>The root certificate is trusted for all sites on that device.</b> Keep its private key only on the PC (BitLocker on), and never copy it. For stronger protection use a root that is restricted to <code>guard.internal</code> (a name-constrained certificate made with <code>step-ca</code> or OpenSSL, loaded into Caddy). Do this in the hardening week.</li>
+  <li><b>Passkeys on a private name:</b> Chrome should accept <code>guard.internal</code> as the passkey site name. Confirm this on your exact tablet in the week 1 spike below. Fallback name if it refuses: <code>guard.home.arpa</code>.</li>
+  <li><b>If the name ever changes,</b> passkeys must be created again. Choose the name once and keep it.</li>
+</ul>
+<div class="scroll"><table>
+<tr><th>Week 1 spike (half a day, on the tablet)</th><th>Pass</th></tr>
+<tr><td>Open <code>https://guard.internal</code></td><td>Resolves to the PC and shows the page with no warning</td></tr>
+<tr><td>Open the camera page</td><td>Chrome asks for camera permission and shows the preview</td></tr>
+<tr><td>Create a passkey and sign in with it</td><td>Android prompt appears and the sign-in succeeds</td></tr>
+<tr><td>Turn off the router's internet (unplug the WAN cable)</td><td>All of the above still work</td></tr>
+</table></div>
+<h4>Options considered earlier</h4>
+<p>Passkeys are tied to a website name. They <b>do not work on a bare IP address</b>, and they stop working if the name changes. So the system needs one stable name that every device can resolve.</p>
+<div class="scroll"><table>
+<tr><th>Option</th><th>How</th><th>Pros</th><th>Cons</th></tr>
+<tr><td>1. Own domain, private A record (<b>not chosen</b>: needs Let's Encrypt and Cloudflare)</td><td>Buy a domain (about 10 USD a year). Use free Cloudflare DNS. Create <code>guard-x7k.example.com</code> pointing to the PC's LAN address, for example 192.168.1.200. Caddy proves ownership by DNS challenge and gets a trusted certificate.</td><td>Trusted on every device with no install. Stable name for passkeys. Works on Android with no router setting.</td><td>Costs a little. Needs a Caddy build with the Cloudflare DNS plugin. Some routers block public names that point to private addresses (see below).</td></tr>
+<tr><td>2. Name that contains the IP (such as sslip.io)</td><td>Use <code>192-168-1-200.sslip.io</code>. Caddy internal certificate. Install Caddy's root certificate on the tablet.</td><td>Free, no domain.</td><td>Name changes if the IP changes, which erases passkeys. Certificate install warning on Android. Depends on a third-party DNS.</td></tr>
+<tr><td>3. Bare IP address</td><td>Open the site by IP.</td><td>Simplest.</td><td><b>No passkeys.</b> Not acceptable for this plan.</td></tr>
+<tr><td>4. <code>.local</code> name (mDNS)</td><td>PC name plus .local</td><td>No cost.</td><td>Android Chrome does not resolve it reliably.</td></tr>
+</table></div>
+<ul>
+  <li><b>The domain name is public, the address is private.</b> A 192.168.x.x address is unreachable from outside, so putting it in public DNS exposes nothing. Certificate transparency logs will show the name, so choose a non-obvious subdomain and not "face" or "apartment".</li>
+  <li><b>Router DNS rebind protection:</b> some routers refuse to resolve a public name to a private address. Test early: open the site from the tablet. If it fails, look for a "DNS rebinding" or "domain allow list" setting in the router, or use option 2 as a stop-gap.</li>
+  <li><b>Fixed address:</b> first look in the router's admin page for "DHCP reservation", "static lease" or "address reservation". Most ISP routers have it. If not, set the address in Windows (below). Pick a number high in the range, such as .200, check with <code>ping</code> that nothing answers, and keep a note of it.</li>
+  <li>If the PC address ever changes, update the DNS record. Passkeys keep working because the <i>name</i> stays the same.</li>
+</ul>
+<pre><code># PowerShell as Administrator: fixed address on the PC (example values, use your own)
+Get-NetIPConfiguration                                   # shows interface name, gateway, current address
+Set-NetIPInterface -InterfaceAlias "Ethernet" -Dhcp Disabled
+New-NetIPAddress -InterfaceAlias "Ethernet" -IPAddress 192.168.1.200 -PrefixLength 24 -DefaultGateway 192.168.1.1
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ServerAddresses 192.168.1.1
+</code></pre>
+<pre><code># Caddyfile: certificate by DNS challenge (Caddy built with the cloudflare DNS plugin)
+guard-x7k.example.com {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}      # token limited to DNS edit on this one zone
+    }
+    # ... routes from C.8
+}
+</code></pre>
+<p>On the Mac, development uses <code>https://localhost</code>, where browsers allow camera and passkeys, so the login code is tested before it reaches the PC.</p>
+
+<h3>C.3 Cameras</h3>
+<div class="scroll"><table>
+<tr><th>Camera</th><th>Used for</th><th>Notes</th></tr>
+<tr><td>IP camera at the door</td><td>Recognition and in/out tracking</td><td>Needs RTSP. Create a separate camera account and password in the camera's settings. Turn off cloud, P2P and UPnP features. Prefer PoE; otherwise Wi-Fi with a strong signal. The engine in WSL reaches it over the LAN.</td></tr>
+<tr><td>Android tablet camera</td><td>Registering faces in the browser</td><td>Front camera, 3 to 10 photos. Chrome asks for camera permission once. The site must send <code>Permissions-Policy: camera=(self)</code>. Server checks quality again.</td></tr>
+<tr><td>Mac webcam</td><td>Development only</td><td>Same engine, different config.</td></tr>
+</table></div>
+<pre><code># config/engine.win.yaml : camera section
+cameras:
+  - id: cam-door
+    name: Door camera
+    direction: in
+    source: { adapter: rtsp, url: ${CAM_RTSP_URL}, transport: tcp, fps: 10 }
+</code></pre>
+<p>Check that your camera brand supports RTSP before buying (many Tapo, Imou and Hikvision models do; some cloud-only cameras do not).</p>
+
+<h3>C.4 Architecture with the Auth service</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart TB
+  Tab["Android tablet<br/>installed web app<br/>camera for registering faces"] -->|"HTTPS"| Cd
+  Mac["Your Mac or phone"] -->|"HTTPS"| Cd
+  subgraph Win["Windows PC"]
+    Cd["Caddy service<br/>only LAN port"]
+    subgraph Wsl["WSL2 Ubuntu"]
+      Au["Auth service<br/>password, passkey, PIN,<br/>sessions, step-up"]
+      PB["PocketBase"]
+      S3[("MinIO")]
+      Eng["Engine"]
+    end
+  end
+  Cd -->|"asks before protected requests"| Au
+  Cd --> PB
+  Cd --> Eng
+  Au -->|"credentials and sessions"| PB
+  PB --> S3
+  Eng --> PB
+  Cam["IP camera"] -->|"RTSP"| Eng
+  Au -.->|"security alerts"| Tg["Telegram"]
+  PB -.->|"unknown person alerts"| Tg
+</pre>
+<figcaption>Caddy asks the Auth service before it lets a request through to PocketBase files, the engine or any write. The Auth service listens on 127.0.0.1 in WSL, like PocketBase.</figcaption>
+</figure>
+
+<h3>C.5 Login design</h3>
+<h4>What each method really is on the web</h4>
+<div class="scroll"><table>
+<tr><th>Method</th><th>How it works</th><th>Used for</th><th>Notes</th></tr>
+<tr><td>Password</td><td>12+ characters, stored as an Argon2id hash. Optional authenticator-app code (TOTP) as a second step.</td><td>First login on a new device, recovery</td><td>Always available as the base method.</td></tr>
+<tr><td>Passkey ("face" or fingerprint)</td><td>The website asks Android to verify you. Android shows its own fingerprint, face or screen-lock prompt and returns a signed answer. The website never receives your face or fingerprint.</td><td>Daily unlock and step-up</td><td>This is how banking apps and passkeys work. Whether you see face, fingerprint or only the screen PIN depends on the tablet; many cheap tablets treat face unlock as a weak method and fall back to the screen lock.</td></tr>
+<tr><td>App PIN (6 digits)</td><td>Checked by the server, hashed, with attempt limits.</td><td>Quick unlock after auto-lock, step-up if you allow it</td><td>Works only on a device already signed in with a password. Five wrong tries lock the PIN until the next password login.</td></tr>
+</table></div>
+<div class="callout warn"><p><b>Do not use this system's own face recognition to log in.</b> It is built to recognise residents at a door, not to resist a photo held up to a tablet. The tablet's own biometric is stronger and is already designed for this job.</p></div>
+<p>The admin picks the active methods in <b>Settings, Security</b>: password (fixed), authenticator code on or off, passkey on or off, PIN on or off, auto-lock time, and whether step-up accepts PIN or requires a passkey.</p>
+
+<h4>Session states</h4>
+<figure class="fig">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> SignedOut
+  SignedOut --> Unlocked: password plus code, or passkey on a known device
+  Unlocked --> Locked: idle timeout or Lock button
+  Locked --> Unlocked: passkey or PIN
+  Locked --> SignedOut: 5 wrong PINs or session revoked
+  Unlocked --> StepUp: sensitive action
+  StepUp --> Unlocked: passkey or PIN confirmed, valid 5 minutes
+  StepUp --> Unlocked: cancelled
+  Unlocked --> SignedOut: logout or 30 days
+</pre>
+<figcaption>Locked is the banking-app screen you see after idle: nothing sensitive is shown, and unlocking needs a biometric or PIN. SignedOut needs the password again.</figcaption>
+</figure>
+
+<h4>What is protected at each level</h4>
+<div class="scroll"><table>
+<tr><th>Level</th><th>Meaning</th><th>Allowed</th></tr>
+<tr><td>Public</td><td>Not signed in</td><td>Login page only</td></tr>
+<tr><td>Session</td><td>Signed in, possibly locked (Shield mode)</td><td>Counts, alert banner and sound, event list with times and decisions but no names, no images. Acknowledge alerts.</td></tr>
+<tr><td>Unlocked</td><td>Passkey or PIN used within the idle time</td><td>Live frame, names, photos and snapshots, logs with names, CSV view</td></tr>
+<tr><td>Step-up</td><td>Passkey or PIN confirmed in the last 5 minutes</td><td>Register or change a face, delete or disable a person, export, change thresholds, change cameras or models, change security settings, revoke devices</td></tr>
+</table></div>
+<p><b>Shield mode</b> is the tablet's default view when locked. The alarm still sounds and Telegram still fires, so the tablet remains useful in your room, but nobody walking past sees faces or names.</p>
+
+<h4>First login on a new device</h4>
+<figure class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor A as Admin
+  participant T as Tablet browser
+  participant C as Caddy
+  participant U as Auth service
+  participant P as PocketBase
+  participant G as Telegram
+  A->>T: open site, enter email and password
+  T->>C: POST /auth/login
+  C->>U: forward
+  U->>P: read password hash
+  U-->>T: code required
+  A->>T: enter authenticator code
+  T->>U: POST /auth/totp
+  U->>P: create device and session
+  U-->>T: session cookie and 15 minute token
+  U->>G: New device signed in
+  T->>T: Android asks fingerprint, face or screen lock
+  T->>U: POST /auth/webauthn/register/verify
+  U->>P: store passkey public key
+  A->>T: set a 6 digit PIN, optional
+  T->>U: POST /auth/pin/set
+</pre>
+<figcaption>After this, daily use is just the Android biometric or the PIN. The password is needed only on a new device or after a lockout.</figcaption>
+</figure>
+
+<h4>Step-up before a sensitive action</h4>
+<figure class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor A as Admin
+  participant T as Tablet browser
+  participant C as Caddy
+  participant U as Auth service
+  participant P as PocketBase
+  A->>T: tap Delete person
+  T->>C: DELETE /api/collections/people/ID
+  C->>U: verify level stepup
+  U-->>C: 401 step-up required
+  C-->>T: 401
+  T->>U: GET /auth/stepup/options
+  T->>T: Android biometric prompt
+  T->>U: POST /auth/stepup/verify
+  U->>U: mark session stepup for 5 minutes
+  T->>C: retry DELETE
+  C->>U: verify level stepup
+  U-->>C: 204 ok
+  C->>P: forward delete
+  P-->>T: 204 deleted
+</pre>
+<figcaption>The check happens at Caddy, so changing the app in the browser cannot skip it.</figcaption>
+</figure>
+
+<h3>C.6 Data added for security</h3>
+<figure class="fig">
+<pre class="mermaid">
+erDiagram
+  USERS ||--o{ CREDENTIALS : has
+  USERS ||--o{ DEVICES : owns
+  DEVICES ||--o{ SESSIONS : has
+  USERS ||--|| SECURITY_SETTINGS : has
+  USERS ||--o{ RECOVERY_CODES : has
+  CREDENTIALS {
+    id id PK
+    relation user
+    select type
+    text public_key
+    number sign_count
+    text secret_enc
+    text hash
+  }
+  DEVICES {
+    id id PK
+    relation user
+    text name
+    text user_agent
+    date last_seen
+    bool revoked
+  }
+  SESSIONS {
+    id id PK
+    relation device
+    date expires_at
+    date unlocked_until
+    date stepup_until
+    text ip
+  }
+  SECURITY_SETTINGS {
+    id id PK
+    relation user
+    bool totp_on
+    bool passkey_on
+    bool pin_on
+    number idle_lock_s
+    number stepup_s
+  }
+  RECOVERY_CODES {
+    id id PK
+    relation user
+    text code_hash
+    date used_at
+  }
+</pre>
+<figcaption>These collections have no browser access rules. Only the Auth service, using PocketBase's superuser, reads or writes them.</figcaption>
+</figure>
+<ul>
+  <li><code>credentials.type</code> is <code>password</code>, <code>totp</code>, <code>passkey</code> or <code>pin</code>. Passkeys store only a public key. TOTP secrets are encrypted with a key kept outside the database.</li>
+  <li>The Auth service turns off PocketBase's own password login for the users collection, so every login goes through it. After a successful login it asks PocketBase for a short access token for that user (the superuser "impersonate" feature), valid for 15 minutes. PocketBase's existing API rules keep working.</li>
+  <li>The browser holds two things: an HttpOnly, Secure, SameSite=Strict session cookie (state, checked by Caddy) and the 15-minute token in memory (identity, checked by PocketBase). Nothing is stored in localStorage.</li>
+</ul>
+
+<h3>C.7 Auth service API</h3>
+<div class="scroll"><table>
+<tr><th>Method and path</th><th>Purpose</th></tr>
+<tr><td>POST /auth/login</td><td>Email and password; returns "code required" or a session</td></tr>
+<tr><td>POST /auth/totp</td><td>Second step code or a recovery code</td></tr>
+<tr><td>POST /auth/webauthn/register/options and /verify</td><td>Create a passkey on this device (needs Unlocked)</td></tr>
+<tr><td>POST /auth/webauthn/login/options and /verify</td><td>Unlock or sign in on a known device with a passkey</td></tr>
+<tr><td>POST /auth/pin/set, /auth/pin/verify</td><td>Set or change the PIN (step-up needed); unlock with PIN</td></tr>
+<tr><td>GET /auth/stepup/options, POST /auth/stepup/verify</td><td>Fresh passkey or PIN check for sensitive actions</td></tr>
+<tr><td>POST /auth/refresh</td><td>New 15-minute token while the session is valid</td></tr>
+<tr><td>POST /auth/lock, /auth/logout</td><td>Lock now, or destroy the session</td></tr>
+<tr><td>GET /auth/devices, DELETE /auth/devices/{id}</td><td>List devices; revoke one (step-up)</td></tr>
+<tr><td>GET and PUT /auth/settings</td><td>Choose methods, idle lock time, step-up policy (step-up)</td></tr>
+<tr><td>GET /auth/verify?level=session|unlocked|stepup</td><td>Internal. Called by Caddy; answers 204 or 401 or 403</td></tr>
+</table></div>
+<p>Suggested libraries: <code>py_webauthn</code> for passkeys, <code>pyotp</code> for authenticator codes, <code>argon2-cffi</code> for hashes, FastAPI for the service.</p>
+
+<h3>C.8 Caddy gates</h3>
+<pre><code># sketch, check with: caddy validate
+(gate_session)  { forward_auth 127.0.0.1:8002 { uri /auth/verify?level=session  } }
+(gate_unlocked) { forward_auth 127.0.0.1:8002 { uri /auth/verify?level=unlocked } }
+(gate_stepup)   { forward_auth 127.0.0.1:8002 { uri /auth/verify?level=stepup   } }
+
+guard.internal {
+    tls internal                              # local certificate authority, no outside service
+
+    @pbadmin path /_/*
+    respond @pbadmin 404
+
+    handle /auth/* { reverse_proxy 127.0.0.1:8002 }
+
+    @files path /api/files/*
+    handle @files { import gate_unlocked
+                    reverse_proxy 127.0.0.1:8090 }
+
+    @writes {
+        method POST PUT PATCH DELETE
+        path /api/collections/*
+        not path /api/collections/events/*     # marking an alert reviewed needs only Session
+    }
+    handle @writes { import gate_stepup
+                     reverse_proxy 127.0.0.1:8090 }
+
+    handle /api/* { import gate_session
+                    reverse_proxy 127.0.0.1:8090 }
+
+    @engine_sensitive path /engine/live.jpg /engine/people/* /engine/models/*
+    handle @engine_sensitive {
+        import gate_stepup                     # tune per route: live.jpg needs only Unlocked
+        reverse_proxy 127.0.0.1:8001 { flush_interval -1 }
+    }
+    handle_path /engine/* { import gate_session
+                            reverse_proxy 127.0.0.1:8001 }
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        Content-Security-Policy "default-src 'self'; img-src 'self' blob: data:; connect-src 'self'; frame-ancestors 'none'"
+        Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Cache-Control "no-store"                 # for API and auth routes; static files may cache
+    }
+
+    handle {
+        root * C:/entryguard/web
+        try_files {path} /index.html
+        file_server
+    }
+}
+</code></pre>
+<p>The engine and the Auth service talk to PocketBase directly on localhost, so they never pass these gates. Because of that, bind every internal service to <code>127.0.0.1</code> only.</p>
+
+<h3>C.9 Threats and controls</h3>
+<div class="scroll"><table>
+<tr><th>Threat</th><th>Controls</th></tr>
+<tr><td>Someone picks up the tablet</td><td>Auto-lock (2 minutes default), Shield mode, passkey or PIN to unlock, 5-try PIN limit, step-up for every sensitive action, remote revoke from another device</td></tr>
+<tr><td>Stolen password</td><td>Authenticator code, new-device Telegram alert, lockout delay after repeated failures, passkey makes the password unnecessary day to day</td></tr>
+<tr><td>Phishing page</td><td>Passkeys only answer to the real site name</td></tr>
+<tr><td>Guest on your Wi-Fi</td><td>Separate guest network, login rate limit, HTTPS only, every protected request checked at Caddy</td></tr>
+<tr><td>Stolen browser token</td><td>15-minute lifetime, held in memory only, session killed server-side on logout or revoke</td></tr>
+<tr><td>Changing the app code in the browser</td><td>All checks run in Caddy and the Auth service, not in the app</td></tr>
+<tr><td>Lost tablet and lost password</td><td>Recovery codes kept offline; or the reset command run on the PC itself. The PC in your home is the root of trust.</td></tr>
+<tr><td>Camera on the Wi-Fi hacked</td><td>Camera has its own account, cloud and UPnP off, RTSP password strong; engine alerts if the stream disappears</td></tr>
+<tr><td>Passkeys lost after a name change</td><td>Keep the domain name stable; the password plus code login remains as fallback</td></tr>
+</table></div>
+<div class="callout"><p><b>Honest limits.</b> This gives you the same login ideas as a banking app (biometric unlock, PIN, step-up, device list, lockout, alerts). A website cannot do what a native app can: it cannot detect a rooted tablet, cannot pin the certificate, and cannot hide the screen from screenshots. Physical access to the PC, and an unlocked tablet in someone's hand, remain your main risks. Keep the tablet's own screen lock on.</p></div>
+<p>Recovery command, run only on the PC: <code>eg auth reset-admin</code> prints a one-time link valid for 10 minutes, then forces password, authenticator and passkey setup again.</p>
+
+<h3>C.10 Requirements added</h3>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+<tr><td>FR-52</td><td>The admin shall choose enabled methods (authenticator code, passkey, PIN) and the idle-lock and step-up times in Settings, Security.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-53</td><td>Signing in on a new device shall require the password and, if enabled, the authenticator code.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-54</td><td>The system shall register a passkey per device with user verification required, and accept it to unlock and for step-up.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-55</td><td>The system shall offer a 6-digit PIN per device, verified on the server, hashed, usable only on a device already signed in, locked after 5 wrong tries.</td><td><span class="pill p-should">Should</span></td></tr>
+<tr><td>FR-56</td><td>The app shall auto-lock after the idle time (default 2 minutes on a tablet) and show Shield mode with no names, faces or live frame.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-57</td><td>Face registration, deletion, export, threshold, camera, model and security changes shall require step-up valid for 5 minutes.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-58</td><td>The admin shall see all signed-in devices and revoke one or all.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-59</td><td>The system shall send a Telegram security alert for a new device, a passkey or PIN change, a device revoked and repeated failed logins.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-60</td><td>Levels (Session, Unlocked, Step-up) shall be enforced by Caddy and the Auth service, not only by the app.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-61</td><td>Access tokens last 15 minutes. A session lasts at most 30 days and is destroyed on the server at logout.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-62</td><td>The system shall provide 10 one-time recovery codes and a PC-side reset command.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-63</td><td>The tablet shall capture 3 to 10 face photos with the device camera in the browser, with an on-screen guide, after step-up.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-64</td><td>The site shall use a stable private name with a certificate from a local authority, renewed automatically, and shall work with no internet connection.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-44, FR-46 (replaced)</td><td>The <code>monitor</code> role is dropped. Tablet sessions follow FR-56 and FR-61.</td><td></td></tr>
+</table></div>
+
+<h3>C.11 Tests added</h3>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Test</th><th>Pass condition</th></tr>
+<tr><td>T-42</td><td>Open the site on the Android tablet after installing the root certificate</td><td>Name resolves, no browser warning, camera and passkey prompts work</td></tr>
+<tr><td>T-43</td><td>New device login, then create a passkey</td><td>Android prompt appears; next unlock uses it</td></tr>
+<tr><td>T-44</td><td>Idle for the lock time</td><td>Shield mode; names, faces and live frame hidden; alarm still plays</td></tr>
+<tr><td>T-45</td><td>Five wrong PINs</td><td>PIN disabled on that device; password login required</td></tr>
+<tr><td>T-46</td><td>Delete a person without step-up, using the browser console to skip the app</td><td>401 from Caddy</td></tr>
+<tr><td>T-47</td><td>Revoke the tablet from the Mac</td><td>Tablet signed out within 15 minutes at most, and at its next request for protected routes</td></tr>
+<tr><td>T-48</td><td>Call PocketBase's own password login endpoint</td><td>Refused</td></tr>
+<tr><td>T-49</td><td>Reuse a token after logout</td><td>Rejected</td></tr>
+<tr><td>T-50</td><td>New device login</td><td>Telegram security alert arrives</td></tr>
+<tr><td>T-51</td><td>Register a face on the tablet camera</td><td>Camera opens, 4 photos accepted, person recognised at the door camera</td></tr>
+<tr><td>T-52</td><td>Tablet resolves <code>guard.internal</code> through the PC's DNS</td><td>Page loads; with the PC off, other websites still load through DNS 2</td></tr>
+<tr><td>T-53</td><td>Run the PC reset command</td><td>One-time link works once and expires in 10 minutes</td></tr>
+<tr><td>T-54</td><td>Unplug the router's internet cable</td><td>Recognition, login, tablet, registration and logs all keep working; only Telegram fails and retries later</td></tr>
+<tr><td>T-55</td><td>Check the router for port forwards, UPnP, DMZ and dynamic DNS; from a phone on mobile data, try the home public address on port 443</td><td>None configured; no response</td></tr>
+<tr><td>T-56</td><td>Port scan the PC from another LAN device</td><td>Only 443, 80 (redirect) and 53 (DNS) open</td></tr>
+<tr><td>T-57</td><td>Run the PC for 7 days with no internet</td><td>Clock drift stays small enough for authenticator codes; certificate renews on schedule</td></tr>
+</table></div>
+
+<h3>C.12 Plan changes</h3>
+<div class="scroll"><table>
+<tr><th>When</th><th>Add</th><th>Effort</th></tr>
+<tr><td>Week 1</td><td>Fixed PC address, CoreDNS, Caddy local certificate, week 1 spike on the tablet (name, certificate, camera, passkey, internet unplugged). Check the camera's RTSP.</td><td>1 to 2 days</td></tr>
+<tr><td>Weeks 3 to 4</td><td>Auth service part 1: password, authenticator code, sessions, token via PocketBase, Caddy gates, lockout, recovery.</td><td>about 1 week</td></tr>
+<tr><td>Weeks 4 to 5</td><td>Auth service part 2: passkeys, devices, step-up, security settings page.</td><td>about 1 week</td></tr>
+<tr><td>Week 6</td><td>PIN, auto-lock, Shield mode, Telegram security alerts, tablet camera capture page.</td><td>about 4 days</td></tr>
+<tr><td>Week 7</td><td>Security tests T-42 to T-53, header review, reset command drill.</td><td>2 to 3 days</td></tr>
+</table></div>
+<p>The MVP schedule grows by about 2 weeks. If you need to cut: ship password plus authenticator code plus passkey first, and add the PIN after the pilot.</p>
+
+<h3>C.13 Questions for you</h3>
+<ol>
+  <li>Are you fine with the tablet using a static IP and the PC as its first DNS server (set once in the tablet's Wi-Fi settings)? This is what makes the fully local name work.</li>
+  <li>Which router or ISP is it? We can check whether it has address reservation and DNS rebind protection.</li>
+  <li>Which tablet model? Does it have a fingerprint reader or only face unlock?</li>
+  <li>Which IP camera model? It must support RTSP.</li>
+  <li>Just you as admin for now, or also a family member or caretaker?</li>
+</ol>
+
+<h2 id="v04">B. Update v0.4: Mac for development, Windows PC with WSL for deployment, tablet monitor</h2>
+<div class="callout warn"><p><b>Partly superseded by section C:</b> the USB camera option, the tablet <code>monitor</code> account and the <code>.lan</code> name and local certificate approach are replaced. The WSL and Windows setup, Caddy on Windows, deploy workflow and tablet Monitor page still apply.</p></div>
+<div class="callout"><p><b>New facts:</b> you develop on a <b>Mac</b>. The system runs on an <b>old Windows PC</b> that supports <b>WSL2</b> (Linux). Telegram alerts stay. A <b>tablet in your room</b> will show the system all day. Section A (PocketBase, MinIO, Caddy, LAN only) still applies. This section changes <i>where each part runs</i> and adds the tablet.</p></div>
+
+<h3>B.1 What changes</h3>
+<div class="scroll"><table>
+<tr><th>Topic</th><th>Decision</th><th>Reason</th></tr>
+<tr><td>Caddy</td><td>Runs <b>natively on Windows</b> as a service, listening on the LAN</td><td>WSL2 hides its ports from the LAN (NAT). A Windows-side Caddy reaches WSL through <code>127.0.0.1</code> and needs no port forwarding rules.</td></tr>
+<tr><td>PocketBase and MinIO</td><td>Run in <b>WSL2 Ubuntu</b> with Docker Engine (not Docker Desktop)</td><td>Same Linux containers as on your Mac. Docker Engine in WSL is much lighter on an old PC than Docker Desktop.</td></tr>
+<tr><td>Engine</td><td>USB webcam: native Windows Python. IP camera (RTSP): inside WSL.</td><td>WSL2 cannot easily use USB cameras. RTSP works anywhere.</td></tr>
+<tr><td>Dev machine</td><td>Mac: webcam through native engine, Docker for PocketBase and MinIO, Vite dev server for the web app</td><td>Same compose file and same code as the PC.</td></tr>
+<tr><td>Deploy</td><td>Private git repo, then <code>git pull</code> and a deploy script on the PC</td><td>Outbound only, so the PC still needs no inbound access.</td></tr>
+<tr><td>Tablet</td><td>New <b>monitor page</b> in the web app, installed as an app on the tablet. Uses a read-only <code>monitor</code> account.</td><td>A tablet that stays logged in all day should not be able to delete people.</td></tr>
+<tr><td>Telegram</td><td>Kept. Text-only by default, photo optional.</td><td>A photo sent to Telegram leaves your LAN and sits on their servers.</td></tr>
+</table></div>
+
+<h3>B.2 Environments</h3>
+<div class="scroll"><table>
+<tr><th>Item</th><th>Mac (development)</th><th>Windows PC (deployment)</th></tr>
+<tr><td>CPU and speed</td><td>Apple Silicon, fast</td><td>Old x86 CPU, probably slower. <b>Benchmark here first.</b></td></tr>
+<tr><td>Inference provider</td><td>CoreML, else CPU</td><td>CPU (add OpenVINO for Intel, DirectML for a GPU)</td></tr>
+<tr><td>Engine config</td><td><code>engine.mac.yaml</code></td><td><code>engine.win.yaml</code></td></tr>
+<tr><td>Camera</td><td>Mac webcam via AVFoundation</td><td>USB webcam via DirectShow, or RTSP camera</td></tr>
+<tr><td>Caddy</td><td>Docker or <code>brew</code>, <code>localhost</code> certificate</td><td>Windows service, certificate for the LAN name and IP</td></tr>
+<tr><td>PocketBase, MinIO</td><td>Docker Desktop, OrbStack or Colima</td><td>Docker Engine in WSL2 Ubuntu</td></tr>
+<tr><td>Python deps</td><td colspan="2"><code>uv</code> with one lock file resolves wheels for both macOS arm64 and Windows x86_64. Models (ONNX files) are identical on both.</td></tr>
+<tr><td>Data</td><td>Throw-away test data</td><td>Real data. Never copy production data to the Mac.</td></tr>
+</table></div>
+<div class="callout warn"><p><b>Biggest new risk: your Mac is much faster than the old PC.</b> Numbers measured on the Mac will look better than reality. Run the benchmark command on the old PC in week 1 and pick models from those numbers. If it is too slow, use a smaller model pair (for example YuNet with MobileFaceNet). The model engine exists for exactly this swap.</p></div>
+
+<h3>B.3 Deployment diagram</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart TB
+  subgraph Mac["Mac, development"]
+    MCam["Mac webcam"] --> MEng["Engine native"]
+    MDock["Docker<br/>PocketBase and MinIO"]
+    MWeb["Web dev server"]
+  end
+  subgraph LAN["Home Wi-Fi"]
+    Tab["Tablet in your room<br/>monitor page"]
+    Adm["Admin laptop or phone"]
+  end
+  subgraph Win["Windows PC"]
+    Cd["Caddy service<br/>443, only LAN port"]
+    Fs["Web files folder"]
+    WEng["Engine native<br/>if USB camera"]
+    Usb["USB webcam"]
+    subgraph Wsl["WSL2 Ubuntu"]
+      PB["PocketBase"]
+      S3[("MinIO")]
+      LEng["Engine<br/>if RTSP camera"]
+    end
+  end
+  Ip["IP camera<br/>RTSP"] -.-> LEng
+  Usb --> WEng
+  Tab -->|"HTTPS"| Cd
+  Adm -->|"HTTPS"| Cd
+  Cd --> Fs
+  Cd -->|"/api"| PB
+  Cd -->|"/engine"| WEng
+  Cd -->|"/engine"| LEng
+  PB --> S3
+  WEng --> PB
+  LEng --> PB
+  PB -.->|"outbound only"| Tg["Telegram"]
+  Mac -.->|"git push, then git pull on the PC"| Win
+</pre>
+<figcaption>Only Caddy is visible on the network. The engine appears twice because you choose one: native on Windows for a USB camera, or inside WSL for an RTSP camera. Caddy reaches either at 127.0.0.1:8001.</figcaption>
+</figure>
+
+<h3>B.4 Windows PC setup recipe</h3>
+<ol>
+  <li><b>Check the hardware:</b> CPU with AVX2, at least 4 cores, 8 GB RAM (16 GB is better), SSD, Windows 10 22H2 or Windows 11. Note which Windows version you have.</li>
+  <li><b>Install WSL2 and Ubuntu 22.04</b> (<code>wsl --install -d Ubuntu-22.04</code>), then enable systemd so Docker starts by itself.</li>
+  <li><b>Install Docker Engine inside Ubuntu</b> (not Docker Desktop). Run PocketBase and MinIO with the compose file from section A.7, without the Caddy service.</li>
+  <li><b>Install Caddy for Windows</b>, run it as a service (WinSW or NSSM), and run <code>caddy trust</code> once.</li>
+  <li><b>Set a fixed address:</b> a DHCP reservation in the router for the PC.</li>
+  <li><b>Windows firewall:</b> allow inbound 443 only, only on the private network, only from the local subnet.</li>
+  <li><b>Install the engine:</b> Windows Python with <code>uv</code> for a USB camera, or inside Ubuntu for an RTSP camera.</li>
+  <li><b>Keep it running:</b> disable sleep, auto-login, BIOS setting "restore after power loss: on", pause Windows Update restarts outside active hours, scheduled task that starts WSL at boot.</li>
+</ol>
+<pre><code># /etc/wsl.conf (inside Ubuntu)
+[boot]
+systemd=true
+
+# C:\Users\you\.wslconfig (on Windows) : stop WSL from eating the old PC's memory
+[wsl2]
+memory=3GB
+processors=2
+</code></pre>
+<pre><code># PowerShell, run as Administrator
+New-NetFirewallRule -DisplayName "EntryGuard HTTPS" -Direction Inbound -Protocol TCP `
+  -LocalPort 443 -Action Allow -Profile Private -RemoteAddress LocalSubnet
+
+# Task Scheduler task "WSL keepalive": trigger At startup, run as your user,
+# action: wsl.exe -d Ubuntu-22.04 --exec /bin/sh -c "sleep infinity"
+</code></pre>
+<pre><code># Caddyfile on Windows (differences from section A.6 only)
+{
+    local_certs
+}
+entryguard.lan, 192.168.1.20 {            # use your own name and fixed IP
+    tls internal
+    @pbadmin path /_/*
+    respond @pbadmin 404
+    handle /api/* { reverse_proxy 127.0.0.1:8090 }
+    handle_path /engine/* {
+        forward_auth 127.0.0.1:8090 { uri /api/eg/verify }
+        reverse_proxy 127.0.0.1:8001 { flush_interval -1 }
+    }
+    handle {
+        root * C:/entryguard/web
+        try_files {path} /index.html
+        file_server
+    }
+}
+</code></pre>
+<ul>
+  <li><b>Why Caddy is on Windows:</b> WSL2 on Windows 10 does not expose its ports to other devices. You would need port-forward rules that break whenever WSL's address changes. Windows 11 22H2 or later has "mirrored networking", but the Windows-side Caddy works on both versions, so it is the safer choice.</li>
+  <li><b>Bind in WSL to localhost:</b> publish PocketBase and MinIO as <code>127.0.0.1:port</code> so Windows reaches them through localhost forwarding and nothing else can.</li>
+  <li><b>Name resolution:</b> if the router cannot create a name like <code>entryguard.lan</code>, use the IP address in the browser. Caddy can issue the local certificate for an IP.</li>
+</ul>
+
+<h3>B.5 Camera choices on the Windows PC</h3>
+<div class="scroll"><table>
+<tr><th>Option</th><th>Where the engine runs</th><th>Pros</th><th>Cons</th></tr>
+<tr><td>USB webcam</td><td>Native Windows Python</td><td>Cheap, quick start, same code as your Mac webcam</td><td>Engine outside WSL; run it as a Windows service; cable length limit about 5 m</td></tr>
+<tr><td>IP camera over RTSP</td><td>Inside WSL (or native)</td><td>Door-grade image, any distance with PoE, same as the final install</td><td>Needs camera, switch or injector, fixed camera IP</td></tr>
+<tr><td>Phone as IP camera (testing)</td><td>Either</td><td>Free for tests, gives a second "out" camera</td><td>Battery, not for production</td></tr>
+</table></div>
+<p>Use the first option to start, since it matches the Mac setup. Move to the second for the door. Only the camera line in <code>engine.win.yaml</code> changes.</p>
+
+<h3>B.6 Planning for an old PC</h3>
+<div class="scroll"><table>
+<tr><th>Budget (planning guess, confirm by measuring)</th><th>Amount</th></tr>
+<tr><td>Windows itself and background</td><td>about 3 GB RAM</td></tr>
+<tr><td>WSL2 with PocketBase, MinIO, Docker</td><td>about 1 to 2 GB RAM</td></tr>
+<tr><td>Caddy</td><td>under 100 MB</td></tr>
+<tr><td>Engine with models loaded</td><td>about 1 to 1.5 GB RAM, 1 to 2 CPU cores busy</td></tr>
+</table></div>
+<ul>
+  <li>The engine embeds only the best few frames of each person and skips tracks already decided. This keeps load low even on a slow CPU.</li>
+  <li>NFR-02 becomes 5 frames per second for the old PC, and NFR-01 becomes p95 under 2.5 s from face visible to decision. Both are targets to confirm on the old PC.</li>
+  <li>First task of week 1: copy the engine and a recorded clip to the old PC and run <code>eg bench</code> with each detector and embedder pair. Record fps, p95 latency and CPU use in the model ADR.</li>
+  <li>Fallbacks if too slow, in order: lower detector input size, lower target fps, smaller embedder, OpenVINO provider (Intel CPU), add a cheap GPU, replace the PC with a small new one.</li>
+</ul>
+<pre><code># config/engine.win.yaml (excerpt)
+runtime:
+  providers: [CPUExecutionProvider]      # add OpenVINOExecutionProvider on Intel
+  threads: 2
+cameras:
+  - id: cam-door
+    name: Door camera
+    direction: in
+    source: { adapter: webcam, index: 0, backend: dshow, width: 1280, height: 720, fps: 10 }
+    # source: { adapter: rtsp, url: ${CAM_RTSP_URL} }
+models:
+  detector: { adapter: yunet,         file: models/yunet.onnx }
+  embedder: { adapter: mobilefacenet, file: models/mobilefacenet.onnx, space_id: mfn_v1 }
+alerts:
+  telegram: { include_photo: false }
+</code></pre>
+
+<h3>B.7 Deploy workflow from Mac to the PC</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  A["Code and test on Mac"] --> B["Replay tests pass"]
+  B --> C["You commit and push<br/>to your private git repo"]
+  C --> D["On the PC, in WSL<br/>run deploy script"]
+  D --> E["Backup first"]
+  E --> F["git pull, build web,<br/>copy to web folder"]
+  F --> G["Compose up<br/>PocketBase migrations run"]
+  G --> H{"Health check ok?"}
+  H -- "yes" --> I["Done, note the release tag"]
+  H -- "no" --> J["Rollback to last tag<br/>and restore backup"]
+</pre>
+<figcaption>Every deploy takes a backup first, so rollback is one command. You commit and push yourself; no tool in this plan commits or pushes for you.</figcaption>
+</figure>
+<pre><code>#!/usr/bin/env bash                      # scripts/deploy.sh, run inside WSL on the PC
+set -euo pipefail
+cd ~/entryguard
+./scripts/backup.sh                      # pb_data plus MinIO bucket snapshot
+git pull --ff-only
+docker compose up -d --build pocketbase minio
+(cd web &amp;&amp; npm ci &amp;&amp; npm run build)
+rsync -a --delete web/dist/ /mnt/c/entryguard/web/
+(cd engine &amp;&amp; uv sync --frozen)
+sudo systemctl restart entryguard-engine   # or restart the Windows service for a USB camera
+./scripts/healthcheck.sh || ./scripts/rollback.sh
+</code></pre>
+
+<h3>B.8 Tablet monitor</h3>
+<p>The tablet is a always-on display and a simple control panel. It opens the web app on the <b>Monitor</b> page and stays there.</p>
+<figure class="fig">
+<svg viewBox="0 0 640 340" role="img" aria-label="Wireframe of the tablet monitor page with live camera, in and out counters, recent events and an alert banner" style="max-width:100%;height:auto;font-family:var(--f-body)">
+  <rect x="8" y="8" width="624" height="324" rx="14" fill="var(--panel)" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="24" y="24" width="370" height="220" fill="var(--code-bg)" stroke="currentColor"/>
+  <text x="209" y="126" font-size="14" text-anchor="middle" fill="currentColor">Live camera</text>
+  <text x="209" y="146" font-size="11" text-anchor="middle" fill="currentColor">boxes and names, updates about 2 per second</text>
+  <rect x="150" y="170" width="90" height="56" fill="none" stroke="var(--good)" stroke-width="2"/>
+  <text x="195" y="166" font-size="11" text-anchor="middle" fill="var(--good)">An, unit 302</text>
+  <rect x="410" y="24" width="100" height="64" fill="var(--code-bg)" stroke="currentColor"/>
+  <text x="460" y="46" font-size="11" text-anchor="middle" fill="currentColor">IN today</text>
+  <text x="460" y="76" font-size="26" text-anchor="middle" fill="currentColor">14</text>
+  <rect x="522" y="24" width="94" height="64" fill="var(--code-bg)" stroke="currentColor"/>
+  <text x="569" y="46" font-size="11" text-anchor="middle" fill="currentColor">OUT today</text>
+  <text x="569" y="76" font-size="26" text-anchor="middle" fill="currentColor">9</text>
+  <text x="410" y="112" font-size="11" fill="currentColor">Latest events</text>
+  <circle cx="420" cy="130" r="5" fill="var(--good)"/><text x="432" y="134" font-size="12" fill="currentColor">21:14  An  in</text>
+  <circle cx="420" cy="154" r="5" fill="var(--bad)"/><text x="432" y="158" font-size="12" fill="currentColor">21:09  Unknown  in</text>
+  <circle cx="420" cy="178" r="5" fill="var(--good)"/><text x="432" y="182" font-size="12" fill="currentColor">20:57  Binh  in</text>
+  <circle cx="420" cy="202" r="5" fill="var(--warn)"/><text x="432" y="206" font-size="12" fill="currentColor">20:41  Uncertain  in</text>
+  <rect x="24" y="262" width="592" height="54" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2"/>
+  <text x="40" y="294" font-size="15" fill="var(--bad)">Unrecognised person at the entrance, 21:09</text>
+  <rect x="500" y="272" width="104" height="34" fill="var(--bad)"/>
+  <text x="552" y="294" font-size="13" text-anchor="middle" fill="var(--bg)">Acknowledge</text>
+</svg>
+<figcaption>Monitor page for a landscape tablet. Live view on the left, counters and latest events on the right, a red alert strip with one big button at the bottom. Names and times here are examples.</figcaption>
+</figure>
+<figure class="fig">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Alarm: unknown or spoof event arrives
+  Alarm --> Alarm: repeat sound every 30 s, up to 3 times
+  Alarm --> Acknowledged: tap Acknowledge
+  Alarm --> Idle: 5 minutes with no tap, event stays unreviewed
+  Acknowledged --> Idle: event marked reviewed with time
+</pre>
+<figcaption>Alert behaviour on the tablet. An unreviewed event stays highlighted in Logs so nothing is lost if nobody is in the room.</figcaption>
+</figure>
+
+<h4>Accounts for the tablet</h4>
+<div class="scroll"><table>
+<tr><th>Account</th><th>Role</th><th>Can do</th><th>Used on</th></tr>
+<tr><td>You</td><td>admin</td><td>Everything, including register, delete, thresholds, export</td><td>Mac, laptop, phone</td></tr>
+<tr><td>tablet</td><td>monitor (new, read-only)</td><td>Dashboard, logs, acknowledge alerts (mark reviewed). Cannot change people, settings or export.</td><td>Tablet in your room</td></tr>
+</table></div>
+<p>If you prefer a single admin account on the tablet, accept that anyone who picks up the tablet can delete residents. A middle option: the tablet stays logged in as <code>monitor</code> and asks for an admin PIN before any admin action.</p>
+
+<h4>Tablet requirements</h4>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Requirement</th><th>Priority</th></tr>
+<tr><td>FR-41</td><td>The web app shall have a Monitor page with live frame, today's in/out counts, latest events and camera health, readable from 2 m away on a 10 inch tablet.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-42</td><td>The Monitor page shall keep the screen awake (Screen Wake Lock) and recover after Wi-Fi loss or server restart without a manual reload.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-43</td><td>An unknown or spoof event shall show a red banner and play an alarm sound until acknowledged, with a mute control.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-44</td><td>The system shall support a read-only <code>monitor</code> role enforced by API rules.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-45</td><td>The web app shall be an installable PWA (manifest, icons, full-screen display) for the tablet home screen.</td><td><span class="pill p-should">Should</span></td></tr>
+<tr><td>FR-46</td><td>The tablet session shall stay signed in for 30 days with silent token refresh, and be revocable by the admin.</td><td><span class="pill p-must">Must</span></td></tr>
+<tr><td>FR-47</td><td>The Monitor page shall dim after 5 minutes of no events and wake on the next event.</td><td><span class="pill p-could">Could</span></td></tr>
+<tr><td>FR-48</td><td>Touch targets on the Monitor page shall be at least 48 px, and all pages shall work in landscape and portrait.</td><td><span class="pill p-must">Must</span></td></tr>
+</table></div>
+<h4>Tablet setup</h4>
+<ol>
+  <li>Install Caddy's root certificate on the tablet. Android: Settings, Security, install a CA certificate. iPad or iPhone: install the profile, then turn on full trust under Certificate Trust Settings.</li>
+  <li>Open the site, log in as <code>tablet</code>, choose Add to Home Screen.</li>
+  <li>Keep it on a charger. Set screen timeout to never, or use a kiosk mode (Android: a kiosk app; iPad: Guided Access).</li>
+  <li>Tap once on the page after each restart so the browser allows alarm sound.</li>
+  <li>Place the tablet on the same Wi-Fi network, with a strong signal.</li>
+</ol>
+<p>When the mobile app arrives, the tablet can keep using the web Monitor page, or install the app with a kiosk role. No backend change is needed.</p>
+
+<h3>B.9 Telegram on this setup</h3>
+<ol>
+  <li>Create a bot with BotFather and note the token. Add the bot to a chat or group and note the chat id.</li>
+  <li>Put <code>TG_TOKEN</code> and <code>TG_CHAT</code> in the PocketBase environment file in WSL (file mode 600).</li>
+  <li>The hook from section A.6 sends the message. Include the event time, camera and a link to the event page (<code>https://entryguard.lan/events/ID</code>). The link only opens on your Wi-Fi, which is the intended behaviour.</li>
+  <li><b>Photo option:</b> <code>include_photo</code> is <code>false</code> by default. With <code>true</code>, the face snapshot of the unknown person is uploaded to Telegram's servers. Turn it on only if you accept that, and keep it in your privacy notice.</li>
+  <li>Telegram needs only outbound internet from the PC. No inbound port is opened.</li>
+</ol>
+
+<h3>B.10 Added requirements and tests</h3>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Item</th></tr>
+<tr><td>FR-49</td><td>All services except the optional USB-camera engine shall restart automatically after a Windows reboot within 3 minutes, with no one logged in at the screen.</td></tr>
+<tr><td>FR-50</td><td>A deploy script shall take a backup, apply the update, run a health check and roll back on failure.</td></tr>
+<tr><td>FR-51</td><td>The engine config shall be selectable per environment (<code>mac</code>, <code>win</code>) with no code change.</td></tr>
+<tr><td>NFR-02 (changed)</td><td>5 fps sustained on the old PC (8 fps on better hardware).</td></tr>
+<tr><td>NFR-01 (changed)</td><td>p95 under 2.5 s on the old PC.</td></tr>
+</table></div>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Test</th><th>Pass condition</th></tr>
+<tr><td>T-33</td><td>Reboot the Windows PC with nobody logged in</td><td>Caddy, PocketBase, MinIO and engine back in 3 minutes; tablet reconnects by itself</td></tr>
+<tr><td>T-34</td><td>Cut power, restore power</td><td>PC powers on alone; no database corruption; spooled events replayed</td></tr>
+<tr><td>T-35</td><td>Open the site from the tablet on Wi-Fi</td><td>No certificate warning; Monitor page shows live frame</td></tr>
+<tr><td>T-36</td><td>Tablet account calls an admin-only action (delete person)</td><td>403</td></tr>
+<tr><td>T-37</td><td>Restart PocketBase while tablet shows Monitor</td><td>Page shows "reconnecting" and recovers with no tap</td></tr>
+<tr><td>T-38</td><td>Unknown person; tablet unattended</td><td>Alarm repeats 3 times, Telegram message sent, event remains unreviewed</td></tr>
+<tr><td>T-39</td><td>Benchmark on the old PC</td><td>Meets NFR-01 and NFR-02 with the chosen models, or the fallback list is applied</td></tr>
+<tr><td>T-40</td><td>Deploy with a deliberately broken build</td><td>Health check fails, rollback restores the previous version</td></tr>
+<tr><td>T-41</td><td>Scan ports on the Windows PC from another device</td><td>Only 443 (and 80 redirect) open; WSL ports not reachable</td></tr>
+</table></div>
+
+<h3>B.11 Plan changes</h3>
+<div class="scroll"><table>
+<tr><th>When</th><th>Add</th></tr>
+<tr><td>Week 1</td><td>Old PC: check hardware, install WSL2 and Docker Engine, Caddy service, firewall, auto-start. Run <code>eg bench</code> on the old PC as soon as the first adapter works.</td></tr>
+<tr><td>Weeks 2 to 3</td><td>Environment-specific engine configs; <code>uv</code> lock verified on both platforms; Windows service for the engine if USB camera.</td></tr>
+<tr><td>Weeks 5 to 6</td><td>Monitor page (about 4 days), <code>monitor</code> role and rules, PWA manifest, alarm and acknowledge behaviour, wake lock.</td></tr>
+<tr><td>Week 7</td><td>Deploy script and rollback, reboot and power-loss tests, tablet setup guide, Telegram setup guide.</td></tr>
+<tr><td>Pilot</td><td>Run on the old PC with the tablet in your room; watch CPU, memory and false alerts daily.</td></tr>
+</table></div>
+
+<h3>B.12 Questions for you</h3>
+<ol>
+  <li>What are the old PC's CPU model, RAM, disk and Windows version (10 or 11)? That decides the model pair and the fallback plan.</li>
+  <li>Android tablet or iPad? The certificate and kiosk steps differ.</li>
+  <li>At the real door, USB webcam or IP camera?</li>
+  <li>Can your router give the PC a fixed address and a local name?</li>
+  <li>Should the tablet ask for a PIN before admin actions, or stay strictly read-only?</li>
+</ol>
+
+<h2 id="v03">A. Update v0.3: web first, self-hosted, LAN only</h2>
+<div class="callout"><p><b>New direction:</b> build the <b>website with the admin role only</b>. Everything runs on your PC and is reachable only from your Wi-Fi: <b>Caddy</b> (web server and HTTPS), <b>PocketBase</b> (database, login, realtime), <b>MinIO</b> (S3 file storage), the web app, and the Python face engine. The mobile app and renter features come later and will reuse the same PocketBase API.</p></div>
+
+<h3>A.1 What is replaced and what stays</h3>
+<div class="scroll"><table>
+<tr><th>Topic</th><th>Before (v0.1 / v0.2)</th><th>Now (v0.3)</th></tr>
+<tr><td>Database and auth</td><td>PostgreSQL plus pgvector, own login code</td><td>PocketBase (SQLite inside): collections, login, access rules, realtime, file fields</td></tr>
+<tr><td>File storage</td><td>Local volume</td><td>MinIO bucket, configured as PocketBase's S3 storage</td></tr>
+<tr><td>Vector search</td><td>pgvector query</td><td>In-memory index inside the engine (see A.4)</td></tr>
+<tr><td>Queue and worker</td><td>Redis plus worker</td><td>Removed. Engine writes events to PocketBase; a PocketBase hook sends the alert</td></tr>
+<tr><td>API</td><td>FastAPI for everything</td><td>PocketBase for data and login; small Python engine API only for AI tasks</td></tr>
+<tr><td>Web server</td><td>Not specified</td><td>Caddy: HTTPS, serves the web app, routes <code>/api</code> and <code>/engine</code></td></tr>
+<tr><td>Client</td><td>Mobile app first</td><td>Web app first, admin role only. Mobile later.</td></tr>
+<tr><td>Roles</td><td>admin, renter</td><td>Both roles exist in the data. Only admin can log in to the web app.</td></tr>
+<tr><td>Stays</td><td colspan="2">Model engine with ports and adapters, webcam source, camera direction in/out, decision per track, thresholds per model space, privacy rules, consent, retention.</td></tr>
+</table></div>
+
+<h3>A.2 Architecture on your PC</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart TB
+  subgraph LAN["Home Wi-Fi, trusted devices only"]
+    Br["Admin browser<br/>laptop or phone"]
+  end
+  subgraph PC["Your PC"]
+    Cd["Caddy<br/>HTTPS 443, only open port"]
+    Web["Web app<br/>static files"]
+    PB["PocketBase<br/>data, login, realtime"]
+    S3[("MinIO<br/>photos and snapshots")]
+    Eng["Engine API and pipeline<br/>native Python"]
+    Cam["Webcam"]
+  end
+  Br -->|"https entryguard.local"| Cd
+  Cd --> Web
+  Cd -->|"/api"| PB
+  Cd -->|"/engine after admin check"| Eng
+  PB -->|"S3 API"| S3
+  Cam --> Eng
+  Eng -->|"REST and realtime"| PB
+  PB -.->|"outbound only, optional"| Tg["Telegram"]
+</pre>
+<figcaption>Only Caddy listens on the network. PocketBase, MinIO and the engine listen on the PC itself and are reached through Caddy or by other processes on the same PC.</figcaption>
+</figure>
+
+<h3>A.3 Components and ports</h3>
+<div class="scroll"><table>
+<tr><th>Component</th><th>Runs as</th><th>Listens on</th><th>Reachable from Wi-Fi?</th><th>Job</th></tr>
+<tr><td>Caddy</td><td>Docker or native</td><td>443 (and 80 redirect)</td><td>yes</td><td>HTTPS with local certificate, static web app, reverse proxy, admin check for <code>/engine</code></td></tr>
+<tr><td>PocketBase</td><td>Docker or native binary</td><td>127.0.0.1:8090</td><td>no, only via Caddy <code>/api</code></td><td>Collections, auth, rules, realtime, file API, hooks, backups</td></tr>
+<tr><td>MinIO</td><td>Docker</td><td>127.0.0.1:9000 and 9001</td><td>no</td><td>S3 bucket for PocketBase files; console only on the PC</td></tr>
+<tr><td>Engine</td><td>Native Python venv (needs webcam)</td><td>127.0.0.1:8001</td><td>no, only via Caddy <code>/engine</code></td><td>Camera, AI pipeline, registration, live frame, model commands</td></tr>
+<tr><td>Web app</td><td>Static build</td><td>served by Caddy</td><td>yes</td><td>Admin screens</td></tr>
+</table></div>
+<p>Docker Desktop on macOS cannot pass the webcam, so the engine stays native. Caddy in Docker reaches it at <code>host.docker.internal:8001</code>. If you run everything natively (brew or binaries), use <code>127.0.0.1</code> instead.</p>
+
+<h3>A.4 Vector search without a vector database</h3>
+<p>PocketBase has no vector index. At building scale you do not need one. The engine loads all enrolled embeddings into one NumPy matrix at start-up. Search is a single matrix product on unit-length vectors.</p>
+<pre><code># adapters/index/memory_pb.py (sketch)
+class MemoryPbIndex:                       # implements IdentityIndex
+    def __init__(self, pb, space_id):
+        self.pb, self.space = pb, space_id
+        self.reload()
+
+    def reload(self):                      # called at start and on PocketBase realtime change
+        rows = self.pb.list("embeddings", filter=f'space="{self.space}"')
+        self.ids = [r["person"] for r in rows]
+        self.mat = np.stack([decode_b64_f32(r["vec"]) for r in rows]) if rows else np.zeros((0, 512), np.float32)
+
+    def search(self, vec, space_id, k=3):
+        sims = self.mat @ vec               # cosine, vectors are L2 normalised
+        top = np.argsort(-sims)[:k]
+        return [(self.ids[i], float(sims[i])) for i in top]
+</code></pre>
+<ul>
+  <li>5,000 vectors of 512 numbers is about 10 MB and a search takes about 1 ms.</li>
+  <li>The engine subscribes to PocketBase realtime on <code>embeddings</code>, so a new person is searchable within a second, no restart.</li>
+  <li>Because the index is a port adapter, you can later replace it with FAISS or pgvector without touching the pipeline.</li>
+  <li>Embeddings are stored as base64 text in PocketBase and are readable only by the engine service account, never by a browser.</li>
+</ul>
+
+<h3>A.5 PocketBase collections</h3>
+<figure class="fig">
+<pre class="mermaid">
+erDiagram
+  USERS ||--o| PEOPLE : linked_to
+  PEOPLE ||--o{ FACE_PHOTOS : has
+  PEOPLE ||--o{ EMBEDDINGS : has
+  FACE_PHOTOS ||--o{ EMBEDDINGS : produces
+  MODEL_SPACES ||--o{ EMBEDDINGS : defines
+  CAMERAS ||--o{ EVENTS : captures
+  PEOPLE ||--o{ EVENTS : matched_in
+  USERS ||--o{ AUDIT_LOGS : writes
+  PEOPLE ||--o{ FACE_REQUESTS : owns
+  USERS {
+    id id PK
+    email email
+    select role
+    relation person
+  }
+  PEOPLE {
+    id id PK
+    text name
+    text unit
+    select status
+    date consent_at
+    text consent_version
+  }
+  FACE_PHOTOS {
+    id id PK
+    relation person
+    file image
+    number quality
+  }
+  EMBEDDINGS {
+    id id PK
+    relation person
+    relation photo
+    text space
+    text vec
+  }
+  MODEL_SPACES {
+    id id PK
+    text space_id
+    text embedder
+    number dim
+    bool active
+    number accept
+    number reject
+  }
+  CAMERAS {
+    id id PK
+    text name
+    select direction
+    bool enabled
+    select status
+    date last_seen
+  }
+  EVENTS {
+    id id PK
+    date ts
+    relation camera
+    select direction
+    select decision
+    relation person
+    number score
+    number liveness
+    json models
+    file snapshot
+    bool reviewed
+  }
+  AUDIT_LOGS {
+    id id PK
+    relation actor
+    text action
+    json detail
+  }
+  FACE_REQUESTS {
+    id id PK
+    relation person
+    select status
+    select source
+  }
+</pre>
+<figcaption>Same model as before expressed as PocketBase collections. <code>face_requests</code> is created now and used only in phase 2. Photos and snapshots are file fields stored in MinIO.</figcaption>
+</figure>
+<div class="scroll"><table>
+<tr><th>Collection</th><th>Who can read</th><th>Who can write</th><th>Notes</th></tr>
+<tr><td>users</td><td>admin</td><td>admin</td><td>Auth collection. Field <code>role</code> is <code>admin</code> or <code>renter</code>. Enable MFA for admins.</td></tr>
+<tr><td>people</td><td>admin</td><td>admin</td><td>Delete cascades to photos and embeddings.</td></tr>
+<tr><td>face_photos</td><td>admin</td><td>engine only</td><td>Image field is a <b>protected file</b>, loaded with a short-lived file token.</td></tr>
+<tr><td>embeddings</td><td>engine only</td><td>engine only</td><td>Rules empty so only the service superuser can touch it.</td></tr>
+<tr><td>model_spaces</td><td>admin</td><td>admin (thresholds), engine</td><td>Thresholds belong to a space.</td></tr>
+<tr><td>cameras</td><td>admin</td><td>admin, engine (status)</td><td>One row per source with its direction.</td></tr>
+<tr><td>events</td><td>admin</td><td>engine creates; admin may only change <code>reviewed</code></td><td>Snapshot is a protected file.</td></tr>
+<tr><td>audit_logs</td><td>admin</td><td>hooks only</td><td>Written by PocketBase hooks on changes and exports.</td></tr>
+<tr><td>face_requests</td><td>admin</td><td>admin</td><td>Phase 2.</td></tr>
+</table></div>
+<pre><code>// example API rules
+people        listRule:   @request.auth.id != "" &amp;&amp; @request.auth.role = "admin"
+embeddings    listRule:   null      // null means superuser only
+events        updateRule: @request.auth.role = "admin" &amp;&amp; @request.body.reviewed:isset &amp;&amp; @request.body.decision:isset = false
+</code></pre>
+
+<h3>A.6 Caddy configuration</h3>
+<pre><code># Caddyfile
+{
+    local_certs
+}
+
+entryguard.local {
+    tls internal                      # certificate from Caddy's own local CA
+    encode zstd gzip
+
+    # PocketBase admin dashboard stays off the network
+    @pbadmin path /_/*
+    respond @pbadmin 404
+
+    handle /api/* {
+        reverse_proxy pocketbase:8090
+    }
+
+    handle_path /engine/* {
+        forward_auth pocketbase:8090 {
+            uri /api/eg/verify         # 204 only for a logged-in admin
+        }
+        reverse_proxy host.docker.internal:8001 {
+            flush_interval -1
+        }
+    }
+
+    handle {
+        root * /srv/web
+        try_files {path} /index.html
+        file_server
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Content-Security-Policy "default-src 'self'; img-src 'self' blob: data:; connect-src 'self'"
+    }
+}
+</code></pre>
+<pre><code>// pb_hooks/verify.pb.js : used by Caddy forward_auth
+routerAdd("GET", "/api/eg/verify", (e) => {
+  if (!e.auth || e.auth.getString("role") !== "admin") {
+    throw new ForbiddenError("admin only")
+  }
+  return e.noContent(204)
+})
+</code></pre>
+<pre><code>// pb_hooks/alerts.pb.js : Telegram alert on unknown or spoof (sketch)
+onRecordAfterCreateSuccess((e) => {
+  const d = e.record.getString("decision")
+  if (d === "unknown" || d === "spoof") {
+    $http.send({
+      url: "https://api.telegram.org/bot" + $os.getenv("TG_TOKEN") + "/sendMessage",
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: $os.getenv("TG_CHAT"), text: "Unrecognised person at entrance" })
+    })
+  }
+  e.next()
+}, "events")
+</code></pre>
+<div class="callout"><p><b>HTTPS is required, not optional.</b> Browsers allow camera access (needed to register a face from the web page) and notifications only on HTTPS or localhost. Caddy's internal CA gives you HTTPS on the LAN. Run <code>caddy trust</code> on the PC. For each other device, install Caddy's root certificate once (the file <code>pki/authorities/local/root.crt</code> in Caddy's data folder). The name <code>entryguard.local</code> works through mDNS on macOS, iOS and most Android; otherwise give the PC a fixed LAN IP and add a router DNS entry.</p></div>
+
+<h3>A.7 Compose outline</h3>
+<pre><code>services:
+  caddy:
+    image: caddy:2
+    ports: ["443:443", "80:80"]
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, ./web/dist:/srv/web:ro, caddy_data:/data]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [pocketbase]
+  pocketbase:
+    build: ./pocketbase               # downloads a pinned PocketBase release
+    ports: ["127.0.0.1:8090:8090"]    # localhost only, for the dashboard
+    volumes: [pb_data:/pb/pb_data, ./pb_hooks:/pb/pb_hooks, ./pb_migrations:/pb/pb_migrations]
+    env_file: .env
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes: [minio_data:/data]
+    env_file: .env
+volumes: { caddy_data: {}, pb_data: {}, minio_data: {} }
+# engine: run natively, e.g. `uv run eg run`
+</code></pre>
+<p>In PocketBase settings, set Files storage to S3 with endpoint <code>http://minio:9000</code>, bucket <code>entryguard</code>, path-style on. Create a MinIO access key that can only use that bucket. Pin PocketBase and MinIO versions; upgrade only after a backup and a test run.</p>
+
+<h3>A.8 Engine API</h3>
+<p>The browser talks to PocketBase for normal data and to the engine only for AI tasks. Caddy checks the admin token before any <code>/engine</code> call reaches Python.</p>
+<div class="scroll"><table>
+<tr><th>Method and path</th><th>Purpose</th></tr>
+<tr><td>GET /engine/live.jpg</td><td>Latest frame with boxes and labels. The page polls it about twice a second (an image tag cannot send the login header, so the page fetches it as a blob).</td></tr>
+<tr><td>POST /engine/people/register</td><td>Multipart: name, unit, consent flag, 3 to 10 photos. Checks quality, runs liveness on captures, embeds, then writes person, photos and embeddings to PocketBase in one batch. Returns per-photo reasons on failure.</td></tr>
+<tr><td>POST /engine/people/{id}/photos</td><td>Add or replace photos for an existing person.</td></tr>
+<tr><td>POST /engine/events/{id}/enroll</td><td>Create a person from an unknown event snapshot.</td></tr>
+<tr><td>GET /engine/models</td><td>Active detector, embedder, liveness, tracker and space.</td></tr>
+<tr><td>POST /engine/models/migrate</td><td>Re-embed all photos into a new space (runs as a job, progress in a PocketBase record).</td></tr>
+<tr><td>GET /engine/health</td><td>Camera state, fps, stage latency, PocketBase connection.</td></tr>
+</table></div>
+<p>If PocketBase is unreachable, the engine keeps events in a small local spool file and replays them when it returns, so a restart of the database does not lose an in/out record.</p>
+
+<h3>A.9 Key flows with the new stack</h3>
+<figure class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor A as Admin
+  participant W as Web app
+  participant C as Caddy
+  participant E as Engine
+  participant P as PocketBase
+  participant M as MinIO
+  A->>W: open Register, allow camera, take 4 photos, tick consent
+  W->>C: POST /engine/people/register with login token
+  C->>P: forward_auth verify
+  P-->>C: 204 admin
+  C->>E: register request
+  E->>E: quality, liveness, embed each photo
+  alt a photo is bad
+    E-->>W: 422 with reason per photo
+  else all good
+    E->>P: batch create person, photos, embeddings
+    P->>M: store photo files
+    P-->>E: ok
+    E->>E: reload index for person
+    E-->>W: 201 created
+  end
+</pre>
+<figcaption>Admin registration. No approval step. The browser never sees embeddings.</figcaption>
+</figure>
+<figure class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cam as Webcam
+  participant E as Engine
+  participant P as PocketBase
+  participant M as MinIO
+  participant W as Web app
+  participant T as Telegram
+  Cam->>E: frames
+  E->>E: detect, track, liveness, embed, search, decide
+  E->>P: create event with snapshot if unknown or spoof
+  P->>M: store snapshot file
+  P-->>W: realtime push of new event
+  W->>W: update live feed, play sound, browser notification
+  opt unknown or spoof
+    P->>T: hook sends alert message
+  end
+</pre>
+<figcaption>The dashboard updates through PocketBase realtime, so the engine does not need its own push channel.</figcaption>
+</figure>
+
+<h3>A.10 Web app (admin only)</h3>
+<div class="scroll"><table>
+<tr><th>Page</th><th>What it does</th><th>Data source</th></tr>
+<tr><td>Login</td><td>Email and password, optional one-time code. Non-admin accounts are refused.</td><td>PocketBase auth</td></tr>
+<tr><td>Dashboard</td><td>Live frame, today's in and out counts, newest events (realtime), camera health</td><td>PocketBase realtime, <code>/engine/live.jpg</code></td></tr>
+<tr><td>People</td><td>List, search, add, edit, disable, delete (confirm and audit)</td><td>PocketBase</td></tr>
+<tr><td>Register face</td><td>Browser camera capture with oval guide, or upload files; shows per-photo feedback</td><td><code>/engine/people/register</code></td></tr>
+<tr><td>Logs</td><td>All in and out events; filters by person, unit, direction, camera, decision, date; CSV export</td><td>PocketBase</td></tr>
+<tr><td>Review</td><td>Unknown and uncertain events with snapshot; mark reviewed; enroll as person</td><td>PocketBase, engine</td></tr>
+<tr><td>Cameras and models</td><td>Direction, enabled, health, active models, thresholds with preview</td><td>PocketBase, <code>/engine/models</code></td></tr>
+<tr><td>Audit</td><td>Who did what and when</td><td>PocketBase</td></tr>
+</table></div>
+<ul>
+  <li><b>Stack:</b> React, Vite, TypeScript, PocketBase JS SDK, TanStack Query, Tailwind with shadcn/ui. Built to static files and served by Caddy.</li>
+  <li><b>Mobile later:</b> the same PocketBase API, rules and hostname over Wi-Fi. The renter tab set uses the <code>renter</code> role that already exists in <code>users</code>.</li>
+  <li><b>Alerts without a mobile app:</b> sound and browser notification while the dashboard is open, plus the optional Telegram message for when it is not.</li>
+</ul>
+
+<h3>A.11 Requirement changes</h3>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Change</th></tr>
+<tr><td>FR-23</td><td>Web login for admin only. Accounts with another role are refused by the app and by API rules.</td></tr>
+<tr><td>FR-24</td><td>Admin registers a face from the web page by browser camera or file upload, approved immediately.</td></tr>
+<tr><td>FR-25, FR-26, FR-30 to FR-32</td><td>Invites, renter history and self-registration with approval are deferred to the mobile phase. Data model is ready.</td></tr>
+<tr><td>FR-27, FR-28, FR-29</td><td>Unchanged. Logs with filters and CSV export, camera and direction on every event, webcam source.</td></tr>
+<tr><td>FR-33</td><td>Replaced: realtime dashboard alert with sound and browser notification, plus optional Telegram.</td></tr>
+<tr><td>FR-36 (new)</td><td>Only Caddy listens on a network port. No other service is reachable from the LAN.</td></tr>
+<tr><td>FR-37 (new)</td><td>All access over HTTPS with a locally trusted certificate.</td></tr>
+<tr><td>FR-38 (new)</td><td>Photos and snapshots are stored through PocketBase in an S3 bucket; no photo is stored in the database file.</td></tr>
+<tr><td>FR-39 (new)</td><td>The engine spools events locally if PocketBase is down and replays them in order.</td></tr>
+<tr><td>FR-40 (new)</td><td>Backups: nightly copy of PocketBase data and the MinIO bucket to an encrypted external drive; restore tested.</td></tr>
+</table></div>
+
+<h3>A.12 LAN-only security checklist</h3>
+<ul>
+  <li>Router: no port forwarding, UPnP off, no DMZ, no dynamic DNS. This is what keeps the system unreachable from outside.</li>
+  <li>Put guests on a separate guest Wi-Fi network with client isolation. Only your own devices join the main network.</li>
+  <li>Give the PC a fixed LAN address. Set the PC firewall to allow inbound 443 only.</li>
+  <li>PocketBase, MinIO and the engine bound to <code>127.0.0.1</code>. Caddy blocks <code>/_/</code> (PocketBase dashboard); open the dashboard at <code>http://127.0.0.1:8090/_/</code> on the PC.</li>
+  <li>Strong admin password plus MFA on the PocketBase admin account and the app admin accounts. Enable PocketBase rate limits on login.</li>
+  <li>Secrets (MinIO keys, Telegram token, engine service account) live in <code>.env</code> with file mode 600, never in git.</li>
+  <li>Turn on disk encryption (FileVault). The PC holds biometric data.</li>
+  <li>Remote access stays off. If you want it later, use a private VPN such as Tailscale and still keep port 443 closed to the internet.</li>
+  <li>The PC must stay awake and plugged in. Disable sleep while the engine runs.</li>
+</ul>
+
+<h3>A.13 New risks</h3>
+<div class="scroll"><table>
+<tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr>
+<tr><td>PocketBase is a young project and its updates can change behaviour</td><td>Break on upgrade</td><td>Pin the version, keep migrations in git, test upgrades on a copy of <code>pb_data</code></td></tr>
+<tr><td>SQLite has one writer</td><td>Slow writes if events surge</td><td>Fine for hundreds of events a day. The engine writes one event per track, not per frame.</td></tr>
+<tr><td>No vector index in the database</td><td>Search cost grows with people</td><td>In-memory matrix is fast to tens of thousands of people; swap the index adapter beyond that</td></tr>
+<tr><td>MinIO licence and community edition features have changed over time</td><td>Surprise limits or licence terms</td><td>Check current terms before relying on it. PocketBase only needs an S3 endpoint, so you can swap to Garage or SeaweedFS by changing the storage setting.</td></tr>
+<tr><td>Local certificate not trusted on a device</td><td>Browser warning, camera blocked</td><td>Install Caddy's root certificate on each admin device; document in the runbook</td></tr>
+<tr><td>PC sleeps, reboots or loses Wi-Fi</td><td>Gaps in the log</td><td>Disable sleep, auto-start services, alert when the camera or engine heartbeat is missing</td></tr>
+<tr><td>Laptop is both server and camera</td><td>Single point of failure, weak camera</td><td>Acceptable for development. Move to a small dedicated PC and a door camera for the pilot.</td></tr>
+</table></div>
+
+<h3>A.14 Revised plan, web first</h3>
+<figure class="fig">
+<pre class="mermaid">
+gantt
+  title Web first schedule on your PC
+  dateFormat YYYY-MM-DD
+  axisFormat %d %b
+  section Platform
+  Caddy, PocketBase, MinIO, local HTTPS     :a1, 2026-11-16, 5d
+  Collections, rules, hooks, backups        :a2, after a1, 5d
+  section Engine
+  Ports, registry, webcam source            :b1, 2026-11-23, 6d
+  Detector and embedder adapters            :b2, after b1, 7d
+  Tracker, quality, policy, direction       :b3, after b2, 8d
+  Liveness adapter                          :b4, after b3, 4d
+  PocketBase client, memory index, spool    :b5, 2026-12-07, 6d
+  Engine API for register and live frame    :b6, after b5, 5d
+  section Web app
+  App shell, login, admin guard             :d1, 2026-12-07, 4d
+  People and register face pages            :d2, after d1, 8d
+  Dashboard with realtime and live frame    :d3, after d2, 6d
+  Logs, review, cameras, models, audit      :d4, after d3, 8d
+  section Quality
+  Test videos and benchmark                 :e1, 2026-12-07, 14d
+  Threshold calibration                     :e2, after e1, 4d
+  Hardening, backups, restore drill         :e3, 2026-12-28, 5d
+  Pilot with real residents                 :e4, after e3, 10d
+  section Next
+  Mobile app with renter role               :f1, 2027-01-18, 21d
+</pre>
+<figcaption>The web app starts when PocketBase collections and login exist. Mobile starts after the pilot and reuses the same API.</figcaption>
+</figure>
+
+<h3>A.15 Additional tests</h3>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Test</th><th>Pass condition</th></tr>
+<tr><td>T-23</td><td>Phone on mobile data opens the site</td><td>No connection</td></tr>
+<tr><td>T-24</td><td>From another Wi-Fi device, scan ports on the PC</td><td>Only 443 and 80 open</td></tr>
+<tr><td>T-25</td><td>Open <code>/_/</code> through Caddy</td><td>404</td></tr>
+<tr><td>T-26</td><td>Admin token requests the <code>embeddings</code> collection</td><td>Denied</td></tr>
+<tr><td>T-27</td><td>Renter account logs in to the web app</td><td>Refused; direct API calls to admin collections return 403</td></tr>
+<tr><td>T-28</td><td>Call <code>/engine/*</code> with no token or a renter token</td><td>403 from Caddy; Python never sees the request</td></tr>
+<tr><td>T-29</td><td>Register a face from browser camera on a second device</td><td>Works over HTTPS; person recognised in under 60 s</td></tr>
+<tr><td>T-30</td><td>Stop PocketBase for 2 minutes during activity</td><td>Events spooled and present after restart, in order</td></tr>
+<tr><td>T-31</td><td>Delete a person</td><td>Embeddings gone, index reloaded, photo objects removed from MinIO bucket</td></tr>
+<tr><td>T-32</td><td>Restore from backup on a clean PC</td><td>People, events and photos all present</td></tr>
+</table></div>
+
+<h3>A.16 Questions for you</h3>
+<ol>
+  <li>Is your PC macOS, Windows or Linux? The webcam step, firewall steps and auto-start differ.</li>
+  <li>Do you want the web app to also work from a second laptop or phone browser on Wi-Fi? (This needs the certificate install step.)</li>
+  <li>Keep Telegram alerts, or only use the web dashboard for now?</li>
+</ol>
+
+<h2 id="v02">0. Earlier update (v0.2)</h2>
+<div class="callout warn"><p><b>Partly superseded by v0.3 (section A):</b> the mobile app, Postgres, Redis and FastAPI parts are replaced or deferred. Webcam source, camera direction (in/out), roles and the approval workflow still stand.</p></div>
+<div class="callout"><p><b>New direction:</b> develop on your <b>laptop webcam</b> first, deliver a <b>mobile app</b> with two roles (<b>admin</b> and <b>renter</b>), and design now for renter self-registration with admin approval, payments, requests and visitor management later. The face engine stays unchanged. Where sections 3 to 9 say "admin UI", read "mobile app (admin screens)". A web admin page is optional and shares the same API.</p></div>
+
+<h3>0.1 Decisions I made (change any of them)</h3>
+<div class="scroll"><table>
+<tr><th>Topic</th><th>Decision</th><th>Reason</th></tr>
+<tr><td>Mobile framework</td><td>Expo (React Native) with TypeScript, one codebase for iOS and Android</td><td>Camera capture, push notifications and secure storage are built in. Same language as the web UI. Payments and forms can be added later with ready libraries.</td></tr>
+<tr><td>Renter in the MVP</td><td>Renter can log in, see own profile and own in/out history. The self-registration screen is built in phase 2, but its database tables and API shape exist from day one.</td><td>You said self-registration is a future step. Reserving the data model now avoids a migration later.</td></tr>
+<tr><td>Admin registration</td><td>Admin-created registrations are approved immediately. No review queue is involved.</td><td>Matches your requirement. The request table records them with status <code>approved</code> and source <code>admin</code> so history stays complete.</td></tr>
+<tr><td>Renter accounts</td><td>Admin adds a person, then creates an invite code. The renter installs the app, enters the code and sets a password.</td><td>No public sign-up, so strangers cannot create accounts.</td></tr>
+<tr><td>Backend shape</td><td>Modular monolith. One API, separate modules (identity, access, registration, later payments, requests, visitors) with their own tables and permissions.</td><td>Simple to run on a laptop and still cleanly extendable.</td></tr>
+<tr><td>Alerts</td><td>Push notification to admin phones (Expo push) plus optional Telegram.</td><td>Native app is now the main channel.</td></tr>
+<tr><td>Engine on laptop</td><td>Run the engine natively on the laptop. Run PostgreSQL, Redis and the API in Docker.</td><td>Docker Desktop on macOS cannot pass the webcam into a container.</td></tr>
+</table></div>
+
+<h3>0.2 Roles and permissions</h3>
+<div class="scroll"><table>
+<tr><th>Capability</th><th>Renter</th><th>Admin</th><th>Release</th></tr>
+<tr><td>Log in, change own password</td><td>yes</td><td>yes</td><td>MVP</td></tr>
+<tr><td>View own profile</td><td>yes</td><td>yes</td><td>MVP</td></tr>
+<tr><td>View own in/out history</td><td>yes (own only)</td><td>yes</td><td>MVP</td></tr>
+<tr><td>View all people and all in/out logs</td><td>no</td><td>yes</td><td>MVP</td></tr>
+<tr><td>Filter and export logs (CSV)</td><td>no</td><td>yes</td><td>MVP</td></tr>
+<tr><td>Add, edit, disable, delete a person</td><td>no</td><td>yes</td><td>MVP</td></tr>
+<tr><td>Register a face directly (no approval)</td><td>no</td><td>yes</td><td>MVP</td></tr>
+<tr><td>Create a renter invite code</td><td>no</td><td>yes</td><td>MVP</td></tr>
+<tr><td>Receive unknown / spoof alerts</td><td>no</td><td>yes</td><td>MVP</td></tr>
+<tr><td>Review unknown events, enroll from event</td><td>no</td><td>yes</td><td>MVP</td></tr>
+<tr><td>Manage cameras, thresholds, models</td><td>no</td><td>yes</td><td>MVP</td></tr>
+<tr><td>Submit own face registration request</td><td>yes</td><td>not needed</td><td>Phase 2</td></tr>
+<tr><td>Approve, reject, ask retake</td><td>no</td><td>yes</td><td>Phase 2</td></tr>
+<tr><td>Payments, service requests, visitors</td><td>own only</td><td>all</td><td>Later modules</td></tr>
+</table></div>
+<p>Rule: the admin role has every right. Role checks happen in the API, never only in the app. A renter token can never read another person's rows, even if the app is modified.</p>
+
+<h3>0.3 Important issue: how "in" and "out" are known</h3>
+<div class="callout warn">
+<p><b>One camera facing people who walk in sees their faces only when they enter.</b> When they leave, the camera sees the back of the head and cannot identify them. To log both in and out reliably you need two cameras, one for each direction. The data model and engine handle this from the start: every camera has a <code>direction</code> (<code>in</code> or <code>out</code>) and every event stores its camera and direction.</p>
+</div>
+<div class="scroll"><table>
+<tr><th>Option</th><th>How</th><th>Reliability</th><th>When</th></tr>
+<tr><td>A. Two cameras per door (recommended)</td><td>Outside camera labelled <code>in</code>, inside camera labelled <code>out</code>. Each logs the person it sees.</td><td>High</td><td>Real installation</td></tr>
+<tr><td>B. One camera plus trajectory</td><td>Face size growing means approaching (in); shrinking means leaving (out). Only works if the face is visible while leaving.</td><td>Low to medium</td><td>Optional stretch goal</td></tr>
+<tr><td>C. Laptop webcam plus a second source</td><td>Laptop webcam is <code>in</code>. A USB webcam or a phone used as an IP camera is <code>out</code>. Or test with recorded videos.</td><td>Good for development</td><td>MVP testing</td></tr>
+</table></div>
+<p>The log screen shows <b>who</b>, <b>in or out</b>, <b>time</b>, <b>camera</b>, <b>score</b>. A "currently inside" list (phase 2) is computed from the latest in/out per person and is only trustworthy with option A.</p>
+
+<h3>0.4 Laptop development setup</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  subgraph Laptop["Your laptop"]
+    Cam["Webcam<br/>OpenCV index 0"] --> Eng["Engine<br/>native Python venv"]
+    subgraph Dock["Docker Compose"]
+      Api["API"]
+      Pg[("Postgres plus pgvector")]
+      Rd[("Redis")]
+    end
+    Eng --> Rd
+    Eng --> Pg
+    Api --> Pg
+    Rd --> Api
+  end
+  Phone["Phone running the app<br/>same Wi-Fi"] -->|"HTTP on LAN, dev only"| Api
+  Api -->|"Expo push"| Phone
+  Rec["Recorded test videos"] -.-> Eng
+</pre>
+<figcaption>The engine runs on the host so it can open the webcam. A new FrameSource adapter called <code>webcam</code> sits beside <code>rtsp</code> and <code>file</code>. Switching to the real camera later changes one config line.</figcaption>
+</figure>
+<pre><code># config/engine.yaml (laptop)
+cameras:
+  - id: cam-laptop
+    name: Laptop webcam
+    direction: in
+    source: { adapter: webcam, index: 0, width: 1280, height: 720, fps: 15 }
+  # later:
+  # - id: cam-door-out
+  #   direction: out
+  #   source: { adapter: rtsp, url: ${CAM_OUT_RTSP} }
+</code></pre>
+<ul>
+  <li>Phone to laptop: use the laptop's LAN address (for example <code>http://192.168.1.20:8000</code>). Plain HTTP is fine for development only. For remote access later use a private VPN such as Tailscale, or a tunnel with real TLS.</li>
+  <li>Webcam quality is lower than a door camera and sits at desk height. Use it to build and test the pipeline, but record the real calibration set with the final camera.</li>
+  <li>Keep the laptop plugged in and stop it from sleeping while the engine runs.</li>
+</ul>
+
+<h3>0.5 Mobile app</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart TB
+  Login["Login or invite code"] --> Role{"Role in token"}
+  Role -- "admin" --> AT
+  Role -- "renter" --> RT
+  subgraph AT["Admin tabs"]
+    A1["Dashboard<br/>today in and out, alerts"]
+    A2["People<br/>list, add, edit, invite"]
+    A3["Register face<br/>camera or gallery"]
+    A4["Logs<br/>all in and out, filters, export"]
+    A5["Alerts<br/>unknown and spoof review"]
+    A6["Settings<br/>cameras, thresholds, models"]
+  end
+  subgraph RT["Renter tabs"]
+    R1["Home<br/>my status"]
+    R2["My history<br/>my in and out"]
+    R3["Profile"]
+    R4["Register my face<br/>phase 2"]
+    R5["Payments, requests, visitors<br/>later"]
+  end
+</pre>
+<figcaption>One app, one login screen. The role in the access token chooses which tab set appears. Locked or future tabs are hidden, not greyed out.</figcaption>
+</figure>
+<div class="scroll"><table>
+<tr><th>Concern</th><th>Choice</th></tr>
+<tr><td>Stack</td><td>Expo SDK, React Native, TypeScript, Expo Router, TanStack Query for server state, Zustand for small local state</td></tr>
+<tr><td>Token storage</td><td>expo-secure-store; short access token (15 min) plus refresh token (30 days), rotated on use</td></tr>
+<tr><td>Face capture</td><td>expo-camera with an oval guide, take 3 to 5 photos (front, left, right, up) and upload as multipart. The server decides quality; the app only guides.</td></tr>
+<tr><td>Live view</td><td>Snapshot polling every 1 s in the MVP (cheap and simple), MJPEG or WebSocket frames later</td></tr>
+<tr><td>Push</td><td>expo-notifications; token stored per device; admin devices get unknown / spoof alerts</td></tr>
+<tr><td>Offline</td><td>Read-only cache of last log page; actions need network</td></tr>
+<tr><td>Design</td><td>Shared component kit and theme tokens so new modules (payments, requests) reuse them</td></tr>
+</table></div>
+
+<h3>0.6 Extensible backend: module map</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart TB
+  App["Mobile app"] --> GW["API layer<br/>auth, roles, validation"]
+  subgraph Now["MVP modules"]
+    M1["Identity<br/>accounts, roles, invites"]
+    M2["People<br/>profile, unit, status"]
+    M3["Access<br/>events, cameras, logs"]
+    M4["Face registration<br/>photos, embeddings"]
+  end
+  subgraph Next["Phase 2"]
+    M5["Registration review<br/>request, approve, reject"]
+  end
+  subgraph Later["Later modules"]
+    M6["Payments<br/>invoices, receipts"]
+    M7["Requests<br/>maintenance, complaints"]
+    M8["Visitors<br/>passes, QR"]
+  end
+  GW --> M1
+  GW --> M2
+  GW --> M3
+  GW --> M4
+  GW --> M5
+  GW -.-> M6
+  GW -.-> M7
+  GW -.-> M8
+  M3 --> Eng["Face engine<br/>separate process"]
+  M4 --> Eng
+  M8 -.->|"visitor label"| M3
+  M5 --> M4
+</pre>
+<figcaption>Modules talk through the API layer and a small internal event bus, never through each other's tables. The face engine is only reached by Access and Face registration. Visitors will later feed a "visitor" label into Access, which already has a slot for it.</figcaption>
+</figure>
+<ul>
+  <li>Each module owns its tables (prefix <code>pay_</code>, <code>req_</code>, <code>vis_</code>), routes (<code>/v1/payments</code>, ...), permissions and tests.</li>
+  <li>One person row (<code>person</code>) is shared by all modules. A renter is a person with an account.</li>
+  <li>Payments will use a payment provider's hosted checkout, so card data never touches this system.</li>
+</ul>
+
+<h3>0.7 Face registration and approval workflow</h3>
+<figure class="fig">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Draft: renter starts, phase 2
+  Draft --> Submitted: photos pass quality and liveness
+  Draft --> [*]: cancelled
+  Submitted --> Approved: admin approves
+  Submitted --> Rejected: admin rejects with reason
+  Submitted --> RetakeNeeded: admin asks for new photos
+  RetakeNeeded --> Submitted: renter resubmits
+  [*] --> Approved: admin registers directly
+  Approved --> Active: embeddings created and indexed
+  Active --> Revoked: admin or renter withdraws consent
+  Rejected --> [*]: photos deleted immediately
+  Revoked --> [*]: embeddings and photos deleted
+</pre>
+<figcaption>Admin registration jumps straight to Approved. A rejected request deletes its photos at once, so nothing biometric stays for people who were not accepted.</figcaption>
+</figure>
+<figure class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor R as Renter
+  participant App as Mobile app
+  participant API as API
+  participant E as Engine
+  participant DB as Postgres
+  actor A as Admin
+  Note over R,A: Phase 2 self-registration
+  R->>App: tick consent, capture 4 photos
+  App->>API: POST /v1/me/face-requests
+  API->>E: quality and liveness check
+  E-->>API: ok or reasons
+  API->>DB: save request Submitted, store photos encrypted
+  API-->>A: push "New face request"
+  A->>App: open request, compare with name and unit
+  App->>API: POST /v1/face-requests/{id}/approve
+  API->>E: embed photos
+  E-->>API: vectors
+  API->>DB: save embeddings, status Active
+  API-->>R: push "Face approved"
+  Note over A,DB: Admin direct registration: same last four steps, no review
+</pre>
+<figcaption>Admin approval is the only gate between a renter's selfie and the recognition index.</figcaption>
+</figure>
+<div class="callout"><p>A renter's selfie is not proof that the person is who they claim. The admin compares the photo with the real tenant (for example at move-in) before approving. This also stops a renter from enrolling someone else's face to let them in.</p></div>
+
+<h3>0.8 New and changed requirements</h3>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Acceptance check</th></tr>
+<tr><td>FR-23</td><td>The mobile app shall support login and show screens based on the role (admin or renter) in the token.</td><td><span class="pill p-must">Must</span></td><td>Renter login never shows admin tabs; manual API call with renter token to an admin route returns 403.</td></tr>
+<tr><td>FR-24</td><td>An admin shall create a person and register their face directly, with the status <code>approved</code> at once and no review step.</td><td><span class="pill p-must">Must</span></td><td>Person recognised within 60 s of saving.</td></tr>
+<tr><td>FR-25</td><td>An admin shall create a one-time invite code (expires in 7 days) that lets the person create a renter account linked to their person record.</td><td><span class="pill p-must">Must</span></td><td>Used or expired code is rejected.</td></tr>
+<tr><td>FR-26</td><td>A renter shall see only their own profile and own in/out history.</td><td><span class="pill p-must">Must</span></td><td>Test with two renters: no cross-reading by id guessing.</td></tr>
+<tr><td>FR-27</td><td>An admin shall see the in/out log of all people with filters (person, unit, direction, camera, decision, date range) and export CSV.</td><td><span class="pill p-must">Must</span></td><td>CSV row count equals filtered count.</td></tr>
+<tr><td>FR-28</td><td>Every event shall store camera id and direction (<code>in</code> or <code>out</code>).</td><td><span class="pill p-must">Must</span></td><td>Two cameras produce correctly labelled events.</td></tr>
+<tr><td>FR-29</td><td>The engine shall support several cameras, each with its own source adapter (<code>webcam</code>, <code>rtsp</code>, <code>file</code>) and direction.</td><td><span class="pill p-must">Must</span></td><td>Laptop webcam works in MVP; second source added with config only.</td></tr>
+<tr><td>FR-30</td><td>A renter shall submit a face registration request with consent, quality check and liveness.</td><td><span class="pill p-should">Phase 2</span></td><td>Request appears in admin queue within 5 s.</td></tr>
+<tr><td>FR-31</td><td>An admin shall approve, reject (with reason) or ask for a retake on each request.</td><td><span class="pill p-should">Phase 2</span></td><td>Each action changes the status and notifies the renter.</td></tr>
+<tr><td>FR-32</td><td>Approval shall create embeddings; rejection shall delete the request photos immediately.</td><td><span class="pill p-should">Phase 2</span></td><td>No files remain after reject.</td></tr>
+<tr><td>FR-33</td><td>The app shall register for push notifications; admins receive unknown and spoof alerts, renters receive request decisions.</td><td><span class="pill p-should">Should</span></td><td>Alert arrives within 5 s on a real phone.</td></tr>
+<tr><td>FR-34</td><td>New business modules (payments, requests, visitors) shall be addable without changing the face engine, the event schema or other modules' tables.</td><td><span class="pill p-must">Must</span></td><td>Stub module added in a test branch touches only its own folder and the router list.</td></tr>
+<tr><td>FR-35</td><td>The app shall show the active model names and camera health to the admin.</td><td><span class="pill p-should">Should</span></td><td>Matches <code>/v1/models</code> and <code>/v1/health</code>.</td></tr>
+</table></div>
+<p>Changed: FR-13 (live view and event list) is delivered in the mobile app. FR-19 (roles) now means <code>admin</code> and <code>renter</code>; the earlier <code>viewer</code> role is dropped. FR-22 (door output) stays a later phase.</p>
+
+<h3>0.9 Data model changes</h3>
+<figure class="fig">
+<pre class="mermaid">
+erDiagram
+  PERSON ||--o| USER_ACCOUNT : has
+  PERSON ||--o{ FACE_REG_REQUEST : owns
+  USER_ACCOUNT ||--o{ FACE_REG_REQUEST : reviews
+  FACE_REG_REQUEST ||--o{ FACE_PHOTO : contains
+  USER_ACCOUNT ||--o{ PUSH_TOKEN : registers
+  PERSON ||--o{ INVITE : receives
+  CAMERA ||--o{ EVENT : captures
+  PERSON ||--o{ EVENT : matched_in
+  USER_ACCOUNT {
+    uuid id PK
+    uuid person_id FK
+    string role
+    string pw_hash
+    string status
+    timestamp last_login
+  }
+  INVITE {
+    uuid id PK
+    uuid person_id FK
+    string code_hash
+    timestamp expires_at
+    timestamp used_at
+  }
+  CAMERA {
+    string id PK
+    string name
+    string source_type
+    string direction
+    bool enabled
+  }
+  FACE_REG_REQUEST {
+    uuid id PK
+    uuid person_id FK
+    string source
+    string status
+    uuid reviewed_by FK
+    string reject_reason
+    timestamp submitted_at
+    timestamp reviewed_at
+  }
+  PUSH_TOKEN {
+    uuid id PK
+    uuid user_id FK
+    string token
+    string platform
+  }
+  EVENT {
+    uuid id PK
+    string camera_id FK
+    string direction
+    string decision
+    uuid person_id FK
+  }
+</pre>
+<figcaption>Changes to the v0.1 model: <code>USER</code> becomes <code>USER_ACCOUNT</code> linked to a person; new tables for invites, cameras, face registration requests and push tokens; events gain <code>camera_id</code> and <code>direction</code>. Other v0.1 tables are unchanged.</figcaption>
+</figure>
+<pre><code>ALTER TABLE event ADD COLUMN camera_id text NOT NULL DEFAULT 'cam-laptop';
+ALTER TABLE event ADD COLUMN direction text NOT NULL DEFAULT 'in' CHECK (direction IN ('in','out'));
+
+CREATE TABLE user_account (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  person_id uuid REFERENCES person(id) ON DELETE CASCADE,
+  username text UNIQUE NOT NULL,
+  pw_hash text NOT NULL,
+  role text NOT NULL CHECK (role IN ('admin','renter')),
+  status text NOT NULL DEFAULT 'active'
+);
+
+CREATE TABLE face_reg_request (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  person_id uuid NOT NULL REFERENCES person(id) ON DELETE CASCADE,
+  source text NOT NULL CHECK (source IN ('admin','self')),
+  status text NOT NULL CHECK (status IN ('draft','submitted','approved','rejected','retake','active','revoked')),
+  reviewed_by uuid REFERENCES user_account(id),
+  reject_reason text,
+  submitted_at timestamptz, reviewed_at timestamptz
+);
+</code></pre>
+
+<h3>0.10 API additions</h3>
+<div class="scroll"><table>
+<tr><th>Method and path</th><th>Purpose</th><th>Role</th><th>Release</th></tr>
+<tr><td>POST /v1/auth/login</td><td>Username and password, returns access and refresh token</td><td>public</td><td>MVP</td></tr>
+<tr><td>POST /v1/auth/refresh</td><td>Rotate tokens</td><td>public</td><td>MVP</td></tr>
+<tr><td>POST /v1/auth/accept-invite</td><td>Code plus new password creates a renter account</td><td>public</td><td>MVP</td></tr>
+<tr><td>GET /v1/me</td><td>Own profile and role</td><td>any</td><td>MVP</td></tr>
+<tr><td>GET /v1/me/events</td><td>Own in/out history</td><td>renter, admin</td><td>MVP</td></tr>
+<tr><td>POST /v1/people</td><td>Admin creates person and registers face (multipart), status approved</td><td>admin</td><td>MVP</td></tr>
+<tr><td>POST /v1/people/{id}/invite</td><td>Create invite code</td><td>admin</td><td>MVP</td></tr>
+<tr><td>GET /v1/events?direction=&amp;camera=&amp;person=&amp;from=&amp;to=</td><td>All logs</td><td>admin</td><td>MVP</td></tr>
+<tr><td>GET /v1/events/export.csv</td><td>CSV export, audited</td><td>admin</td><td>MVP</td></tr>
+<tr><td>GET /v1/cameras</td><td>List cameras, direction, health</td><td>admin</td><td>MVP</td></tr>
+<tr><td>POST /v1/devices/push-token</td><td>Register device for push</td><td>any</td><td>MVP</td></tr>
+<tr><td>POST /v1/me/face-requests</td><td>Renter submits request</td><td>renter</td><td>Phase 2</td></tr>
+<tr><td>GET /v1/face-requests?status=submitted</td><td>Approval queue</td><td>admin</td><td>Phase 2</td></tr>
+<tr><td>POST /v1/face-requests/{id}/approve | reject | retake</td><td>Decision</td><td>admin</td><td>Phase 2</td></tr>
+</table></div>
+<p>The ownership rule is enforced in queries: renter routes always filter by the person id from the token, never by an id sent by the client.</p>
+
+<h3>0.11 Revised delivery plan</h3>
+<figure class="fig">
+<pre class="mermaid">
+gantt
+  title Revised schedule - laptop first and mobile app
+  dateFormat YYYY-MM-DD
+  axisFormat %d %b
+  section Foundation
+  Repo, CI, Compose, webcam adapter       :a1, 2026-11-16, 7d
+  section Engine
+  Ports and model registry                :b1, 2026-11-23, 5d
+  Detector and embedder adapters          :b2, after b1, 7d
+  Tracker, quality, policy, camera direction :b3, after b2, 8d
+  Liveness adapter                        :b4, after b3, 4d
+  section Backend
+  Schema, accounts, roles, face registration :c1, 2026-11-30, 8d
+  REST API, events, logs, export          :c2, after c1, 8d
+  section Mobile app
+  App shell, login, role routing          :d1, 2026-12-14, 5d
+  Admin screens - people, register face, logs :d2, after d1, 10d
+  Renter screens - profile and my history :d3, after d2, 4d
+  Push alerts                             :d4, after d3, 3d
+  section Quality
+  Test videos and benchmark               :e1, 2026-12-07, 14d
+  Threshold calibration                   :e2, after e1, 4d
+  Hardening and backups                   :e3, 2027-01-04, 4d
+  Pilot with real residents               :e4, after e3, 10d
+  section Phase 2
+  Renter self-registration and approval   :f1, 2027-01-18, 14d
+</pre>
+<figcaption>Mobile work starts once the API has login and events. Phase 2 follows the pilot.</figcaption>
+</figure>
+<div class="scroll"><table>
+<tr><th>Earlier phase</th><th>Change</th></tr>
+<tr><td>P0</td><td>Camera purchase and mounting move to the pilot stage. Week 1 uses the laptop webcam and any recorded video. Consent and legal review still happen in week 1.</td></tr>
+<tr><td>P1</td><td>Add the <code>webcam</code> frame source adapter and camera records with <code>direction</code>.</td></tr>
+<tr><td>P3</td><td>Add accounts, roles, invites, <code>face_reg_request</code> (used by admin registration), ownership-scoped queries.</td></tr>
+<tr><td>P4</td><td>Replace the web admin with the Expo mobile app (admin and renter tab sets). Add push tokens and notifications.</td></tr>
+<tr><td>P5</td><td>Test set recorded from the laptop webcam first; repeat on the door camera before the pilot because lighting and angle differ.</td></tr>
+<tr><td>New P8 (phase 2)</td><td>Self-registration screens, approval queue, push on decisions, retention rules for rejected requests.</td></tr>
+</table></div>
+
+<h3>0.12 Additional tests</h3>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Test</th><th>Pass condition</th></tr>
+<tr><td>T-15</td><td>Renter token calls <code>/v1/events</code> or <code>/v1/people</code></td><td>403</td></tr>
+<tr><td>T-16</td><td>Renter A requests renter B's history by guessing ids</td><td>404 or empty; never B's data</td></tr>
+<tr><td>T-17</td><td>Admin registers a face from phone camera</td><td>Recognised in under 60 s; request row has source <code>admin</code>, status <code>active</code></td></tr>
+<tr><td>T-18</td><td>Invite code used twice, or after 7 days</td><td>Rejected</td></tr>
+<tr><td>T-19</td><td>Two cameras, one <code>in</code> one <code>out</code></td><td>Events carry the right camera and direction; filter by direction works</td></tr>
+<tr><td>T-20</td><td>Webcam unplugged while running</td><td>Camera shows down in admin app; auto recovery on replug</td></tr>
+<tr><td>T-21</td><td>Phone loses and regains Wi-Fi</td><td>App resumes, no duplicate pushes</td></tr>
+<tr><td>T-22 (phase 2)</td><td>Reject a request</td><td>Photos deleted at once; renter notified with reason</td></tr>
+</table></div>
+
+<h3>0.13 Updated open questions</h3>
+<ol>
+  <li>Will the real door have one or two cameras? (Decides whether "out" logs are possible.)</li>
+  <li>Do you want renters to see their own history in the MVP, or only get an account placeholder until phase 2?</li>
+  <li>iPhone, Android, or both? (Expo handles both, but testing devices differ.)</li>
+  <li>Laptop is macOS? Then Apple Silicon can use the CoreML provider for speed.</li>
+</ol>
+
+<h2 id="summary">1. Executive summary</h2>
+<p><b>What you build:</b> a service that reads the entrance camera stream, finds faces, checks each one against a list of enrolled residents, and raises an alert when a person is unknown. You do not need to train a model from scratch. Modern pretrained face models already reach very high accuracy. "Training" in this product means <b>enrolling</b> each resident with a few photos. Fine-tuning a model is an optional later step if measured accuracy at your door is not good enough.</p>
+<p><b>Key design idea:</b> every AI step (detect, align, embed, liveness, track, search) sits behind a small fixed interface called a <i>port</i>. Each model is an <i>adapter</i> that implements the port and is chosen by a config file. You replace a model by adding one adapter file and changing one config line. The rest of the system never changes.</p>
+
+<div class="grid2">
+  <div class="card"><h3>MVP scope (8 weeks)</h3>
+  <ul>
+    <li>Laptop webcam as the first camera (RTSP camera later, same code)</li>
+    <li>Face detect, embed, match against enrolled residents</li>
+    <li>Basic anti-spoof (photo on phone) check</li>
+    <li>Mobile app with admin and renter roles; admin registers faces directly</li>
+    <li>Unknown person alert to Telegram or Zalo plus event log with snapshot</li>
+    <li>Model engine with 2 interchangeable detectors and 2 embedders</li>
+    <li>Docker Compose install on one small computer</li>
+  </ul></div>
+  <div class="card"><h3>Not in the MVP</h3>
+  <ul>
+    <li>Door lock or turnstile control (planned phase 2)</li>
+    <li>Multiple buildings and cloud sync</li>
+    <li>Renter self-registration with admin approval (phase 2), payments, requests, visitor management (module slots reserved)</li>
+    <li>Model fine-tuning pipeline</li>
+    <li>Guest pre-registration and QR codes</li>
+  </ul></div>
+</div>
+
+<h3>Recommended stack</h3>
+<div class="callout warn"><p>The database, queue, API and UI rows below are replaced by section A (PocketBase, MinIO, Caddy, web first). The AI model rows still apply.</p></div>
+<div class="scroll"><table>
+<tr><th>Layer</th><th>Choice</th><th>Why</th></tr>
+<tr><td>Language</td><td>Python 3.11 for the engine, TypeScript for the admin UI</td><td>All good vision models ship Python first. React keeps the UI simple.</td></tr>
+<tr><td>Inference runtime</td><td>ONNX Runtime (CPU, CUDA, CoreML, OpenVINO providers)</td><td>One model format that runs on any hardware. Swapping hardware does not change code.</td></tr>
+<tr><td>Detector (default)</td><td>SCRFD 2.5g, alternative YuNet</td><td>Fast on CPU, returns 5 landmarks needed for alignment.</td></tr>
+<tr><td>Embedder (default)</td><td>ArcFace R50 (InsightFace <code>buffalo_l</code> pack), alternative MobileFaceNet</td><td>Strong accuracy, 512-d vectors, permissive for non-commercial; check licence for commercial use (section 10).</td></tr>
+<tr><td>Liveness</td><td>MiniFASNet (Silent-Face-Anti-Spoofing)</td><td>Small and passive, no user action needed.</td></tr>
+<tr><td>Tracker</td><td>ByteTrack</td><td>Keeps one identity per person walking through, avoids alert spam.</td></tr>
+<tr><td>Database</td><td>PostgreSQL 16 with pgvector</td><td>One store for people, events and vectors. Scales far beyond a building.</td></tr>
+<tr><td>API</td><td>FastAPI, REST plus WebSocket</td><td>Typed, auto-generated OpenAPI docs.</td></tr>
+<tr><td>Queue / notify</td><td>Redis streams for internal events, Telegram Bot API for alerts</td><td>Simple, cheap, reliable.</td></tr>
+<tr><td>Packaging</td><td>Docker Compose</td><td>One command install and update.</td></tr>
+</table></div>
+
+<h2 id="legal">2. Privacy and legal (read before buying a camera)</h2>
+<div class="callout warn">
+<p><b>Face data is biometric data.</b> In most countries it is sensitive personal data. In Vietnam, Decree 13/2023 on personal data protection applies. In the EU, GDPR applies. Rules differ, so confirm with a local lawyer before you go live. The points below are design requirements, not legal advice.</p>
+</div>
+<ul>
+  <li><b>Written consent</b> from every resident before enrollment. Store the consent record (who, when, version of text).</li>
+  <li><b>Notice</b> sign at the entrance saying a camera with face recognition operates there, and who to contact.</li>
+  <li><b>Minimisation:</b> store embeddings (numbers) and a few enrollment photos only. Do not store video continuously. Save a snapshot only when an unknown person triggers an event.</li>
+  <li><b>Retention:</b> delete unknown-person snapshots after 30 days by default. Delete a resident's data within 7 days of move-out.</li>
+  <li><b>Visitors and delivery staff</b> are not enrolled. The system must treat "unknown" as "needs attention", never as "criminal". Alerts say "unrecognised person", not "intruder".</li>
+  <li><b>Access to data</b> limited to named admins, with an audit log of every view and export.</li>
+</ul>
+
+<h2 id="srs">3. Software Requirements Specification</h2>
+
+<h3>3.1 Purpose and scope</h3>
+<p>This SRS defines the requirements for <b>Entry Guard</b>, a system that analyses video from a camera at an apartment building entrance, identifies enrolled residents, flags unrecognised people, and records events for the building operator. It covers the MVP release (v0.1). Items marked <span class="pill p-could">later</span> are out of scope for the MVP.</p>
+
+<h3>3.2 Stakeholders and users</h3>
+<div class="scroll"><table>
+<tr><th>Role</th><th>Description</th><th>Main needs</th></tr>
+<tr><td>Owner/Admin</td><td>You, the landlord or building manager</td><td>Enroll residents, see alerts, review events, tune thresholds, export data</td></tr>
+<tr><td>Security staff</td><td>Guard or caretaker (optional)</td><td>Receive alerts, see live view, mark an event as handled</td></tr>
+<tr><td>Resident</td><td>Tenant with consent on file</td><td>Walks in without friction, can ask for deletion</td></tr>
+<tr><td>Visitor</td><td>Any non-enrolled person</td><td>Not harmed by false identification; can be allowed once</td></tr>
+<tr><td>Developer/Operator</td><td>Maintains the system</td><td>Swap models, read metrics, deploy updates</td></tr>
+</table></div>
+
+<h3>3.3 Operating environment and constraints</h3>
+<ul>
+  <li>One IP camera with RTSP stream, 1080p, 15 to 25 fps, mounted at the entrance facing incoming people.</li>
+  <li>One edge computer on the same LAN as the camera, running Linux (Ubuntu 22.04) or macOS for development.</li>
+  <li>Internet is optional for operation. Required only for Telegram alerts. Core recognition works offline.</li>
+  <li>Budget-friendly: runs on a mini PC with 8 GB RAM and no GPU for one camera (target), faster with a GPU.</li>
+</ul>
+
+<h3>3.4 Functional requirements</h3>
+<p>Priority: <span class="pill p-must">Must</span> required for MVP, <span class="pill p-should">Should</span> include if time allows, <span class="pill p-could">Could</span> later.</p>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Acceptance check</th></tr>
+<tr><td>FR-01</td><td>The system shall ingest a live RTSP stream and reconnect automatically after a network drop within 10 s.</td><td><span class="pill p-must">Must</span></td><td>Unplug camera 30 s, stream resumes with no restart.</td></tr>
+<tr><td>FR-02</td><td>The system shall detect all faces larger than 80 px in each processed frame.</td><td><span class="pill p-must">Must</span></td><td>Recall at least 95% on the 200-image site test set.</td></tr>
+<tr><td>FR-03</td><td>The system shall align each face using landmarks and produce a face embedding.</td><td><span class="pill p-must">Must</span></td><td>Embedding vector length matches configured model dimension.</td></tr>
+<tr><td>FR-04</td><td>The system shall compare an embedding to all enrolled residents and return the best match with a similarity score.</td><td><span class="pill p-must">Must</span></td><td>Search over 1,000 vectors under 20 ms.</td></tr>
+<tr><td>FR-05</td><td>The system shall label a face <b>resident</b> if score is at or above the accept threshold, <b>unknown</b> if below the reject threshold, and <b>uncertain</b> in between.</td><td><span class="pill p-must">Must</span></td><td>Thresholds are configurable and applied as specified in section 7.3.</td></tr>
+<tr><td>FR-06</td><td>The system shall track each person across frames and make one decision per track, not per frame.</td><td><span class="pill p-must">Must</span></td><td>One walk-through produces one event.</td></tr>
+<tr><td>FR-07</td><td>The system shall run a passive liveness check and treat a failed check as <b>spoof suspected</b>.</td><td><span class="pill p-must">Must</span></td><td>Photo or phone screen of a resident is not accepted as resident in at least 90% of 50 attempts.</td></tr>
+<tr><td>FR-08</td><td>The system shall let an admin enroll a resident with name, unit number, consent record and 3 to 10 photos or a short webcam capture.</td><td><span class="pill p-must">Must</span></td><td>New resident recognised within 60 s of saving, no restart.</td></tr>
+<tr><td>FR-09</td><td>The system shall reject enrollment photos of poor quality (blur, no face, multiple faces, extreme angle) with a clear reason.</td><td><span class="pill p-should">Should</span></td><td>Blurry image produces message "Photo too blurry".</td></tr>
+<tr><td>FR-10</td><td>The system shall let an admin disable, edit and permanently delete a resident, including embeddings and photos.</td><td><span class="pill p-must">Must</span></td><td>After delete, no row or file for that person remains (except audit entry).</td></tr>
+<tr><td>FR-11</td><td>The system shall create an event record for every completed track, with time, decision, score, track id, model versions, and a cropped snapshot for unknown and spoof events.</td><td><span class="pill p-must">Must</span></td><td>Event visible in admin list within 3 s of decision.</td></tr>
+<tr><td>FR-12</td><td>The system shall send an alert to a configured chat channel on unknown or spoof events, with snapshot, and suppress duplicates for the same track within 60 s.</td><td><span class="pill p-must">Must</span></td><td>Walk in as unknown: one message in under 5 s.</td></tr>
+<tr><td>FR-13</td><td>The admin UI shall show a live view with boxes and labels, and an event list with filters (date, decision, person).</td><td><span class="pill p-must">Must</span></td><td>Filters return correct counts against the database.</td></tr>
+<tr><td>FR-14</td><td>An admin shall be able to mark an event as reviewed, and convert an unknown event into a resident enrollment.</td><td><span class="pill p-should">Should</span></td><td>Converted face appears as resident on next pass.</td></tr>
+<tr><td>FR-15</td><td>The system shall let an admin issue a temporary visitor pass (name, valid from/to) so that the visitor is labelled <b>visitor</b> and does not alert.</td><td><span class="pill p-could">Could</span></td><td>Later phase.</td></tr>
+<tr><td>FR-16</td><td>The system shall load detector, embedder, liveness and tracker implementations from configuration, and expose the active model names and versions in the API.</td><td><span class="pill p-must">Must</span></td><td>Changing config and restarting the engine switches model with no code change.</td></tr>
+<tr><td>FR-17</td><td>The system shall support re-embedding all enrolled photos when the embedder changes, using an offline migration command.</td><td><span class="pill p-must">Must</span></td><td>After switching embedder and running migrate, all residents match again.</td></tr>
+<tr><td>FR-18</td><td>The system shall provide a benchmark command that runs any configured model combination on a labelled folder and prints accuracy and speed.</td><td><span class="pill p-must">Must</span></td><td>Prints TAR at FAR 0.1%, p50 and p95 latency.</td></tr>
+<tr><td>FR-19</td><td>The system shall authenticate admins with username and password, hashed storage, and role-based access (admin, viewer).</td><td><span class="pill p-must">Must</span></td><td>Viewer cannot delete a resident.</td></tr>
+<tr><td>FR-20</td><td>The system shall write an audit log for logins, enrollment, deletion, threshold changes and event exports.</td><td><span class="pill p-should">Should</span></td><td>Each action creates an audit row with actor and time.</td></tr>
+<tr><td>FR-21</td><td>The system shall delete unknown/spoof snapshots older than the retention period automatically.</td><td><span class="pill p-must">Must</span></td><td>Nightly job removes files older than 30 days.</td></tr>
+<tr><td>FR-22</td><td>The system shall output a door-open signal (relay or HTTP call) for resident decisions.</td><td><span class="pill p-could">Could</span></td><td>Phase 2 plugin point defined as an Actuator port.</td></tr>
+</table></div>
+
+<h3>3.5 Non-functional requirements</h3>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Category</th><th>Requirement</th><th>Target</th></tr>
+<tr><td>NFR-01</td><td>Latency</td><td>Time from person's face first reaching 80 px to decision</td><td>p95 under 1.5 s on CPU mini PC</td></tr>
+<tr><td>NFR-02</td><td>Throughput</td><td>Process at least 8 frames per second per camera for detection, embed only best frames</td><td>8 fps sustained</td></tr>
+<tr><td>NFR-03</td><td>Accuracy</td><td>Resident correctly recognised (true accept rate) at the chosen threshold, on site test set</td><td>at least 97%</td></tr>
+<tr><td>NFR-04</td><td>Accuracy</td><td>Unknown person wrongly accepted as a resident (false accept rate)</td><td>at most 0.1% per decision</td></tr>
+<tr><td>NFR-05</td><td>Availability</td><td>Engine uptime, with auto-restart on crash</td><td>99% monthly</td></tr>
+<tr><td>NFR-06</td><td>Recovery</td><td>Restart after power loss with no manual step</td><td>under 2 min</td></tr>
+<tr><td>NFR-07</td><td>Scalability</td><td>Resident count supported without redesign</td><td>5,000 vectors, 4 cameras (later)</td></tr>
+<tr><td>NFR-08</td><td>Modularity</td><td>Adding a new model adapter touches only one new file and one config line</td><td>verified by adding a third embedder</td></tr>
+<tr><td>NFR-09</td><td>Security</td><td>TLS for admin UI, no default passwords, secrets in environment, DB not exposed on LAN</td><td>checklist in section 15</td></tr>
+<tr><td>NFR-10</td><td>Privacy</td><td>Retention and deletion rules from section 2 enforced in code</td><td>automated tests</td></tr>
+<tr><td>NFR-11</td><td>Usability</td><td>Admin enrolls a resident in under 2 minutes with no training</td><td>measured with 3 users</td></tr>
+<tr><td>NFR-12</td><td>Observability</td><td>Metrics for fps, latency per stage, decisions per hour, queue depth</td><td>dashboard in Grafana or built-in page</td></tr>
+<tr><td>NFR-13</td><td>Portability</td><td>Runs on x86 CPU, NVIDIA GPU, and Apple Silicon via ONNX Runtime providers</td><td>CI matrix</td></tr>
+<tr><td>NFR-14</td><td>Maintainability</td><td>Type-checked, linted, at least 80% unit-test coverage in engine core</td><td>CI gate</td></tr>
+</table></div>
+
+<h3>3.6 External interfaces</h3>
+<ul>
+  <li><b>Camera:</b> RTSP over TCP or UDP, H.264 or H.265. Credentials stored as environment secrets.</li>
+  <li><b>Admin UI:</b> HTTPS web app, responsive for phone and desktop.</li>
+  <li><b>Alert channel:</b> Telegram Bot API (MVP). Zalo, email and webhook as extra adapters.</li>
+  <li><b>Actuator (phase 2):</b> relay board over GPIO or HTTP call to smart lock.</li>
+</ul>
+
+<h3>3.7 Assumptions and dependencies</h3>
+<ul>
+  <li>Residents give consent and agree to enroll.</li>
+  <li>People face the camera while entering; the camera is at 1.5 to 2.0 m height, angled down by no more than 15 degrees.</li>
+  <li>Lighting at the entrance is at least 100 lux at night or the camera has IR or a light is added.</li>
+  <li>The door is not opened by this system in the MVP, so a recognition mistake cannot grant physical access. This keeps MVP risk low.</li>
+</ul>
+
+<h2 id="usecases">4. Use cases and user stories</h2>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  Admin(["Admin"])
+  Guard(["Security staff"])
+  Resident(["Resident"])
+  Visitor(["Visitor"])
+  subgraph System["Entry Guard"]
+    UC1["Enroll resident"]
+    UC2["Manage residents"]
+    UC3["View live camera"]
+    UC4["Review events"]
+    UC5["Receive unknown alert"]
+    UC6["Tune thresholds"]
+    UC7["Switch AI model"]
+    UC8["Export or delete data"]
+    UC9["Recognise person at entrance"]
+  end
+  Admin --> UC1
+  Admin --> UC2
+  Admin --> UC4
+  Admin --> UC6
+  Admin --> UC7
+  Admin --> UC8
+  Guard --> UC3
+  Guard --> UC5
+  Guard --> UC4
+  Resident --> UC9
+  Visitor --> UC9
+</pre>
+<figcaption>Use case diagram. Residents and visitors do not use the UI; they trigger the recognition use case by walking past the camera.</figcaption>
+</figure>
+
+<div class="scroll"><table>
+<tr><th>ID</th><th>User story</th><th>Acceptance criteria</th></tr>
+<tr><td>US-01</td><td>As an admin, I enroll a new tenant with a few photos so they are recognised without friction.</td><td>Given consent ticked and 3 good photos, when I save, then the tenant appears in the list and is recognised within 60 s.</td></tr>
+<tr><td>US-02</td><td>As security staff, I get a message with a photo when an unrecognised person enters so I can check.</td><td>Given an unknown person, when the track ends, then one Telegram message with snapshot arrives in under 5 s.</td></tr>
+<tr><td>US-03</td><td>As an admin, I convert an unknown event into a new tenant in two clicks.</td><td>Given an unknown event, when I click "Enroll this person" and fill name, then embeddings are saved.</td></tr>
+<tr><td>US-04</td><td>As an admin, I move out a tenant and all their biometric data is deleted.</td><td>Given delete confirmed, then embeddings, photos and tenant row are removed and an audit entry exists.</td></tr>
+<tr><td>US-05</td><td>As a developer, I switch the embedder to a new model and re-index with one command.</td><td>Given new config, when I run <code>eg models migrate</code>, then all tenants are re-embedded and benchmark prints results.</td></tr>
+<tr><td>US-06</td><td>As an admin, I see false alerts per day and adjust threshold with a preview of its effect.</td><td>Threshold slider shows expected FAR/FRR from the stored evaluation set.</td></tr>
+</table></div>
+
+<h3>4.1 Detailed use case: recognise person at entrance (UC-09)</h3>
+<div class="scroll"><table>
+<tr><th>Field</th><th>Content</th></tr>
+<tr><td>Actors</td><td>Resident or visitor (trigger), engine (system), security staff (receives result)</td></tr>
+<tr><td>Preconditions</td><td>Camera stream connected; at least one model of each kind loaded; DB reachable.</td></tr>
+<tr><td>Main flow</td><td>1. Person enters the view. 2. Tracker assigns a track id. 3. Engine picks the best frames in the track (sharp, frontal, large). 4. Liveness check on those frames. 5. Embedder produces vectors. 6. Vector search returns best match. 7. Decision policy aggregates frame results into one decision. 8. Event saved. 9. If unknown or spoof, alert sent.</td></tr>
+<tr><td>Alternative flows</td><td>A1: face too small or turned away for the whole track: decision "no face", no alert. A2: score uncertain: wait for up to 2 more frames, then decide "uncertain" and log with low-priority alert. A3: DB down: events queue in Redis and are written on recovery.</td></tr>
+<tr><td>Postconditions</td><td>Exactly one event per track. Snapshot saved for unknown, spoof, uncertain.</td></tr>
+<tr><td>Exceptions</td><td>Camera lost: health event raised; alert after 60 s.</td></tr>
+</table></div>
+
+<h2 id="arch">5. Architecture</h2>
+<h3>5.1 System context</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  Cam["IP camera<br/>RTSP"] --> EG["Entry Guard"]
+  EG --> TG["Telegram / Zalo"]
+  EG --> Lock["Door lock<br/>phase 2"]
+  Admin(["Admin browser"]) <--> EG
+  Guard(["Security phone"]) <-- alerts --> TG
+</pre>
+<figcaption>Entry Guard sits between the camera and people. The camera is the only input; chat apps carry alerts out.</figcaption>
+</figure>
+
+<h3>5.2 Container view</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart TB
+  Cam["IP camera"] -->|"RTSP"| Ing
+  subgraph Edge["Edge computer, Docker Compose"]
+    Ing["ingest<br/>frame reader"]
+    Eng["engine<br/>AI pipeline"]
+    Reg["model registry<br/>plus ONNX Runtime"]
+    Api["api<br/>FastAPI"]
+    Wrk["worker<br/>alerts and cleanup"]
+    Redis[("Redis<br/>streams")]
+    Pg[("PostgreSQL<br/>plus pgvector")]
+    Fs[("snapshot store<br/>local volume")]
+    Ui["admin UI<br/>React"]
+    Prom["metrics<br/>Prometheus"]
+  end
+  Ing -->|"frames"| Eng
+  Eng --- Reg
+  Eng -->|"events"| Redis
+  Redis --> Wrk
+  Redis --> Api
+  Eng <-->|"vector search"| Pg
+  Api <--> Pg
+  Api --> Fs
+  Wrk --> Fs
+  Ui <-->|"REST and WebSocket"| Api
+  Wrk -->|"alert"| Chat["Telegram"]
+  Eng -.-> Prom
+  Api -.-> Prom
+</pre>
+<figcaption>Seven small containers. The engine is the only one that touches AI models. Everything else treats it as a producer of events.</figcaption>
+</figure>
+
+<h3>5.3 Layered (hexagonal) view</h3>
+<p>The domain core has no knowledge of OpenCV, ONNX, Postgres or Telegram. It only knows ports (interfaces). Adapters plug into the ports at start-up. This is what makes models swappable and testable with fakes.</p>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  subgraph In["Inbound adapters"]
+    RTSP["RTSP reader"]
+    File["Video file reader"]
+    REST["REST API"]
+    CLI["CLI"]
+  end
+  subgraph Core["Domain core, pure Python"]
+    Pipe["Pipeline orchestrator"]
+    Pol["Decision policy"]
+    Svc["Enrollment service"]
+  end
+  subgraph Ports["Ports"]
+    P1["FrameSource"]
+    P2["FaceDetector"]
+    P3["FaceEmbedder"]
+    P4["LivenessChecker"]
+    P5["Tracker"]
+    P6["IdentityIndex"]
+    P7["EventStore"]
+    P8["Notifier"]
+    P9["Actuator"]
+  end
+  subgraph Out["Outbound adapters"]
+    A1["SCRFD / YuNet / RetinaFace"]
+    A2["ArcFace / MobileFaceNet / AdaFace"]
+    A3["MiniFASNet / none"]
+    A4["ByteTrack / IoU"]
+    A5["pgvector / FAISS"]
+    A6["Postgres"]
+    A7["Telegram / Zalo / webhook"]
+    A8["Relay / HTTP lock"]
+  end
+  In --> Core
+  Core --> Ports
+  P2 --> A1
+  P3 --> A2
+  P4 --> A3
+  P5 --> A4
+  P6 --> A5
+  P7 --> A6
+  P8 --> A7
+  P9 --> A8
+</pre>
+<figcaption>Dependencies point inward. The core depends on ports only; adapters depend on the core. A new model is a new adapter.</figcaption>
+</figure>
+
+<h3>5.4 Component responsibilities</h3>
+<div class="scroll"><table>
+<tr><th>Component</th><th>Responsibility</th><th>Key rules</th></tr>
+<tr><td>ingest</td><td>Open RTSP, decode, drop stale frames, push the newest frame to the engine</td><td>Never queue more than 2 frames; latency beats completeness. Reconnect with exponential backoff.</td></tr>
+<tr><td>engine</td><td>Run pipeline stages, decision policy, write events</td><td>Stateless between restarts except tracks in memory. Stages are timed individually.</td></tr>
+<tr><td>model registry</td><td>Build adapters from config, verify model files by checksum, expose names and versions</td><td>Fails fast on a missing or corrupt model at start-up.</td></tr>
+<tr><td>api</td><td>REST and WebSocket for the UI, auth, residents CRUD, events, config</td><td>Never loads AI models itself except for enrollment through engine RPC.</td></tr>
+<tr><td>worker</td><td>Sends alerts, applies retention, runs scheduled jobs</td><td>Idempotent, retries with backoff, dead-letter list.</td></tr>
+<tr><td>admin UI</td><td>Live view, residents, events, settings, model page</td><td>Mobile friendly. No business logic.</td></tr>
+</table></div>
+
+<h2 id="engine">6. The model engine (swappable AI components)</h2>
+<h3>6.1 Pipeline</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  F["Frame"] --> D["Detector<br/>boxes plus 5 landmarks"]
+  D --> T["Tracker<br/>track ids"]
+  T --> Q["Quality filter<br/>blur, size, pose"]
+  Q --> L["Liveness<br/>real or spoof"]
+  L --> A["Aligner<br/>112x112 crop"]
+  A --> E["Embedder<br/>512-d vector"]
+  E --> S["Identity index<br/>nearest neighbour"]
+  S --> P["Decision policy<br/>per track"]
+  P --> V["Event plus notify"]
+</pre>
+<figcaption>Each box is a port with at least one adapter. The aligner is deterministic (similarity transform) and not model-based.</figcaption>
+</figure>
+
+<h3>6.2 Port contracts</h3>
+<p>Ports are small <code>Protocol</code> classes. Data crossing a port uses plain dataclasses and NumPy arrays, never library-specific objects.</p>
+<pre><code># engine/ports.py
+from dataclasses import dataclass
+from typing import Protocol, Sequence
+import numpy as np
+
+@dataclass(frozen=True)
+class Face:
+    box: tuple[float, float, float, float]      # x1, y1, x2, y2 in pixels
+    score: float                                # detector confidence 0..1
+    landmarks: np.ndarray                       # shape (5, 2): eyes, nose, mouth corners
+
+@dataclass(frozen=True)
+class ModelInfo:
+    kind: str            # "detector" | "embedder" | "liveness" | "tracker"
+    name: str            # e.g. "scrfd_2.5g"
+    version: str         # e.g. "1.0.0"
+    sha256: str          # file checksum
+    embedding_dim: int | None = None
+    space_id: str | None = None   # embedders only: vectors are comparable only inside one space
+
+class FaceDetector(Protocol):
+    info: ModelInfo
+    def detect(self, image_bgr: np.ndarray) -> Sequence[Face]: ...
+
+class FaceEmbedder(Protocol):
+    info: ModelInfo
+    def embed(self, aligned_rgb_112: np.ndarray) -> np.ndarray: ...   # L2-normalised float32
+
+class LivenessChecker(Protocol):
+    info: ModelInfo
+    def score(self, image_bgr: np.ndarray, face: Face) -> float: ...  # 1.0 = real
+
+class Tracker(Protocol):
+    info: ModelInfo
+    def update(self, faces: Sequence[Face], frame_idx: int) -> list[tuple[int, Face]]: ...
+
+class IdentityIndex(Protocol):
+    def add(self, person_id: str, vec: np.ndarray, space_id: str) -> None: ...
+    def search(self, vec: np.ndarray, space_id: str, k: int = 3) -> list[tuple[str, float]]: ...
+    def remove_person(self, person_id: str) -> None: ...
+
+class Notifier(Protocol):
+    def send(self, title: str, body: str, image: bytes | None) -> None: ...
+
+class Actuator(Protocol):              # phase 2
+    def open_door(self, reason: str, seconds: int) -> None: ...
+</code></pre>
+
+<h3>6.3 Configuration driven registry</h3>
+<pre><code># config/engine.yaml
+camera:
+  url: ${CAMERA_RTSP_URL}
+  target_fps: 8
+models:
+  detector:  { adapter: scrfd,       file: models/scrfd_2.5g.onnx,       input_size: 640, min_face_px: 80 }
+  embedder:  { adapter: arcface,     file: models/w600k_r50.onnx,        space_id: arcface_r50_v1 }
+  liveness:  { adapter: minifasnet,  file: models/minifasnet_v2.onnx,    enabled: true }
+  tracker:   { adapter: bytetrack,   max_age: 30 }
+runtime:
+  providers: [CUDAExecutionProvider, CPUExecutionProvider]
+policy:
+  accept_threshold: 0.45      # cosine similarity
+  reject_threshold: 0.35
+  min_frames_for_decision: 3
+  max_wait_seconds: 2.0
+  liveness_threshold: 0.6
+alerts:
+  channel: telegram
+  dedupe_seconds: 60
+retention:
+  unknown_snapshot_days: 30
+</code></pre>
+<pre><code># engine/registry.py (sketch)
+ADAPTERS = {
+  "detector": {"scrfd": ScrfdDetector, "yunet": YuNetDetector},
+  "embedder": {"arcface": ArcFaceEmbedder, "mobilefacenet": MobileFaceNetEmbedder},
+  "liveness": {"minifasnet": MiniFasNet, "none": NoLiveness},
+  "tracker":  {"bytetrack": ByteTrack, "iou": IouTracker},
+}
+def build(cfg):
+    out = {}
+    for kind, spec in cfg["models"].items():
+        cls = ADAPTERS[kind][spec["adapter"]]
+        out[kind] = cls(**{k: v for k, v in spec.items() if k != "adapter"})
+        verify_checksum(out[kind].info)
+    return out
+</code></pre>
+
+<h3>6.4 Rules that keep models swappable</h3>
+<ol>
+  <li><b>Embedding spaces are not interchangeable.</b> Vectors from model A and model B cannot be compared. Every stored vector carries a <code>space_id</code>. Search filters by the active space.</li>
+  <li><b>Keep the original enrollment photos</b> (encrypted at rest) so a new embedder can re-index everyone with <code>eg models migrate</code>. Without photos you would have to re-enroll every tenant.</li>
+  <li><b>Thresholds belong to a model.</b> Store thresholds per <code>space_id</code>. A new embedder starts with calibrated thresholds from the benchmark command, not the old ones.</li>
+  <li><b>Normalise at the boundary.</b> Every embedder returns an L2-normalised float32 vector, so cosine similarity is a dot product regardless of model.</li>
+  <li><b>Contract tests.</b> One shared test suite runs against every adapter: output shape, dtype, determinism, handles a 0-face image, handles a tiny face.</li>
+  <li><b>Record versions on events.</b> Every event stores detector, embedder and liveness names, so you can explain an old decision after a swap.</li>
+</ol>
+
+<h3>6.5 Model swap procedure</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart TD
+  S1["Write new adapter file<br/>implements FaceEmbedder"] --> S2["Run contract tests"]
+  S2 --> S3["Run benchmark on site test set"]
+  S3 --> D1{"Better than current<br/>at same FAR?"}
+  D1 -- "no" --> X["Keep current model"]
+  D1 -- "yes" --> S4["Add new space_id to config<br/>keep old active"]
+  S4 --> S5["eg models migrate<br/>re-embed all photos into new space"]
+  S5 --> S6["Shadow mode: run both,<br/>log disagreements for 3 days"]
+  S6 --> D2{"Disagreements<br/>acceptable?"}
+  D2 -- "no" --> X
+  D2 -- "yes" --> S7["Flip active space in config<br/>restart engine"]
+  S7 --> S8["Keep old space 14 days for rollback"]
+</pre>
+<figcaption>Swapping is a five-step, reversible procedure. Shadow mode runs the candidate on live traffic without letting it decide.</figcaption>
+</figure>
+
+<h3>6.6 Training and fine-tuning position</h3>
+<div class="callout">
+<p><b>MVP: no training.</b> Use pretrained detector and embedder. Collect measurements first. If the benchmark on your entrance footage shows too many errors, address them in this order: (1) fix the camera angle and light, (2) improve enrollment photos, (3) tune thresholds, (4) swap to a stronger pretrained model, (5) only then consider fine-tuning on your own consented data. Fine-tuning needs thousands of identities to help and often hurts, so it is the last step.</p>
+</div>
+
+<h2 id="flows">7. Flows, states and sequences</h2>
+<h3>7.1 Recognition sequence</h3>
+<figure class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant C as Camera
+  participant I as Ingest
+  participant E as Engine
+  participant M as Models
+  participant DB as Postgres
+  participant R as Redis
+  participant W as Worker
+  participant T as Telegram
+  C->>I: RTSP video
+  I->>E: newest frame
+  E->>M: detect(frame)
+  M-->>E: faces and landmarks
+  E->>E: tracker update, quality filter
+  E->>M: liveness(face)
+  E->>M: embed(aligned face)
+  E->>DB: nearest neighbour search
+  DB-->>E: person, score
+  E->>E: aggregate frames in track
+  alt track ends or enough evidence
+    E->>DB: insert event
+    E->>R: publish event
+    R->>W: event
+    opt unknown or spoof
+      W->>T: send photo and text
+    end
+  end
+</pre>
+<figcaption>Recognition runs on the newest frame only. The decision is made once per track.</figcaption>
+</figure>
+
+<h3>7.2 Enrollment sequence</h3>
+<figure class="fig">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor A as Admin
+  participant UI as Admin UI
+  participant API as API
+  participant E as Engine
+  participant DB as Postgres
+  A->>UI: fill name, unit, tick consent, add photos
+  UI->>API: POST /residents (multipart)
+  API->>E: validate and embed photos
+  E-->>API: per photo quality and vectors
+  alt any photo bad
+    API-->>UI: 422 with reason per photo
+  else all good
+    API->>DB: insert person, consent, photos, embeddings
+    API-->>UI: 201 created
+    API->>E: reload index for person
+  end
+</pre>
+<figcaption>Bad photos are rejected before anything is saved, so an enrollment never ends half done.</figcaption>
+</figure>
+
+<h3>7.3 Decision policy</h3>
+<p>Per-frame results are noisy. The policy combines up to N frames of one track, then decides once.</p>
+<ol>
+  <li>Collect candidate frames while the track is alive; keep the 5 best by quality score (sharpness x size x frontalness).</li>
+  <li>If any of the top frames fails liveness (score below threshold in at least half): decision <b>spoof</b>.</li>
+  <li>For each top frame, take best match. Average the score per person. Take the person with the highest mean and at least 2 agreeing frames.</li>
+  <li>Mean score at or above <code>accept_threshold</code>: <b>resident</b>.</li>
+  <li>Mean score below <code>reject_threshold</code>: <b>unknown</b>.</li>
+  <li>Otherwise: <b>uncertain</b>. Wait for more frames up to <code>max_wait_seconds</code>, then log as uncertain and send a low-priority notice.</li>
+  <li>No usable face in the whole track: <b>no_face</b>, no alert.</li>
+</ol>
+<div class="callout warn"><p>Starting thresholds (0.45 / 0.35 cosine for ArcFace) are placeholders. Calibrate with the benchmark command on your own entrance footage before trusting them.</p></div>
+
+<h3>7.4 Track state machine</h3>
+<figure class="fig">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> New
+  New --> Collecting: face passes quality filter
+  New --> Lost: no usable face for 1 s
+  Collecting --> Deciding: enough frames or track ending
+  Collecting --> Lost: track timeout
+  Deciding --> Resident: score at or above accept
+  Deciding --> Unknown: score below reject
+  Deciding --> Spoof: liveness failed
+  Deciding --> Uncertain: score between thresholds
+  Uncertain --> Collecting: more frames within max wait
+  Uncertain --> Logged: max wait reached
+  Resident --> Logged
+  Unknown --> Alerted
+  Spoof --> Alerted
+  Alerted --> Logged
+  Lost --> Logged: no_face event
+  Logged --> [*]
+</pre>
+<figcaption>Every track ends in Logged, so there is always exactly one event per walk-through.</figcaption>
+</figure>
+
+<h3>7.5 Processing activity (per frame)</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart TD
+  A["New frame"] --> B{"Frame older<br/>than 300 ms?"}
+  B -- "yes" --> Z["Drop"]
+  B -- "no" --> C["Detect faces"]
+  C --> D{"Any face<br/>above min size?"}
+  D -- "no" --> E["Update tracker with empty"]
+  D -- "yes" --> F["Update tracker"]
+  F --> G{"Track already<br/>decided?"}
+  G -- "yes" --> H["Skip embedding"]
+  G -- "no" --> I["Quality score"]
+  I --> J{"Good enough?"}
+  J -- "no" --> H
+  J -- "yes" --> K["Liveness and embed"]
+  K --> L["Search and store result in track"]
+  L --> M{"Policy ready?"}
+  M -- "yes" --> N["Decide and emit event"]
+  M -- "no" --> H
+  E --> O["Close timed-out tracks"]
+  H --> O
+  N --> O
+</pre>
+<figcaption>Embedding is skipped for tracks that are already decided. This is the main CPU saver.</figcaption>
+</figure>
+
+<h3>7.6 Camera connection state</h3>
+<figure class="fig">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Connecting
+  Connecting --> Streaming: first frame received
+  Streaming --> Stalled: no frame for 3 s
+  Stalled --> Streaming: frame received
+  Stalled --> Reconnecting: 10 s without frame
+  Reconnecting --> Streaming: reconnect ok
+  Reconnecting --> Reconnecting: failed, backoff up to 30 s
+  Reconnecting --> Down: 60 s total
+  Down --> Reconnecting: retry
+</pre>
+<figcaption>The Down state raises a health alert so a dead camera is never silent.</figcaption>
+</figure>
+
+<h2 id="data">8. Data model</h2>
+<figure class="fig">
+<pre class="mermaid">
+erDiagram
+  PERSON ||--o{ FACE_PHOTO : has
+  PERSON ||--o{ EMBEDDING : has
+  PERSON ||--|| CONSENT : has
+  FACE_PHOTO ||--o{ EMBEDDING : produces
+  PERSON ||--o{ EVENT : matched_in
+  EVENT ||--o| SNAPSHOT : has
+  USER ||--o{ AUDIT_LOG : writes
+  MODEL_SPACE ||--o{ EMBEDDING : defines
+  MODEL_SPACE ||--|| THRESHOLD : has
+  PERSON {
+    uuid id PK
+    string full_name
+    string unit_no
+    string status
+    date move_in
+    date move_out
+  }
+  FACE_PHOTO {
+    uuid id PK
+    uuid person_id FK
+    string path_encrypted
+    float quality
+  }
+  EMBEDDING {
+    uuid id PK
+    uuid person_id FK
+    uuid photo_id FK
+    string space_id FK
+    vector vec
+  }
+  MODEL_SPACE {
+    string space_id PK
+    string embedder_name
+    int dim
+    bool active
+  }
+  THRESHOLD {
+    string space_id PK
+    float accept
+    float reject
+  }
+  CONSENT {
+    uuid person_id PK
+    timestamp given_at
+    string text_version
+    string evidence_path
+  }
+  EVENT {
+    uuid id PK
+    timestamp ts
+    int track_id
+    string decision
+    uuid person_id FK
+    float score
+    float liveness
+    json model_versions
+    bool reviewed
+  }
+  SNAPSHOT {
+    uuid event_id PK
+    string path
+    timestamp expires_at
+  }
+  USER {
+    uuid id PK
+    string username
+    string pw_hash
+    string role
+  }
+  AUDIT_LOG {
+    uuid id PK
+    uuid user_id FK
+    string action
+    timestamp ts
+    json detail
+  }
+</pre>
+<figcaption>Embeddings belong to a model space, so many spaces can exist during a migration. Events keep the model versions that made the decision.</figcaption>
+</figure>
+
+<h3>8.1 Core SQL</h3>
+<pre><code>CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE person (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name text NOT NULL,
+  unit_no text NOT NULL,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled')),
+  move_in date, move_out date,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE embedding (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  person_id uuid NOT NULL REFERENCES person(id) ON DELETE CASCADE,
+  photo_id uuid,
+  space_id text NOT NULL,
+  vec vector(512) NOT NULL
+);
+CREATE INDEX embedding_space_idx ON embedding (space_id);
+-- for under ~5k rows an exact scan is fast; add HNSW later:
+-- CREATE INDEX embedding_hnsw ON embedding USING hnsw (vec vector_ip_ops);
+
+CREATE TABLE event (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ts timestamptz NOT NULL DEFAULT now(),
+  track_id int NOT NULL,
+  decision text NOT NULL CHECK (decision IN ('resident','unknown','spoof','uncertain','no_face')),
+  person_id uuid REFERENCES person(id) ON DELETE SET NULL,
+  score real, liveness real,
+  model_versions jsonb NOT NULL,
+  reviewed boolean NOT NULL DEFAULT false
+);
+CREATE INDEX event_ts_idx ON event (ts DESC);
+CREATE INDEX event_decision_idx ON event (decision, ts DESC);
+
+-- nearest neighbour by inner product (vectors are L2 normalised)
+SELECT person_id, 1 - (vec &lt;#&gt; :q) AS cosine
+FROM embedding WHERE space_id = :space
+ORDER BY vec &lt;#&gt; :q LIMIT 3;
+</code></pre>
+<p>Vector dimension is set per table. When a new embedder has a different dimension, create the new column or a new table per space during the migration.</p>
+
+<h2 id="api">9. API and event contracts</h2>
+<h3>9.1 REST (v1)</h3>
+<div class="scroll"><table>
+<tr><th>Method and path</th><th>Purpose</th><th>Role</th><th>Success</th></tr>
+<tr><td>POST /v1/auth/login</td><td>Get access token</td><td>public</td><td>200 token</td></tr>
+<tr><td>GET /v1/residents</td><td>List with search and paging</td><td>viewer</td><td>200</td></tr>
+<tr><td>POST /v1/residents</td><td>Enroll (multipart: fields plus photos)</td><td>admin</td><td>201</td></tr>
+<tr><td>PATCH /v1/residents/{id}</td><td>Edit or disable</td><td>admin</td><td>200</td></tr>
+<tr><td>DELETE /v1/residents/{id}</td><td>Erase person and biometrics</td><td>admin</td><td>204</td></tr>
+<tr><td>GET /v1/events</td><td>Filter by date, decision, person; cursor paging</td><td>viewer</td><td>200</td></tr>
+<tr><td>PATCH /v1/events/{id}</td><td>Mark reviewed</td><td>viewer</td><td>200</td></tr>
+<tr><td>POST /v1/events/{id}/enroll</td><td>Create resident from event snapshot</td><td>admin</td><td>201</td></tr>
+<tr><td>GET /v1/models</td><td>Active models, versions, spaces</td><td>viewer</td><td>200</td></tr>
+<tr><td>PUT /v1/settings/policy</td><td>Change thresholds (audited)</td><td>admin</td><td>200</td></tr>
+<tr><td>GET /v1/health</td><td>Camera, engine, DB, queue status</td><td>public (no detail)</td><td>200</td></tr>
+<tr><td>GET /v1/stream/live</td><td>MJPEG with overlays (or WebSocket frames)</td><td>viewer</td><td>200</td></tr>
+</table></div>
+<p>Errors use one shape: <code>{"error": {"code": "PHOTO_TOO_BLURRY", "message": "...", "field": "photos[2]"}}</code>. Codes are stable strings, messages are for people.</p>
+
+<h3>9.2 Event payload</h3>
+<pre><code>{
+  "id": "0b7f...",
+  "ts": "2026-11-09T21:14:03.412+07:00",
+  "track_id": 481,
+  "decision": "unknown",
+  "person": null,
+  "score": 0.21,
+  "liveness": 0.93,
+  "snapshot_url": "/v1/events/0b7f.../snapshot",
+  "models": { "detector": "scrfd_2.5g@1.0.0", "embedder": "arcface_r50_v1", "liveness": "minifasnet_v2" },
+  "latency_ms": { "detect": 18, "embed": 42, "search": 3, "total": 910 }
+}
+</code></pre>
+<p>The same payload is pushed on the WebSocket <code>/v1/ws/events</code> and on the Redis stream <code>events</code>.</p>
+
+<h3>9.3 CLI</h3>
+<pre><code>eg run                       # start engine
+eg enroll --name "An" --unit 302 --photos ./an/*.jpg
+eg bench --data ./testset --detector scrfd --embedder arcface
+eg models list
+eg models migrate --to arcface_r50_v1 --from mobilefacenet_v1
+eg replay --video entrance.mp4       # run the pipeline on a file, print decisions
+eg purge --older-than 30d
+</code></pre>
+
+<h2 id="models">10. Model choices and evaluation</h2>
+<div class="scroll"><table>
+<tr><th>Stage</th><th>Option</th><th>Strength</th><th>Watch out for</th></tr>
+<tr><td>Detector</td><td>SCRFD 2.5g / 10g</td><td>Fast, accurate on small faces, gives landmarks</td><td>InsightFace weights: non-commercial research licence for some packs</td></tr>
+<tr><td>Detector</td><td>YuNet (OpenCV)</td><td>Tiny, permissive licence, great on CPU</td><td>Slightly lower recall on small faces</td></tr>
+<tr><td>Detector</td><td>RetinaFace R50 / MediaPipe</td><td>Alternatives for testing</td><td>Heavier or fewer landmarks</td></tr>
+<tr><td>Embedder</td><td>ArcFace R50 (WebFace600K)</td><td>Strong accuracy, standard</td><td>Licence of pretrained weights; check before commercial use</td></tr>
+<tr><td>Embedder</td><td>MobileFaceNet</td><td>Very fast, small</td><td>Lower accuracy on hard angles</td></tr>
+<tr><td>Embedder</td><td>AdaFace IR101</td><td>Better on low quality images</td><td>Larger, slower on CPU</td></tr>
+<tr><td>Liveness</td><td>MiniFASNet v2 + v1SE</td><td>Passive, small</td><td>Defends against photo and screen replay; weak against 3D masks</td></tr>
+<tr><td>Tracker</td><td>ByteTrack / simple IoU</td><td>Reliable ids in crowds</td><td>Needs tuned max age</td></tr>
+<tr><td>Index</td><td>pgvector exact scan; FAISS later</td><td>Exact results, no extra service</td><td>Switch to HNSW above ~50k vectors</td></tr>
+</table></div>
+<div class="callout warn"><p><b>Licence check:</b> Many open face models are free for research but restrict commercial use. A rental business is commercial. In week 1, record the licence of each model file in the ADR log and choose commercially usable weights (for example YuNet plus a permissively licensed embedder), or buy a commercial licence. Replacing a model later is cheap because of the engine design.</p></div>
+
+<h3>10.1 Metrics</h3>
+<ul>
+  <li><b>TAR @ FAR:</b> true accept rate when the false accept rate is fixed (report at 0.1% and 0.01%).</li>
+  <li><b>FRR:</b> residents wrongly called unknown. This drives false alerts.</li>
+  <li><b>Spoof APCER/BPCER:</b> attacks accepted, real users rejected.</li>
+  <li><b>Latency:</b> p50 and p95 per stage and end to end.</li>
+  <li><b>Alert precision:</b> share of unknown alerts that were truly unknown people.</li>
+</ul>
+<h3>10.2 Building the site test set</h3>
+<ol>
+  <li>Record 2 days of entrance video (with notice posted and consent from residents).</li>
+  <li>Label tracks manually: person id or "visitor". Aim for at least 20 residents and 30 non-residents (staff, couriers, volunteers).</li>
+  <li>Include day, night, rain, masks, glasses, hats, phone in hand, group of 3 entering together.</li>
+  <li>Split by person into calibration and holdout sets. Pick thresholds on calibration, report on holdout.</li>
+</ol>
+
+<h2 id="hw">11. Hardware and camera placement</h2>
+<div class="grid2">
+<div class="card"><h3>Camera</h3>
+<ul>
+  <li>PoE IP camera, 4 MP, RTSP, wide dynamic range (WDR), IR optional</li>
+  <li>Lens 2.8 to 4 mm, depending on door width</li>
+  <li>Mounted 1.6 to 2.0 m high, looking along the walking path, not across it</li>
+  <li>Face width at the decision point at least 120 px</li>
+  <li>No strong backlight (glass door facing the sun). If unavoidable, add a lamp on the face side</li>
+  <li>Use a PoE switch and a fixed IP address</li>
+</ul></div>
+<div class="card"><h3>Compute (pick one)</h3>
+<ul>
+  <li><b>Budget CPU:</b> mini PC with Intel i5 or newer, 16 GB RAM, SSD. Runs 1 camera with MobileFaceNet or ArcFace.</li>
+  <li><b>Better:</b> NVIDIA Jetson Orin Nano or a PC with an entry GPU. 4+ cameras, bigger models.</li>
+  <li><b>Development:</b> a Mac with Apple Silicon works with the CoreML provider.</li>
+  <li>Add a small UPS so power blips do not corrupt the database</li>
+</ul></div>
+</div>
+<figure class="fig">
+<svg viewBox="0 0 640 250" role="img" aria-label="Top view of entrance showing camera placement, walking path and field of view" style="max-width:100%;height:auto;font-family:var(--f-body)">
+  <rect x="20" y="20" width="600" height="210" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="20" y="95" width="30" height="60" fill="var(--code-bg)" stroke="currentColor"/>
+  <text x="35" y="87" font-size="12" text-anchor="middle" fill="currentColor">Street</text>
+  <line x1="320" y1="20" x2="320" y2="230" stroke="currentColor" stroke-width="1.5"/>
+  <text x="320" y="14" font-size="12" text-anchor="middle" fill="currentColor">Entrance door</text>
+  <polygon points="590,125 380,60 380,190" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+  <circle cx="595" cy="125" r="8" fill="var(--accent)"/>
+  <text x="595" y="150" font-size="12" text-anchor="middle" fill="currentColor">Camera</text>
+  <text x="595" y="165" font-size="11" text-anchor="middle" fill="currentColor">1.8 m high</text>
+  <line x1="60" y1="125" x2="370" y2="125" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <polygon points="372,125 360,119 360,131" fill="currentColor"/>
+  <text x="170" y="115" font-size="12" text-anchor="middle" fill="currentColor">walking path, 4 to 5 m</text>
+  <circle cx="440" cy="125" r="5" fill="currentColor"/>
+  <text x="440" y="48" font-size="11" text-anchor="middle" fill="currentColor">decision zone: face above 120 px</text>
+  <line x1="440" y1="52" x2="440" y2="118" stroke="currentColor" stroke-dasharray="2 3"/>
+</svg>
+<figcaption>Camera faces the oncoming path so people look toward it as they approach. Place it on the inside, with the sun behind it, not behind the person.</figcaption>
+</figure>
+
+<h2 id="deploy">12. Deployment</h2>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  subgraph LAN["Building LAN, isolated VLAN for camera"]
+    Cam["IP camera<br/>192.168.50.10"]
+    Sw["PoE switch"]
+    subgraph Box["Edge computer, Ubuntu"]
+      DC["Docker Compose:<br/>ingest, engine, api, worker,<br/>redis, postgres, ui"]
+      Vol[("Volumes:<br/>pgdata, snapshots, models")]
+    end
+    Cam --- Sw --- Box
+  end
+  Box -->|"HTTPS outbound only"| Tg["Telegram API"]
+  Phone(["Admin phone or laptop"]) -->|"HTTPS on LAN or VPN"| Box
+  Box -.->|"nightly encrypted backup"| Bk[("Backup disk or cloud bucket")]
+</pre>
+<figcaption>Only outbound traffic to the chat service leaves the building. Admin access is on the LAN or through a VPN, never an open port to the internet.</figcaption>
+</figure>
+<pre><code># docker-compose.yml (outline)
+services:
+  postgres: { image: pgvector/pgvector:pg16, volumes: [pgdata:/var/lib/postgresql/data], restart: unless-stopped }
+  redis:    { image: redis:7, restart: unless-stopped }
+  engine:   { build: ./engine, env_file: .env, volumes: [./models:/models:ro, snaps:/snaps], depends_on: [postgres, redis], restart: unless-stopped,
+              healthcheck: { test: ["CMD", "eg", "health"], interval: 15s } }
+  api:      { build: ./api, env_file: .env, depends_on: [postgres, redis], restart: unless-stopped }
+  worker:   { build: ./api, command: eg-worker, env_file: .env, depends_on: [redis], restart: unless-stopped }
+  ui:       { build: ./ui, ports: ["443:443"], depends_on: [api], restart: unless-stopped }
+volumes: { pgdata: {}, snaps: {} }
+</code></pre>
+
+<h2 id="plan">13. Development plan</h2>
+<p>Assumes one developer full time (or two part time) and 8 weeks to a field-test MVP, then 2 weeks of pilot. Start date proposed: 2026-11-16.</p>
+<figure class="fig">
+<pre class="mermaid">
+gantt
+  title MVP schedule
+  dateFormat YYYY-MM-DD
+  axisFormat %d %b
+  section Foundation
+  Licences, hardware, camera install      :a1, 2026-11-16, 7d
+  Repo, CI, Docker, skeleton              :a2, 2026-11-16, 7d
+  section Engine
+  Ports and model registry                :b1, 2026-11-23, 5d
+  Detector and embedder adapters          :b2, after b1, 7d
+  Tracker, quality filter, policy         :b3, after b2, 7d
+  Liveness adapter                        :b4, after b3, 4d
+  section Data and API
+  DB schema, enrollment service           :c1, 2026-11-30, 7d
+  REST API, auth, events                  :c2, after c1, 7d
+  section UI and alerts
+  Admin UI: residents, events, live       :d1, 2026-12-14, 10d
+  Telegram alerts, retention jobs         :d2, 2026-12-21, 5d
+  section Quality
+  Site test set and benchmark             :e1, 2026-12-07, 14d
+  Threshold calibration                   :e2, after e1, 4d
+  Security hardening and backups          :e3, 2026-12-28, 4d
+  Pilot with real residents               :e4, 2027-01-04, 10d
+</pre>
+<figcaption>Critical path: camera install, then test set recording, then calibration, then pilot. Start recording footage in week 1 because it gates calibration.</figcaption>
+</figure>
+
+<h3>13.1 Phases, tasks and exit criteria</h3>
+<div class="scroll"><table>
+<tr><th>Phase</th><th>Tasks</th><th>Deliverable</th><th>Exit criteria</th></tr>
+<tr><td>P0<br>Week 1</td><td>Decide models and check licences. Buy and mount camera. Set static IP and RTSP. Repo with lint, type check, tests, CI. Docker Compose skeleton. Start recording entrance video (with notice posted). Draft consent form.</td><td>Working RTSP viewer, CI green, licence table, consent text</td><td>Stream stable for 24 h; consent reviewed by a lawyer</td></tr>
+<tr><td>P1<br>Weeks 2-3</td><td>Define ports and dataclasses. Build registry, YAML config loader, checksum check. Implement SCRFD and YuNet adapters, ArcFace and MobileFaceNet adapters. Aligner. Contract test suite. <code>eg replay</code> and <code>eg bench</code>.</td><td>Engine runs on a video file and prints faces and ids</td><td>Both detectors and both embedders pass contract tests; bench prints TAR@FAR</td></tr>
+<tr><td>P2<br>Weeks 3-4</td><td>ByteTrack adapter, quality scoring, decision policy, track state machine, MiniFASNet adapter. Event emission to Redis. Unit tests for the policy with scripted scenarios.</td><td>End-to-end decisions on recorded video</td><td>One event per walk-through on 20 test clips; spoof clip flagged</td></tr>
+<tr><td>P3<br>Weeks 3-5</td><td>Postgres schema and migrations (Alembic). Enrollment service with quality checks. pgvector search. FastAPI endpoints, JWT auth, roles, audit log. OpenAPI published.</td><td>API usable with curl</td><td>Enroll, search, delete verified by integration tests</td></tr>
+<tr><td>P4<br>Weeks 5-7</td><td>React admin: login, residents list and form with webcam capture, events table with filters, live view, models page, settings. Telegram notifier, dedupe, retention job, health alerts.</td><td>Usable admin UI and alerts</td><td>Non-technical tester enrolls a resident in under 2 minutes</td></tr>
+<tr><td>P5<br>Weeks 4-8</td><td>Build labelled test set. Run benchmark across model combinations. Calibrate thresholds. Record results in the model ADR. Load and soak test 72 h.</td><td>Benchmark report</td><td>NFR-03, NFR-04, NFR-01 met on holdout set</td></tr>
+<tr><td>P6<br>Week 8</td><td>Hardening: TLS, secrets, firewall, backups, restore drill, runbook. Install on the edge box.</td><td>Production install</td><td>Security checklist complete; restore tested</td></tr>
+<tr><td>P7<br>Weeks 9-10</td><td>Pilot: shadow alerts only, admins review every event daily. Tune. Collect false alert counts.</td><td>Pilot report</td><td>Fewer than 3 false unknown alerts per day; no missed spoof test</td></tr>
+</table></div>
+
+<h3>13.2 Work breakdown (backlog seeds)</h3>
+<div class="grid2">
+<div class="card"><h3>Engine</h3>
+<ul>
+  <li>E-01 Ports and dataclasses</li>
+  <li>E-02 Registry, config, checksums</li>
+  <li>E-03 Frame source (RTSP, file) with reconnect</li>
+  <li>E-04 SCRFD adapter, YuNet adapter</li>
+  <li>E-05 Aligner (5-point similarity transform)</li>
+  <li>E-06 ArcFace, MobileFaceNet adapters</li>
+  <li>E-07 ByteTrack adapter</li>
+  <li>E-08 Quality scoring (Laplacian variance, size, pose)</li>
+  <li>E-09 MiniFASNet adapter</li>
+  <li>E-10 Decision policy and state machine</li>
+  <li>E-11 Metrics (Prometheus)</li>
+  <li>E-12 Shadow mode runner</li>
+</ul></div>
+<div class="card"><h3>Backend</h3>
+<ul>
+  <li>B-01 Alembic migrations</li>
+  <li>B-02 Person, consent, photo, embedding repos</li>
+  <li>B-03 Enrollment with quality checks</li>
+  <li>B-04 Identity index (pgvector)</li>
+  <li>B-05 Events API and snapshot storage</li>
+  <li>B-06 Auth, roles, audit log</li>
+  <li>B-07 Settings and threshold API</li>
+  <li>B-08 Worker: notifier, dedupe, retention</li>
+  <li>B-09 Model migrate command</li>
+  <li>B-10 Backup and restore scripts</li>
+</ul></div>
+<div class="card"><h3>UI</h3>
+<ul>
+  <li>U-01 Login and layout</li>
+  <li>U-02 Residents list, form, webcam capture</li>
+  <li>U-03 Events table, filters, detail drawer</li>
+  <li>U-04 Live view with overlays</li>
+  <li>U-05 Enroll from event</li>
+  <li>U-06 Models and health page</li>
+  <li>U-07 Threshold page with preview</li>
+  <li>U-08 Mobile layout pass</li>
+</ul></div>
+<div class="card"><h3>Quality and ops</h3>
+<ul>
+  <li>Q-01 Site recording and labelling tool</li>
+  <li>Q-02 Benchmark command</li>
+  <li>Q-03 Spoof test kit (printed photo, phone video)</li>
+  <li>Q-04 Soak test script</li>
+  <li>O-01 CI pipeline</li>
+  <li>O-02 Image build and release</li>
+  <li>O-03 Runbook</li>
+  <li>O-04 Consent and notice templates</li>
+</ul></div>
+</div>
+
+<h3>13.3 Definition of done</h3>
+<ul>
+  <li>Code reviewed, linted, type-checked, tests passing in CI.</li>
+  <li>Behaviour covered by a test that fails without the change.</li>
+  <li>Config and API documented (OpenAPI, YAML comments).</li>
+  <li>Metrics and log lines added for new stages.</li>
+  <li>No personal data in logs.</li>
+</ul>
+
+<h3>13.4 Roles</h3>
+<div class="scroll"><table>
+<tr><th>Role</th><th>Responsibility</th><th>Effort</th></tr>
+<tr><td>Full-stack engineer</td><td>Engine, API, UI</td><td>8 weeks</td></tr>
+<tr><td>ML engineer (can be same person)</td><td>Adapters, benchmark, calibration</td><td>3 weeks within the 8</td></tr>
+<tr><td>Installer</td><td>Camera, PoE, network</td><td>1 day</td></tr>
+<tr><td>Legal advisor</td><td>Consent, notice, retention</td><td>few hours</td></tr>
+<tr><td>Pilot testers</td><td>Residents and staff for the test set</td><td>few hours</td></tr>
+</table></div>
+
+<h2 id="test">14. Test and evaluation plan</h2>
+<figure class="fig">
+<pre class="mermaid">
+flowchart BT
+  U["Unit tests<br/>policy, aligner, quality, config"] --> C["Contract tests<br/>every adapter, same suite"]
+  C --> I["Integration tests<br/>DB, API, Redis, worker"]
+  I --> E["End-to-end replay tests<br/>recorded clips with expected decisions"]
+  E --> F["Field tests<br/>soak, spoof kit, pilot"]
+</pre>
+<figcaption>Pyramid from cheap and many at the bottom to slow and few at the top. Replay clips are the main regression guard when models change.</figcaption>
+</figure>
+<div class="scroll"><table>
+<tr><th>ID</th><th>Test</th><th>Pass condition</th></tr>
+<tr><td>T-01</td><td>Resident walks in, frontal, daylight</td><td>resident, score above accept, event in under 1.5 s</td></tr>
+<tr><td>T-02</td><td>Resident at night with IR</td><td>resident or uncertain, never unknown at more than 3% rate</td></tr>
+<tr><td>T-03</td><td>Resident with mask, hat, glasses</td><td>measured and reported; target at least 90% resident</td></tr>
+<tr><td>T-04</td><td>Unknown person walks in</td><td>unknown, one alert</td></tr>
+<tr><td>T-05</td><td>Two people enter together, one resident</td><td>two tracks, two correct decisions</td></tr>
+<tr><td>T-06</td><td>Printed photo of resident</td><td>spoof, not resident</td></tr>
+<tr><td>T-07</td><td>Phone video of resident</td><td>spoof, not resident</td></tr>
+<tr><td>T-08</td><td>Camera unplugged 60 s</td><td>health alert, auto recovery</td></tr>
+<tr><td>T-09</td><td>Power cut and restore</td><td>all services back in under 2 min</td></tr>
+<tr><td>T-10</td><td>Delete a resident</td><td>no vectors, photos, rows remain; recognised as unknown after</td></tr>
+<tr><td>T-11</td><td>Swap embedder via config + migrate</td><td>benchmark within target; rollback works</td></tr>
+<tr><td>T-12</td><td>72 h soak at 8 fps</td><td>no memory growth above 10%, no dropped service</td></tr>
+<tr><td>T-13</td><td>Viewer role calls admin endpoint</td><td>403</td></tr>
+<tr><td>T-14</td><td>Retention job on 31-day-old snapshot</td><td>file removed</td></tr>
+</table></div>
+
+<h2 id="sec">15. Security and privacy design</h2>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  subgraph Untrusted["Untrusted"]
+    Net["Internet"]
+    Guest["Guest Wi-Fi"]
+  end
+  subgraph CamVLAN["Camera VLAN, no internet"]
+    Cam["Camera"]
+  end
+  subgraph Mgmt["Management LAN"]
+    Adm["Admin devices"]
+    Box["Edge computer"]
+  end
+  Cam -->|"RTSP only"| Box
+  Adm -->|"HTTPS 443"| Box
+  Box -->|"outbound HTTPS"| Net
+  Guest -. "blocked" .-> Box
+  Net -. "no inbound" .-> Box
+</pre>
+<figcaption>Network zones. The camera is isolated so a compromised camera cannot reach anything but the edge computer.</figcaption>
+</figure>
+<div class="scroll"><table>
+<tr><th>Area</th><th>Control</th></tr>
+<tr><td>Authentication</td><td>Argon2 password hashes, login rate limit, 12-char minimum, token expiry 8 h, optional TOTP later</td></tr>
+<tr><td>Authorisation</td><td>Roles admin and viewer, checked on every route</td></tr>
+<tr><td>Transport</td><td>TLS on the UI. Internal services on a private Docker network. DB and Redis not published on host ports</td></tr>
+<tr><td>Secrets</td><td>Camera URL, DB password, bot token in <code>.env</code> with 600 permissions, never in git</td></tr>
+<tr><td>Data at rest</td><td>Disk encryption on the edge computer. Enrollment photos encrypted with a key outside the DB</td></tr>
+<tr><td>Logs</td><td>No names, no vectors, no image bytes. Use person id only</td></tr>
+<tr><td>Camera</td><td>Change default password, disable UPnP and cloud features, update firmware</td></tr>
+<tr><td>Spoofing</td><td>Passive liveness, plus the MVP never opens a door on recognition alone</td></tr>
+<tr><td>Fairness</td><td>Report FRR and FAR by skin tone, gender and age group on the test set; address large gaps before enabling door control</td></tr>
+<tr><td>Subject rights</td><td>Export and delete a person's data on request, audit logged</td></tr>
+<tr><td>Backups</td><td>Nightly encrypted dump of Postgres and photos; restore tested quarterly</td></tr>
+</table></div>
+
+<h2 id="ops">16. Operations</h2>
+<h3>16.1 CI/CD</h3>
+<figure class="fig">
+<pre class="mermaid">
+flowchart LR
+  PR["Pull request"] --> L["Lint and type check"]
+  L --> UT["Unit and contract tests"]
+  UT --> IT["Integration tests<br/>docker compose"]
+  IT --> RP["Replay regression<br/>recorded clips"]
+  RP --> B["Build images"]
+  B --> M{"Merge to main"}
+  M --> T["Tag release"]
+  T --> D["Manual deploy to edge box<br/>docker compose pull and up"]
+</pre>
+<figcaption>Deploy stays manual for the first releases because a bad release at a door is costly.</figcaption>
+</figure>
+<h3>16.2 Monitoring and alerts</h3>
+<div class="scroll"><table>
+<tr><th>Metric</th><th>Alert when</th></tr>
+<tr><td>camera_fps</td><td>below 5 for 2 min</td></tr>
+<tr><td>stage_latency_ms{stage}</td><td>total p95 above 2000 ms for 5 min</td></tr>
+<tr><td>decisions_total{decision}</td><td>unknown rate above 3x the weekly average</td></tr>
+<tr><td>queue_depth</td><td>above 100</td></tr>
+<tr><td>db_up, redis_up</td><td>false for 1 min</td></tr>
+<tr><td>disk_free</td><td>below 15%</td></tr>
+<tr><td>engine_heartbeat</td><td>missing for 60 s</td></tr>
+</table></div>
+<h3>16.3 Runbook (short)</h3>
+<ul>
+  <li><b>Many false unknown alerts:</b> check lighting change, lens dirty, camera moved. Look at three snapshots. If residents score near threshold, add 2 new enrollment photos in current conditions.</li>
+  <li><b>No events at all:</b> <code>/v1/health</code>, check camera state, restart <code>engine</code>, check disk space.</li>
+  <li><b>Slow:</b> look at stage latency; lower <code>target_fps</code>, use the smaller detector, or enable GPU provider.</li>
+  <li><b>Tenant moves out:</b> disable, then delete after the retention window; confirm audit entry.</li>
+</ul>
+
+<h2 id="risk">17. Risks and mitigations</h2>
+<div class="scroll"><table>
+<tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr>
+<tr><td>Poor lighting or backlight lowers accuracy</td><td>High</td><td>High</td><td>Site survey before buying; add lamp; choose WDR camera; test at night in week 1</td></tr>
+<tr><td>Legal complaint about biometric data</td><td>Medium</td><td>High</td><td>Consent, notice, minimisation, retention, lawyer review before go-live</td></tr>
+<tr><td>Model licence blocks commercial use</td><td>Medium</td><td>High</td><td>Licence check in P0; engine design allows replacement</td></tr>
+<tr><td>Photo or video spoofing</td><td>Medium</td><td>Medium</td><td>Passive liveness; no door control in MVP</td></tr>
+<tr><td>Too many false alerts, staff ignore them</td><td>High</td><td>Medium</td><td>Track-level decisions, dedupe, calibrated thresholds, pilot with review</td></tr>
+<tr><td>Bias across demographic groups</td><td>Medium</td><td>High</td><td>Group-wise evaluation, include diverse test set, choose model accordingly</td></tr>
+<tr><td>CPU too slow</td><td>Medium</td><td>Medium</td><td>Skip decided tracks, 8 fps cap, smaller models, GPU option</td></tr>
+<tr><td>Camera hacked or offline</td><td>Medium</td><td>Medium</td><td>VLAN, strong password, health alert</td></tr>
+<tr><td>Data breach</td><td>Low</td><td>High</td><td>Encryption, minimal retention, access audit, no inbound ports</td></tr>
+<tr><td>Scope creep (door control, app)</td><td>High</td><td>Medium</td><td>Phase gates; Actuator port defined but unimplemented in MVP</td></tr>
+<tr><td>Tailgating (unknown follows a resident)</td><td>High</td><td>Medium</td><td>Per-track decisions detect the second face; out of scope for physical blocking</td></tr>
+</table></div>
+
+<h2 id="repo">18. Repository layout and decisions</h2>
+<pre><code>entry-guard/
+  engine/
+    core/            # pipeline, policy, state machine, ports.py (no third-party imports)
+    adapters/
+      detectors/     # scrfd.py, yunet.py
+      embedders/     # arcface.py, mobilefacenet.py
+      liveness/      # minifasnet.py, none.py
+      trackers/      # bytetrack.py, iou.py
+      sources/       # rtsp.py, file.py
+    registry.py
+    cli.py
+  api/               # FastAPI app, repos, auth, worker
+  ui/                # React admin
+  config/            # engine.yaml, policy.yaml
+  models/            # *.onnx (git-ignored), MODELS.md with licences and sha256
+  tests/
+    contract/        # shared suite parametrised over all adapters
+    replay/          # clips plus expected decisions
+  deploy/            # docker-compose.yml, backup scripts
+  docs/              # SRS, ADRs, runbook
+</code></pre>
+<h3>18.1 Architecture decision records</h3>
+<div class="scroll"><table>
+<tr><th>ADR</th><th>Decision</th><th>Reason</th><th>Revisit when</th></tr>
+<tr><td>001</td><td>Ports and adapters for all AI stages</td><td>Swap models without touching the core</td><td>Never; core principle</td></tr>
+<tr><td>002</td><td>ONNX Runtime as the only inference runtime</td><td>One format, many hardware providers</td><td>A needed model cannot export to ONNX</td></tr>
+<tr><td>003</td><td>Postgres with pgvector for vectors</td><td>One datastore, enough for thousands of people</td><td>Over 50k vectors or multi-site</td></tr>
+<tr><td>004</td><td>Decision per track, not per frame</td><td>Fewer false alerts, less compute</td><td>Door control phase: add stricter policy</td></tr>
+<tr><td>005</td><td>No door control in MVP</td><td>Limits harm from recognition errors</td><td>After fairness and spoof results are good</td></tr>
+<tr><td>006</td><td>Keep encrypted enrollment photos</td><td>Re-index on model change</td><td>If law forbids retaining photos; then re-enroll on swap</td></tr>
+<tr><td>007</td><td>Edge-only processing</td><td>Privacy, no cloud cost, works offline</td><td>Many buildings need central view</td></tr>
+<tr><td>008</td><td>Modular monolith for api, separate engine process</td><td>Simple ops; the engine needs its own CPU budget</td><td>Team grows</td></tr>
+</table></div>
+
+<h2 id="future">19. Roadmap after the MVP</h2>
+<figure class="fig">
+<pre class="mermaid">
+timeline
+  title Product roadmap
+  MVP, weeks 1 to 10 : Detect and recognise : Unknown alerts : Admin UI : Swappable models
+  Phase 2, months 3 to 4 : Door relay Actuator : Visitor passes : Multi camera : Shadow mode swaps
+  Phase 3, months 5 to 6 : Resident mobile app : Occupancy and tailgating analytics : Fine tuning on consented data
+  Phase 4, later : Multi building cloud console : Plate and parcel recognition : Edge fleet updates
+</pre>
+<figcaption>Door control only arrives after the pilot proves false accept and spoof rates.</figcaption>
+</figure>
+
+<h2 id="glossary">20. Glossary and open questions</h2>
+<div class="scroll"><table>
+<tr><th>Term</th><th>Meaning</th></tr>
+<tr><td>Embedding</td><td>A list of numbers (here 512) that represents a face. Similar faces have similar numbers.</td></tr>
+<tr><td>Cosine similarity</td><td>How alike two embeddings are, from -1 to 1. Higher means the same person.</td></tr>
+<tr><td>Enrollment</td><td>Adding a person: store photos and embeddings so they can be recognised.</td></tr>
+<tr><td>Liveness / anti-spoof</td><td>Check that a face is a real person and not a photo or screen.</td></tr>
+<tr><td>Track</td><td>One person followed across video frames, with one id.</td></tr>
+<tr><td>FAR</td><td>False accept rate: unknown people wrongly accepted.</td></tr>
+<tr><td>FRR</td><td>False reject rate: residents wrongly rejected.</td></tr>
+<tr><td>TAR</td><td>True accept rate = 1 minus FRR.</td></tr>
+<tr><td>Port / adapter</td><td>A port is an interface the core defines. An adapter is a concrete model or service behind it.</td></tr>
+<tr><td>Model space</td><td>The set of vectors made by one embedder; vectors from different spaces cannot be compared.</td></tr>
+<tr><td>RTSP</td><td>Streaming protocol used by IP cameras.</td></tr>
+</table></div>
+
+<h3>Open questions for you</h3>
+<ol>
+  <li>Country and city? This sets the exact privacy law and consent wording.</li>
+  <li>How many residents and how many entrances? (Sizing, camera count.)</li>
+  <li>Is there a guard on site, or is the alert going only to your phone?</li>
+  <li>Is it a glass door with strong daylight, or an interior lobby?</li>
+  <li>Which chat app do you use daily: Telegram or Zalo?</li>
+  <li>Do you plan to open a door automatically later? If yes, we keep stricter liveness and add a second factor.</li>
+  <li>Budget for the edge computer and camera?</li>
+</ol>
+
+<footer>Entry Guard specification v0.5. Thresholds, latency and cost numbers are planning targets and must be confirmed by the benchmark on your own entrance footage.</footer>
+</main>
+</div>
+
+<!--claude-mermaid-runtime-begin:3477-->
+<style>.mermaid-diagram{margin-block:4px}.mermaid-diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}</style>
+<script src="assets/mermaid.min.js"></script>
+<script>(function(){
+var CFG={"palettes":{"light":{"surface":"#f4efe4","text":"#42392e","line":"#8a7f6d","border":"#7a6c52","bg":"#fffdf8"},"dark":{"surface":"#262b34","text":"#f2f3f5","line":"#a8adb8","border":"#9aa4b8","bg":"#1f232b"}}};
+if(typeof mermaid==='undefined')return;
+var pres=Array.prototype.slice.call(document.querySelectorAll('pre.mermaid')).filter(function(p){if(p.hasAttribute('data-claude-mermaid-claimed'))return false;p.setAttribute('data-claude-mermaid-claimed','1');return true;});
+if(!pres.length)return;
+var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+var root=document.documentElement;
+var items=pres.map(function(pre){
+var mount=document.createElement('div');mount.className='mermaid-diagram';
+return {pre:pre,mount:mount,src:pre.textContent||''};
+});
+var seq=0;
+var renderGen=0;
+var lastKey='';
+function pageBg(fallback){
+var els=[document.body,document.documentElement];
+for(var i=0;i<els.length;i++){
+var c=els[i]&&getComputedStyle(els[i]).backgroundColor;
+if(c&&c!=='transparent'&&c!=='rgba(0, 0, 0, 0)')return c;
+}
+return fallback;
+}
+function render(){
+var theme=root.getAttribute('data-theme');
+var dark=theme==='dark'||(!!(mq&&mq.matches)&&theme!=='light');
+var pal=dark?CFG.palettes.dark:CFG.palettes.light;
+var bg=pageBg(pal.bg);
+var key=(dark?'d':'l')+'|'+bg;
+if(key===lastKey)return;
+lastKey=key;
+var gen=++renderGen;
+var font=getComputedStyle(document.body).fontFamily||'sans-serif';
+var nat={useMaxWidth:false};
+mermaid.initialize({
+startOnLoad:false,securityLevel:'strict',theme:'base',
+flowchart:nat,sequence:nat,er:nat,state:nat,class:nat,pie:nat,
+gantt:nat,journey:nat,timeline:nat,gitGraph:nat,mindmap:nat,xyChart:nat,
+quadrantChart:nat,sankey:nat,c4:nat,requirement:nat,block:nat,
+packet:nat,kanban:nat,architecture:nat,radar:nat,
+themeVariables:{background:bg,mainBkg:pal.surface,primaryColor:pal.surface,
+primaryTextColor:pal.text,lineColor:pal.line,primaryBorderColor:pal.border,
+nodeBorder:pal.border,clusterBorder:pal.border,edgeLabelBackground:bg,
+clusterBkg:'rgba(127,127,127,0.07)',titleColor:pal.text,
+darkMode:dark,rowOdd:bg,rowEven:'rgba(127,127,127,0.07)',
+attributeBackgroundColorOdd:bg,attributeBackgroundColorEven:'rgba(127,127,127,0.07)',
+fontSize:'16px',fontFamily:font},
+themeCSS:'.node rect, .node circle, .node polygon, .node path, .cluster rect { stroke-width: 2px; }'
+});
+items.forEach(function(it){
+var id='claude-mermaid-'+seq++;
+mermaid.render(id,it.src).then(function(r){
+if(gen!==renderGen)return;
+var prev=it.pre.previousElementSibling;
+if(prev&&prev.className==='mermaid-diagram'&&prev!==it.mount)return;
+it.mount.innerHTML=r.svg;
+if(!it.mount.parentNode)it.pre.parentNode.insertBefore(it.mount,it.pre);
+it.pre.style.display='none';
+},function(){
+var scratch=document.getElementById(id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+scratch=document.getElementById('d'+id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+if(gen!==renderGen)return;
+if(it.mount.parentNode)it.mount.parentNode.removeChild(it.mount);
+it.pre.style.display='';
+});
+});
+}
+render();
+if(mq&&mq.addEventListener)mq.addEventListener('change',render);
+if(typeof MutationObserver!=='undefined')new MutationObserver(render).observe(root,{attributes:true,attributeFilter:['data-theme']});
+})();</script>
+<!--claude-mermaid-runtime-end-->
+
+</body></html>

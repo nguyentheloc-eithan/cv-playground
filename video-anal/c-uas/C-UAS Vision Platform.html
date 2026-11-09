@@ -1,0 +1,1177 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  </head>
+  <body>
+
+    <title>C-UAS Vision Platform</title>
+    <meta
+      name="claude:viewport-fit-sides"
+      content="cover" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+    <style>
+      /* Layout: single reading column (1040px) with full-width figures; sections separated by a thin rule and a mono label in the left gutter on wide screens. */
+      :root {
+        --bg: #f2f5f3;
+        --surface: #ffffff;
+        --fg: #13201c;
+        --muted: #54645e;
+        --line: #cdd8d3;
+        --accent: #0b6e63;
+        --accent-soft: #dbeeea;
+        --warn: #b2501a;
+        --warn-soft: #f7e5d9;
+        --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        --font-body:
+          'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #0e1513;
+          --surface: #151f1c;
+          --fg: #e3ece8;
+          --muted: #94a59f;
+          --line: #2a3a35;
+          --accent: #4fd1be;
+          --accent-soft: #123530;
+          --warn: #f0925a;
+          --warn-soft: #3a2418;
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #0e1513;
+        --surface: #151f1c;
+        --fg: #e3ece8;
+        --muted: #94a59f;
+        --line: #2a3a35;
+        --accent: #4fd1be;
+        --accent-soft: #123530;
+        --warn: #f0925a;
+        --warn-soft: #3a2418;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font: 400 16px/1.6 var(--font-body);
+        padding-block: 0 64px;
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      a {
+        color: var(--accent);
+      }
+      code,
+      pre,
+      .mono {
+        font-family: var(--font-mono);
+      }
+      code {
+        font-size: 0.88em;
+        background: var(--accent-soft);
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+      header {
+        padding-block: 48px 28px;
+        border-bottom: 1px solid var(--line);
+      }
+      .kicker {
+        font: 500 12px var(--font-mono);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      h1 {
+        font: 700 clamp(40px, 7vw, 76px)/0.95 var(--font-display);
+        letter-spacing: 0.005em;
+        text-transform: uppercase;
+        margin: 12px 0 16px;
+        text-wrap: balance;
+      }
+      .lede {
+        font-size: 18px;
+        max-width: 62ch;
+        color: var(--muted);
+        margin: 0;
+      }
+      .lede strong {
+        color: var(--fg);
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        margin-top: 22px;
+        font: 500 12px var(--font-mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      nav a {
+        text-decoration: none;
+        color: var(--muted);
+      }
+      nav a:hover,
+      nav a:focus-visible {
+        color: var(--accent);
+        outline: none;
+        text-decoration: underline;
+      }
+      section {
+        padding-block: 40px;
+        border-bottom: 1px solid var(--line);
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 8px 32px;
+      }
+      section > .tag {
+        font: 500 12px var(--font-mono);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding-top: 10px;
+      }
+      section > .body {
+        min-width: 0;
+      }
+      h2 {
+        font: 600 clamp(28px, 4vw, 40px)/1.05 var(--font-display);
+        text-transform: uppercase;
+        margin: 0 0 14px;
+        text-wrap: balance;
+      }
+      h3 {
+        font: 600 15px var(--font-body);
+        margin: 26px 0 6px;
+      }
+      p {
+        margin: 0 0 12px;
+        max-width: 68ch;
+      }
+      ul {
+        margin: 0 0 12px;
+        padding-left: 20px;
+        max-width: 68ch;
+      }
+      li {
+        margin-bottom: 4px;
+      }
+      .verdict {
+        background: var(--accent-soft);
+        border-left: 4px solid var(--accent);
+        padding: 14px 18px;
+        margin: 18px 0;
+        max-width: none;
+      }
+      .verdict p {
+        margin: 0;
+        max-width: 70ch;
+      }
+      .scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 620px;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font: 500 11px var(--font-mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: var(--bg);
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      .pill {
+        display: inline-block;
+        font: 500 11px var(--font-mono);
+        padding: 1px 7px;
+        border-radius: 99px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        white-space: nowrap;
+      }
+      .pill.w {
+        background: var(--warn-soft);
+        color: var(--warn);
+      }
+      .pill.n {
+        background: var(--bg);
+        color: var(--muted);
+        border: 1px solid var(--line);
+      }
+      figure {
+        margin: 18px 0 0;
+      }
+      figcaption {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 8px;
+        max-width: 80ch;
+      }
+      .fig {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface);
+        padding: 12px;
+      }
+      .fig svg {
+        display: block;
+        min-width: 760px;
+        width: 100%;
+        height: auto;
+        color: var(--fg);
+      }
+      svg text {
+        font-family: var(--font-mono);
+        fill: currentColor;
+      }
+      svg .bx {
+        fill: var(--surface);
+        stroke: currentColor;
+        stroke-width: 1.2;
+      }
+      svg .bx.hi {
+        fill: var(--accent-soft);
+        stroke: var(--accent);
+      }
+      svg .bx.wr {
+        fill: var(--warn-soft);
+        stroke: var(--warn);
+      }
+      svg .bus {
+        fill: var(--bg);
+        stroke: currentColor;
+        stroke-width: 1;
+        stroke-dasharray: 4 3;
+      }
+      svg .t {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      svg .s {
+        font-size: 11px;
+        opacity: 0.72;
+      }
+      svg .h {
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        opacity: 0.65;
+      }
+      svg .ln {
+        stroke: currentColor;
+        stroke-width: 1.3;
+        fill: none;
+      }
+      svg .dl {
+        stroke: currentColor;
+        stroke-width: 1.2;
+        fill: none;
+        stroke-dasharray: 4 3;
+      }
+      svg .lb {
+        font-size: 11px;
+        opacity: 0.8;
+      }
+      svg .stereo {
+        font-size: 10px;
+        opacity: 0.65;
+      }
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 14px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 14px 16px;
+      }
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 15px;
+      }
+      .card p,
+      .card ul {
+        font-size: 14px;
+        margin: 0;
+      }
+      .card ul {
+        padding-left: 18px;
+      }
+      pre {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 14px 16px;
+        overflow-x: auto;
+        font-size: 12.5px;
+        line-height: 1.55;
+        margin: 12px 0 0;
+      }
+      .budget {
+        display: flex;
+        height: 44px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 14px;
+      }
+      .budget div {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font: 500 11px var(--font-mono);
+        border-right: 1px solid var(--bg);
+        background: var(--accent-soft);
+        color: var(--fg);
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      .budget div.hot {
+        background: var(--accent);
+        color: var(--bg);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        font: 12px var(--font-mono);
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .phase {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 4px 18px;
+        padding: 14px 0;
+        border-top: 1px solid var(--line);
+      }
+      .phase:first-of-type {
+        border-top: 0;
+      }
+      .phase .when {
+        font: 600 22px/1 var(--font-display);
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .phase .when small {
+        display: block;
+        font: 400 11px var(--font-mono);
+        color: var(--muted);
+        text-transform: none;
+        margin-top: 4px;
+      }
+      .phase h3 {
+        margin: 0 0 4px;
+      }
+      .phase p {
+        font-size: 14px;
+        margin: 0;
+      }
+      .phase .exit {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      @media (max-width: 760px) {
+        section {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0;
+        }
+        section > .tag {
+          padding-top: 0;
+          margin-bottom: 6px;
+        }
+        .phase {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+          animation: none !important;
+        }
+      }
+    </style>
+
+    <div class="wrap">
+      <header>
+        <div class="kicker">Counter-UAS · Video analytics · Architecture plan</div>
+        <h1>C-UAS Vision Platform</h1>
+        <p class="lede">
+          Video analytics that finds and tracks small drones. Video or frames go
+          in, drone detections and tracks come out. Built like a car: a fixed
+          chassis with standard sockets, so a broken part is replaced by a
+          temporary one and repaired or upgraded alone.
+          <strong>Python first for the baseline, C++ only where a benchmark
+          says it is needed.</strong>
+        </p>
+        <nav aria-label="Sections">
+          <a href="#scope">Scope</a><a href="#language">Language</a
+          ><a href="#architecture">Architecture</a><a href="#modules">Swappable modules</a
+          ><a href="#latency">Latency</a><a href="#drone">Drone detection</a
+          ><a href="#repo">Repo &amp; stack</a><a href="#roadmap">Roadmap</a
+          ><a href="#risks">Risks</a><a href="#open">Open questions</a>
+        </nav>
+      </header>
+
+      <section id="scope">
+        <div class="tag">01 · Scope</div>
+        <div class="body">
+          <h2>What this system does</h2>
+          <div class="verdict">
+            <p>
+              <strong>Frames in, drones out.</strong> The system receives video
+              or frames, detects drones, tracks them over time, separates them
+              from birds and clutter, and reports the result with evidence. It
+              does not control sensors, weapons or other systems.
+            </p>
+          </div>
+          <div class="cols">
+            <div class="card">
+              <h3>Input</h3>
+              <ul>
+                <li>Video file, RTSP stream or camera (visible or thermal)</li>
+                <li>Each frame carries a capture timestamp and a camera id</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Output</h3>
+              <ul>
+                <li>Per frame: boxes, class (drone or not), confidence, track id</li>
+                <li>A degraded flag when a fallback part is running</li>
+                <li>On a confirmed track: an event with a short evidence clip</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Out of scope</h3>
+              <ul>
+                <li>Radar and RF sensors, sensor fusion</li>
+                <li>PTZ control, threat policy, C2 integration</li>
+                <li>Any effector or response</li>
+              </ul>
+            </div>
+          </div>
+          <p style="margin-top: 12px; color: var(--muted); font-size: 14px">
+            Future extension: a radar or RF feed would be one more input
+            adapter behind the same tracker interface. No detector change is
+            needed, so none of that is designed now.
+          </p>
+        </div>
+      </section>
+
+      <section id="language">
+        <div class="tag">02 · Decision</div>
+        <div class="body">
+          <h2>C++ or Python?</h2>
+          <div class="verdict">
+            <p>
+              <strong>Hybrid target, Python first.</strong> Build the baseline
+              in Python, measure latency and throughput on the real hardware,
+              and port only the modules that miss the requirement to C++ behind
+              the same interfaces. Training, evaluation and tooling stay in
+              Python. The two sides meet at a TensorRT/ONNX model file, a
+              protobuf schema and a YAML config.
+            </p>
+          </div>
+          <p>
+            Python already runs TensorRT, OpenCV and other native libraries, and
+            most inference time runs outside the interpreter, so the GIL is not
+            automatically the bottleneck. C++ adds cost in memory ownership,
+            concurrency, build and debugging.
+          </p>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Concern</th><th>C++20</th><th>Python 3.11</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Frame-loop latency and jitter</td>
+                  <td><span class="pill">Fits</span> Tighter control of memory and concurrency; meets strict latency if designed and tuned well</td>
+                  <td><span class="pill n">Benchmark</span> Meets many inference workloads through native libraries; jitter and throughput limits must be measured</td>
+                </tr>
+                <tr>
+                  <td>GPU path (NVDEC, CUDA, TensorRT)</td>
+                  <td><span class="pill">Fits</span> Device memory stays on the GPU from decode to inference</td>
+                  <td><span class="pill n">Possible</span> Bindings exist; extra copies are easy to introduce</td>
+                </tr>
+                <tr>
+                  <td>24/7 edge uptime, memory control</td>
+                  <td><span class="pill">Fits</span> Deterministic ownership (RAII), small footprint on Jetson</td>
+                  <td><span class="pill n">Benchmark</span> Leaks and fragmentation need soak testing</td>
+                </tr>
+                <tr>
+                  <td>Model iteration speed</td>
+                  <td><span class="pill w">Slow</span> Long builds, heavy tooling</td>
+                  <td><span class="pill">Fits</span> PyTorch, Ultralytics, notebooks</td>
+                </tr>
+                <tr>
+                  <td>Data, labeling, evaluation</td>
+                  <td><span class="pill w">Poor</span></td>
+                  <td><span class="pill">Fits</span> Richest ecosystem</td>
+                </tr>
+                <tr>
+                  <td>Hiring and team cost</td>
+                  <td><span class="pill w">Narrower pool</span></td>
+                  <td><span class="pill">Wide pool</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 12px; color: var(--muted); font-size: 14px">
+            Rule: no module moves to C++ until a benchmark on target hardware
+            shows Python misses the p95/p99 latency or throughput requirement
+            for that module.
+          </p>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <div class="tag">03 · System</div>
+        <div class="body">
+          <h2>Pipeline architecture</h2>
+          <p>
+            Ports and adapters. The video source, detector, tracker and output
+            each sit behind an interface, so the same pipeline runs on a live
+            camera, a recorded file or a test fixture.
+          </p>
+          <figure>
+            <div class="fig">
+              <svg
+                viewBox="0 0 980 250"
+                role="img"
+                aria-label="Frames flow left to right through seven stages: video source, decode, preprocess, detector, tracker, classifier and result sink. A recorder hangs off the result sink. An in-process event bus for metadata, health and config runs underneath.">
+                <defs>
+                  <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M0 0L10 5L0 10z" fill="currentColor" />
+                  </marker>
+                </defs>
+                <text class="h" x="10" y="26">FRAME PATH · POOLED GPU BUFFERS, HANDLES ONLY</text>
+                <rect class="bx" x="10" y="44" width="124" height="56" rx="4" />
+                <text class="t" x="20" y="67">VideoSource</text>
+                <text class="s" x="20" y="86">RTSP · file</text>
+                <rect class="bx" x="151" y="44" width="124" height="56" rx="4" />
+                <text class="t" x="161" y="67">Decode</text>
+                <text class="s" x="161" y="86">NVDEC · GPU</text>
+                <rect class="bx" x="292" y="44" width="124" height="56" rx="4" />
+                <text class="t" x="302" y="67">Preprocess</text>
+                <text class="s" x="302" y="86">tile + resize</text>
+                <rect class="bx hi" x="433" y="44" width="124" height="56" rx="4" />
+                <text class="t" x="443" y="67">Detector</text>
+                <text class="s" x="443" y="86">TensorRT · GPU</text>
+                <rect class="bx hi" x="574" y="44" width="124" height="56" rx="4" />
+                <text class="t" x="584" y="67">Tracker</text>
+                <text class="s" x="584" y="86">Kalman + match</text>
+                <rect class="bx wr" x="715" y="44" width="124" height="56" rx="4" />
+                <text class="t" x="725" y="67">Classifier</text>
+                <text class="s" x="725" y="86">bird vs drone</text>
+                <rect class="bx" x="856" y="44" width="114" height="56" rx="4" />
+                <text class="t" x="866" y="67">ResultSink</text>
+                <text class="s" x="866" y="86">boxes · clips</text>
+                <path class="ln" d="M134 72H149" marker-end="url(#a1)" />
+                <path class="ln" d="M275 72H290" marker-end="url(#a1)" />
+                <path class="ln" d="M416 72H431" marker-end="url(#a1)" />
+                <path class="ln" d="M557 72H572" marker-end="url(#a1)" />
+                <path class="ln" d="M698 72H713" marker-end="url(#a1)" />
+                <path class="ln" d="M839 72H854" marker-end="url(#a1)" />
+                <rect class="bx" x="856" y="134" width="114" height="56" rx="4" />
+                <text class="t" x="866" y="157">Recorder</text>
+                <text class="s" x="866" y="176">clip + track log</text>
+                <path class="ln" d="M913 100V132" marker-end="url(#a1)" />
+                <text class="lb" x="10" y="150">Detections → Tracker: metadata</text>
+                <text class="lb" x="10" y="168">Classifier reads the track crop over time</text>
+                <rect class="bus" x="10" y="206" width="960" height="36" rx="4" />
+                <text class="t" x="24" y="229">In-process event bus (metadata) · Health &amp; metrics · Config · Audit log</text>
+              </svg>
+            </div>
+            <figcaption>
+              Frames move stage to stage through bounded queues. Only metadata
+              (detections, tracks, alerts, health) goes on the event bus. The
+              classifier scores each track over several frames, so a bird that
+              looks like a drone in one frame is rejected by its flight pattern.
+            </figcaption>
+          </figure>
+
+          <h3>Three kinds of data movement</h3>
+          <p>
+            The "event bus" is not one thing. Keeping these apart avoids
+            overlapping messaging layers.
+          </p>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Layer</th><th>Carries</th><th>Mechanism</th><th>When it exists</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Pipeline</td>
+                  <td>Video frames between stages, with backpressure</td>
+                  <td>Bounded queues (drop-oldest) holding handles to pooled buffers, inside one process</td>
+                  <td><span class="pill">From the MVP</span></td>
+                </tr>
+                <tr>
+                  <td>Event bus</td>
+                  <td>Metadata: detections, tracks, alerts, health</td>
+                  <td>In-process pub/sub first; same interface later backed by ZeroMQ</td>
+                  <td><span class="pill">In-process from the MVP</span></td>
+                </tr>
+                <tr>
+                  <td>IPC</td>
+                  <td>The same events between processes</td>
+                  <td>ZeroMQ or similar, protobuf</td>
+                  <td><span class="pill n">Only when a module needs its own process</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 12px">
+            Protobuf defines message structure; it does not provide zero-copy.
+            Frames never travel through the serialized bus.
+          </p>
+
+          <h3>Process and thread model (MVP default)</h3>
+          <p>
+            <strong>One Python process</strong> that calls native libraries
+            (NVDEC/GStreamer, OpenCV, TensorRT). Hot-path modules ported to C++
+            later load <strong>in the same process as Python extensions</strong>
+            (pybind11 or similar), so frames stay in GPU memory. A separate
+            process is used only where isolation is worth the cost, such as a
+            vendor camera SDK that can crash.
+          </p>
+          <pre>
+Process "edge_node"
+ ├─ thread: capture/decode per camera ─► [frame pool] ─► queue (drop-oldest)
+ ├─ thread: preprocess/tile + detect  ─► Detections (metadata)
+ ├─ thread: tracker + classifier      ─► Tracks
+ ├─ thread: result/evidence writer    ─► sink, recorder (async, retried)
+ └─ in-process event bus: metadata, health, alerts
+Separate processes, only when needed: vendor SDK wrapper, ops API, training tools</pre>
+          <p style="margin-top: 12px">
+            <strong>Frame ownership.</strong> A frame lives in a fixed pool of
+            buffers. The source takes a buffer, fills it and hands a handle
+            downstream. Each stage holds a reference only while it uses the
+            buffer and releases it when done. A frame dropped from a full queue
+            releases its buffer at once. Metadata copies what it needs
+            (timestamps, boxes) and never keeps a buffer alive. Evidence crops
+            are copied out explicitly.
+          </p>
+
+          <h3>Deployment</h3>
+          <div class="cols">
+            <div class="card">
+              <h3>Edge node</h3>
+              <p>Jetson Orin or x86 + RTX. Runs the whole pipeline next to the camera. Docker, read-only root, signed images.</p>
+            </div>
+            <div class="card">
+              <h3>Training environment</h3>
+              <p>Separate GPU machine, Python. Produces versioned model files that the edge node loads after checking their signature.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="modules">
+        <div class="tag">04 · Modules</div>
+        <div class="body">
+          <h2>Swappable modules</h2>
+          <p>
+            The system is a chassis with sockets, like a car. When a part
+            breaks, a temporary part is fitted so the vehicle keeps running, and
+            the broken one is repaired on the bench. A part can also be upgraded
+            alone. No other part is touched, because parts only meet at the
+            socket.
+          </p>
+          <div class="verdict">
+            <p>
+              <strong>Verdict: good, with conditions.</strong> Four sockets are
+              enough for this scope. It only works if the socket contracts stay
+              small and stable, and every limp-home part is tested as seriously
+              as the main one.
+            </p>
+          </div>
+          <figure>
+            <div class="fig">
+              <svg
+                viewBox="0 0 980 340"
+                role="img"
+                aria-label="A chassis bar sits above four sockets: video source, detector, tracker and result sink. Under each is a primary part and a limp-home part. The TensorRT detector has a GPU fault and the CPU motion detector is active as the temporary replacement.">
+                <defs>
+                  <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                    <path d="M0 0L10 5L0 10z" fill="currentColor" />
+                  </marker>
+                </defs>
+                <text class="h" x="10" y="20">CHASSIS · FIXED, RARELY CHANGES</text>
+                <rect class="bus" x="10" y="30" width="960" height="44" rx="4" />
+                <text class="t" x="24" y="57">Supervisor · Component registry · Health monitor · Event bus · Config</text>
+                <text class="h" x="10" y="104">SOCKETS · VERSIONED INTERFACES</text>
+                <rect class="bx hi" x="10" y="114" width="225" height="40" rx="4" />
+                <text class="t" x="22" y="139">IVideoSource</text>
+                <rect class="bx hi" x="255" y="114" width="225" height="40" rx="4" />
+                <text class="t" x="267" y="139">IDetector</text>
+                <rect class="bx hi" x="500" y="114" width="225" height="40" rx="4" />
+                <text class="t" x="512" y="139">ITracker</text>
+                <rect class="bx hi" x="745" y="114" width="225" height="40" rx="4" />
+                <text class="t" x="757" y="139">IResultSink</text>
+                <text class="h" x="10" y="184">PRIMARY PART</text>
+                <rect class="bx hi" x="10" y="192" width="225" height="52" rx="4" />
+                <text class="t" x="22" y="214">RtspSource</text>
+                <text class="s" x="22" y="232">active</text>
+                <rect class="bx wr" x="255" y="192" width="225" height="52" rx="4" />
+                <text class="t" x="267" y="214">TrtDetector</text>
+                <text class="s" x="267" y="232">GPU fault · on bench</text>
+                <rect class="bx hi" x="500" y="192" width="225" height="52" rx="4" />
+                <text class="t" x="512" y="214">ByteTrackTracker</text>
+                <text class="s" x="512" y="232">active</text>
+                <rect class="bx hi" x="745" y="192" width="225" height="52" rx="4" />
+                <text class="t" x="757" y="214">StreamSink</text>
+                <text class="s" x="757" y="232">active</text>
+                <text class="h" x="10" y="274">LIMP-HOME PART · STANDBY</text>
+                <rect class="bx" x="10" y="282" width="225" height="52" rx="4" />
+                <text class="t" x="22" y="304">BackupRtsp</text>
+                <text class="s" x="22" y="322">second stream</text>
+                <rect class="bx hi" x="255" y="282" width="225" height="52" rx="4" />
+                <text class="t" x="267" y="304">MotionDetector</text>
+                <text class="s" x="267" y="322">CPU · ACTIVE now · unclassified</text>
+                <rect class="bx" x="500" y="282" width="225" height="52" rx="4" />
+                <text class="t" x="512" y="304">KalmanIouTracker</text>
+                <text class="s" x="512" y="322">simple, no re-ID</text>
+                <rect class="bx" x="745" y="282" width="225" height="52" rx="4" />
+                <text class="t" x="757" y="304">LocalFileSink</text>
+                <text class="s" x="757" y="322">buffer and retry</text>
+                <path class="ln" d="M122 154V190M367 154V190M612 154V190M857 154V190" marker-end="url(#a3)" />
+                <path class="dl" d="M367 244V280" marker-end="url(#a3)" />
+                <text class="lb" x="377" y="266">failover</text>
+              </svg>
+            </div>
+            <figcaption>
+              Filled green is the part running now, orange is faulted, plain is
+              standby. The detector socket shows a live swap: the GPU detector is
+              out for repair and a CPU motion detector keeps the site alarming
+              at lower accuracy. The tracker and sink never notice.
+            </figcaption>
+          </figure>
+          <p style="margin-top: 14px">
+            <strong>A limp-home part is not an equal replacement.</strong>
+            <code>MotionDetector</code> finds movement but cannot classify
+            objects, so a motion-only site cannot tell a drone from a bird.
+            Output from a degraded detector carries the degraded flag and the
+            class "unclassified", and is never reported as a confirmed drone.
+          </p>
+
+          <h3>Patterns used</h3>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Pattern</th><th>Where</th><th>What it buys</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Strategy</td><td><code>IDetector</code>, <code>ITracker</code></td><td>Swap algorithms or A/B test models with a config change</td></tr>
+                <tr><td>Adapter</td><td>Video sources</td><td>Camera and protocol details stay out of the core; one fake source for tests</td></tr>
+                <tr><td>Decorator</td><td><code>TiledDetector</code>, <code>ClassifiedDetector</code></td><td>Tiling and bird rejection added without touching model code</td></tr>
+                <tr><td>State</td><td><code>Track</code> lifecycle: Tentative → Confirmed → Coasting → Lost</td><td>Confirmation and loss rules in one tested place</td></tr>
+                <tr><td>Supervisor + limp-home</td><td>Each socket has a primary and a fallback</td><td>Temporary replacement on fault; shadow run before switching back or promoting an upgrade</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <pre>
+# core/interfaces.py  (a C++ mirror is written only when a module is ported)
+@dataclass
+class Detection:
+    box: BBox            # pixels, sensor frame
+    score: float         # detector score, not a probability
+    cls: ClassId
+    frame_ts: float      # capture time
+    camera_id: str
+
+class IDetector(Protocol):
+    def warmup(self) -> None: ...
+    def detect(self, frame: FrameHandle) -> list[Detection]: ...
+    def health(self) -> Health: ...        # mode, last error, heartbeat age
+    def info(self) -> ModelInfo: ...
+
+# config: detector: { primary: trt_yolo, fallback: motion_cpu, shadow: trt_rtdetr }</pre>
+
+          <h3>The three garage operations</h3>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Operation</th><th>What happens</th><th>What stays untouched</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Temporary replacement</td>
+                  <td>Health monitor sees missed heartbeats or errors, the Supervisor rebinds the socket to the limp-home part at the next frame, and sets the degraded flag</td>
+                  <td>Every other module</td>
+                </tr>
+                <tr>
+                  <td>Repair the official part</td>
+                  <td>Fix runs on the bench against the replay set and contract tests, then the Supervisor switches back after a warm-up and a clean shadow run</td>
+                  <td>The limp-home part keeps serving until the switch</td>
+                </tr>
+                <tr>
+                  <td>Upgrade a part</td>
+                  <td>New model registers under a new version, runs in shadow beside the old one, then is promoted by config. Rollback is one config line</td>
+                  <td>All other parts and the socket contract</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Failure and recovery rules</h3>
+          <p>
+            <code>health()</code> only reports. The Supervisor acts on it with
+            explicit rules. Values are starting points, to be tuned in phase 4.
+          </p>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Failure</th><th>Detected by</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Camera disconnect</td><td>No frame for 2 s</td><td>Mark source down, reconnect with exponential backoff (1 s up to 30 s), report it, keep other cameras running</td></tr>
+                <tr><td>GPU reset or CUDA error</td><td>Inference call error, driver log</td><td>Rebuild the inference context, warm up, resume; if it fails 3 times in 10 min, go to degraded mode</td></tr>
+                <tr><td>Stage hung</td><td>No heartbeat for 5 s</td><td>Restart the stage; if a thread cannot be stopped, restart the process</td></tr>
+                <tr><td>Queue full for a long time</td><td>Drop rate above threshold for 30 s</td><td>Warn, then shed load (lower rate or fewer tiles) and set the degraded flag</td></tr>
+                <tr><td>Process crash</td><td>Service manager</td><td>Restart, reload config and model, rebuild tracks from scratch and mark them "re-acquired"</td></tr>
+                <tr><td>Result sink unreachable</td><td>Send error or timeout</td><td>Buffer results on local disk, retry with backoff; never block the frame loop</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 12px">
+            <strong>No flapping.</strong> A part that fails is failed over once.
+            Failback needs a minimum dwell time in degraded mode and a clean
+            shadow run (for example 60 s with no errors), and is allowed at most
+            a fixed number of times per hour. After that the part is latched out
+            until an operator or an automated repair step clears it. Every
+            transition is written to the audit log.
+          </p>
+
+          <h3>MVP scope</h3>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Build now</th><th>Defer until operations show the need</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Four interfaces: <code>IVideoSource</code>, <code>IDetector</code>, <code>ITracker</code>, <code>IResultSink</code></td><td>Plugin registry, abstract factories</td></tr>
+                <tr><td>Video file adapter, then RTSP and live camera</td><td>Hot-swap of every module</td></tr>
+                <tr><td>Replay regression, structured logging, metrics</td><td>General shadow deployment</td></tr>
+                <tr><td>Versioned protobuf schemas</td><td>Several implementations per interface</td></tr>
+                <tr><td>Health monitoring and visible degraded flag</td><td>Distributed messaging</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 12px">
+            Slice: video file → detector → tracker → result and evidence. Only
+            modules that truly need runtime failover get a limp-home part; the
+            rest change through deployment or config.
+          </p>
+
+          <h3>Pros and cons</h3>
+          <div class="cols">
+            <div class="card">
+              <h3>Pros</h3>
+              <ul>
+                <li>A fault stays in one part, and a stand-in keeps detection running during the fix</li>
+                <li>Upgrade the detector or tracker without regression risk to the rest</li>
+                <li>Shadow mode gives A/B model tests on live video</li>
+                <li>Parts test alone with fakes and recorded video</li>
+                <li>Camera SDK lock-in stays inside one adapter</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Cons</h3>
+              <ul>
+                <li>A wrong socket contract is costly because every part depends on it</li>
+                <li>Frames crossing a boundary can add copies, so they stay in pooled GPU buffers</li>
+                <li>A generic socket can hide a part's special features (GPU batching)</li>
+                <li>Limp-home parts get neglected, and results change silently on failover</li>
+                <li>More to operate: versions, health rules, compatibility</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="latency">
+        <div class="tag">05 · Budget</div>
+        <div class="body">
+          <h2>Latency budget</h2>
+          <p>
+            Working allocation for one stream at 1080p with tiling. It is a
+            placeholder to design against, not an acceptance criterion. Stages
+            run in parallel, so the total does not translate to a final frame
+            rate.
+          </p>
+          <div
+            class="budget"
+            role="img"
+            aria-label="Latency budget bar: capture and decode 12 ms, preprocess and tile 6 ms, inference 25 ms, tracking 4 ms, classification 4 ms, publish 3 ms, total 54 ms.">
+            <div style="flex: 12">12</div>
+            <div style="flex: 6">6</div>
+            <div class="hot" style="flex: 25">25</div>
+            <div style="flex: 4">4</div>
+            <div style="flex: 4">4</div>
+            <div style="flex: 3">3</div>
+          </div>
+          <div class="legend">
+            <span>12 ms capture + NVDEC decode</span><span>6 ms preprocess + tile</span
+            ><span><strong style="color: var(--accent)">25 ms inference</strong></span
+            ><span>4 ms track</span><span>4 ms classify</span><span>3 ms publish</span><span>= 54 ms</span>
+          </div>
+          <p style="margin-top: 14px">
+            It becomes an acceptance criterion only when these are fixed and
+            measured on the real device:
+          </p>
+          <ul>
+            <li>GPU model and power mode, camera count, resolution and frame rate</li>
+            <li>Tiles per frame and batch size</li>
+            <li>Average, p95 and p99 latency, not just the mean</li>
+            <li>Throughput with all cameras running at once</li>
+            <li>End-to-end latency from camera exposure to the result being published</li>
+          </ul>
+          <ul>
+            <li>Bounded queues with drop-oldest. A slow stage drops stale frames; it never builds a backlog.</li>
+            <li>Timestamp every frame at capture and carry it through to the result, so latency is measured, not guessed.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="drone">
+        <div class="tag">06 · Domain</div>
+        <div class="body">
+          <h2>What makes drone detection hard</h2>
+          <div class="cols">
+            <div class="card">
+              <h3>Tiny targets</h3>
+              <p>A small quadcopter at range is a few to a few dozen pixels. Use tiled inference over full-resolution frames, a stride-4 detection head, long focal length, and train on crops that match the real pixel sizes.</p>
+            </div>
+            <div class="card">
+              <h3>Birds and clutter</h3>
+              <p>Birds, insects, kites and aircraft cause false alarms. Add a second-stage classifier on the track crop, and score motion over time (wingbeat, flight path), not single frames.</p>
+            </div>
+            <div class="card">
+              <h3>Day, night, weather</h3>
+              <p>Support visible and thermal video. Keep one model per modality or a fused-input model, and gate each by image quality metrics.</p>
+            </div>
+            <div class="card">
+              <h3>Moving camera</h3>
+              <p>PTZ and vehicle-mounted cameras move. Estimate ego-motion so the tracker works on stabilized coordinates, and the motion detector subtracts camera movement.</p>
+            </div>
+            <div class="card">
+              <h3>Metrics that matter</h3>
+              <ul>
+                <li>Probability of detection by range band</li>
+                <li>False alarms per camera-hour</li>
+                <li>Time from first visible to confirmed track</li>
+                <li>Track continuity (ID switches)</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 26px">Output schemas</h3>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Schema</th><th>Holds</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>Detection</code></td><td>capture timestamp, frame id, camera id, box in pixels, detector score, class scores</td></tr>
+                <tr><td><code>Track</code></td><td>track id, camera id, state (tentative, confirmed, coasting, lost), box history, velocity in pixels, class probabilities, first-seen and last-seen time, degraded flag</td></tr>
+                <tr><td><code>DroneEvent</code></td><td>track id, confirmation time, class probabilities, evidence clip path, model and config versions</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top: 12px">
+            Detector score is not the probability that the object is a drone.
+            Class probabilities are kept as their own field and are calibrated
+            on the test set.
+          </p>
+
+          <h3>Evaluation protocol</h3>
+          <p>Detection numbers only mean something if the test data is independent of the training data.</p>
+          <ul>
+            <li>Split by recording session, and where possible by site, date or condition, never by frame. Neighboring frames of one video must not appear on both sides.</li>
+            <li>Keep a held-out set of scenarios that never appear in training: new site, new drone model, night, bad weather.</li>
+            <li>Version the labeling guide, the labels, the split and the metric definitions together with the frozen test set.</li>
+            <li>Report sample counts and uncertainty with every metric, for example a confidence interval on Pd per range band.</li>
+            <li>Measure false alarms per camera-hour on long background-only recordings, separate from the Pd test set.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="repo">
+        <div class="tag">07 · Build</div>
+        <div class="body">
+          <h2>Repository and stack</h2>
+          <pre>
+cuas/
+├── core/        interfaces, Detection, Track, pipeline, supervisor
+├── sources/     VideoSource adapters (file, RTSP, GigE)
+├── detect/      detectors, tiling, track classifier
+├── track/       Kalman, ByteTrack
+├── sinks/       JSON, stream, evidence recorder
+├── apps/        edge_node (composition root)
+├── proto/       protobuf schemas = the public contract
+├── ml/          training, export (ONNX → TensorRT), evaluation
+├── tools/       replay, dataset tools, ops API
+├── deploy/      Dockerfiles, compose, signing
+└── tests/       unit (fake sources), replay regression, hardware-in-the-loop</pre>
+          <div class="scroll" style="margin-top: 16px">
+            <table>
+              <thead>
+                <tr><th>Layer</th><th>Choice</th><th>Reason</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Language</td><td>Python 3.11 first; C++20 for measured hot paths</td><td>Fast iteration, port only what the benchmark requires</td></tr>
+                <tr><td>Video and GPU</td><td>GStreamer or DeepStream, NVDEC, CUDA, TensorRT</td><td>Hardware decode and GPU-resident frames</td></tr>
+                <tr><td>Models</td><td>YOLO-family or RT-DETR, trained in PyTorch</td><td>Mature export to TensorRT; compare on your own data</td></tr>
+                <tr><td>Messaging</td><td>In-process first, protobuf schemas, ZeroMQ if processes split</td><td>No distributed layer until needed</td></tr>
+                <tr><td>Observability</td><td>Prometheus, Grafana, structured logs</td><td>Per-stage latency and detection quality on one screen</td></tr>
+                <tr><td>Integrity</td><td>Signed images and models, versioned config, audit log of swaps</td><td>Know exactly which model produced a result</td></tr>
+                <tr><td>CI/CD</td><td>Replay regression on a fixed video set gates every merge</td><td>A change cannot silently lower Pd or raise false alarms</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <div class="tag">08 · Plan</div>
+        <div class="body">
+          <h2>Roadmap</h2>
+          <p>
+            Durations are indicative for a team of 3–5. They are an estimate, not
+            a commitment, until the open questions at the end are answered.
+          </p>
+          <div class="phase">
+            <div class="when">Phase 0<small>2–3 weeks</small></div>
+            <div>
+              <h3>Requirements and data</h3>
+              <p>Fix the target hardware, cameras and input types. Define test conditions (range bands, day and night, weather), the independent evaluation data, the labeling method, and numeric thresholds for Pd, false alarms per camera-hour and latency. Collect drone, bird and background footage from the real cameras.</p>
+              <p class="exit">Exit: signed requirements with numeric thresholds, and a labeled seed dataset.</p>
+              <p class="exit">Gate 1: do not move on without target hardware, usable test data with ground truth, the evaluation protocol and agreed acceptance criteria.</p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">Phase 1<small>~6 weeks</small></div>
+            <div>
+              <h3>Python vertical slice</h3>
+              <p>Video file → detector → tracker → result and evidence clip, in Python, with replay and evaluation harness, metrics, logging and versioned schemas. Benchmark on the target hardware.</p>
+              <p class="exit">Exit: Pd and false-alarm numbers per range band on a frozen test set, plus measured p95/p99 latency and throughput on real hardware.</p>
+              <p class="exit">Gate 2: end-to-end run on target hardware with detection, false-alarm, latency, throughput and replay-regression results. The process model, frame ownership and recovery rules are decided here from the measurements.</p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">Phase 2<small>set by phase 1</small></div>
+            <div>
+              <h3>Port the hot path</h3>
+              <p>Move only the modules that missed the requirement to C++ (likely decode, preprocess, inference), behind the same interfaces. Add the frame buffer pool and bounded queues. Add live RTSP input.</p>
+              <p class="exit">Exit: live stream under the measured requirement, replay regression green.</p>
+              <p class="exit">Gate 3: the same workload run before and after each port, comparing accuracy, latency, throughput and resource use. A port that does not improve a missed requirement is reverted.</p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">Phase 3<small>6–8 weeks</small></div>
+            <div>
+              <h3>Detection robustness</h3>
+              <p>Work condition by condition: tiny and distant targets, birds and clutter, night and thermal, moving camera. Mine hard cases, retrain, and add the track classifier and ego-motion where the evaluation shows they are needed.</p>
+              <p class="exit">Exit: each condition meets its threshold on the held-out set.</p>
+              <p class="exit">Gate 4: no condition is declared done on training or seen-site data.</p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">Phase 4<small>~4–6 weeks</small></div>
+            <div>
+              <h3>Hardening</h3>
+              <p>Soak tests of 7 days or more on edge hardware, and failure injection: camera loss, GPU reset, process crash, sink unreachable, degraded mode and recovery. Add model and config versioning with rollback.</p>
+              <p class="exit">Gate 5: all injected failures recover within the rules above, and no failure flaps between primary and fallback.</p>
+            </div>
+          </div>
+          <div class="phase">
+            <div class="when">Phase 5<small>ongoing</small></div>
+            <div>
+              <h3>Operate and improve</h3>
+              <p>Collect hard cases, retrain, ship signed models with versioning and rollback, and track model drift and the false-alarm rate.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="risks">
+        <div class="tag">09 · Risk</div>
+        <div class="body">
+          <h2>Main risks</h2>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Too little real drone footage at long range</td><td><span class="pill w">High</span></td><td>Early field collection, synthetic data for augmentation only, test set always from real cameras</td></tr>
+                <tr><td>False alarms from birds</td><td><span class="pill w">High</span></td><td>Second-stage classifier, temporal scoring, per-site threshold tuning, report false alarms per hour from day one</td></tr>
+                <tr><td>Train and test data leak into each other</td><td><span class="pill w">High</span></td><td>Split by session and site, held-out scenarios, versioned split, uncertainty with every metric</td></tr>
+                <tr><td>Latency target never validated on real hardware</td><td><span class="pill w">High</span></td><td>Fix hardware and workload in phase 0, report p95/p99 from the phase 1 benchmark</td></tr>
+                <tr><td>Limp-home part drifts or is never tested</td><td><span class="pill w">High</span></td><td>Same contract tests and replay set as primaries, degraded flag on every output, scheduled failover drills</td></tr>
+                <tr><td>Framework built before the model and data are proven</td><td><span class="pill w">High</span></td><td>Vertical slice first; registry, hot-swap and shadow deployment only on demonstrated need</td></tr>
+                <tr><td>Model accuracy drops after a change</td><td><span class="pill">Medium</span></td><td>Frozen replay set gating CI, model registry with rollback</td></tr>
+                <tr><td>Socket contract set wrong early</td><td><span class="pill">Medium</span></td><td>Four coarse sockets, versioned messages, freeze the contract after the phase 1 baseline</td></tr>
+                <tr><td>Vendor lock-in on GPU or camera SDK</td><td><span class="pill">Medium</span></td><td>Vendor code behind adapters; ONNX kept as the portable model format</td></tr>
+                <tr><td>C++ team ramp-up</td><td><span class="pill">Medium</span></td><td>Keep the C++ surface small and benchmark-driven; sanitizers and clang-tidy in CI</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="open" style="border-bottom: 0">
+        <div class="tag">10 · Open</div>
+        <div class="body">
+          <h2>Open questions before approving the full build</h2>
+          <ul>
+            <li>Is the target hardware Jetson Orin or x86 with an NVIDIA RTX GPU? How many cameras, at what resolution and frame rate?</li>
+            <li>What inputs are needed: recorded files only at first, or live RTSP and thermal cameras too?</li>
+            <li>Is there real footage with ground truth, especially at long range and at night?</li>
+            <li>What are the acceptance thresholds for latency, false alarms, detection performance and simultaneous cameras? They have no values yet and must be agreed from the use case and camera limits. Until then phase 1 cannot be declared a success and no schedule is committed.</li>
+            <li>Who consumes the output (JSON, a stream, a viewer), and in what format?</li>
+            <li>Which modules need runtime failover, and which only change through deployment or config?</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+  </body>
+</html>

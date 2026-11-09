@@ -1,0 +1,4 @@
+# note
+simple mvp face reconition first
+Face register by img -> store
+video stream can know unregister/register face
