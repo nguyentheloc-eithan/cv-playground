@@ -65,6 +65,7 @@ footer{margin-top:64px;padding-top:16px;border-top:1px solid var(--line);color:v
 <div class="wrap">
 <nav class="toc" aria-label="Contents">
   <b>Start</b>
+  <a href="#setup">D. Setup guide (step by step)</a>
   <a href="#v05">C. Latest update (v0.5)</a>
   <a href="#v04">B. Update v0.4</a>
   <a href="#v03">A. Update v0.3</a>
@@ -100,6 +101,376 @@ footer{margin-top:64px;padding-top:16px;border-top:1px solid var(--line);color:v
   <p class="lede">MVP plan, software requirements specification, architecture, diagrams and delivery plan for a camera at the apartment entrance that tells residents from unknown people, built around swappable AI models.</p>
   <div class="meta"><span>Version 0.5 draft</span><span>Prepared 2026-11-09</span><span>Owner: building operator</span><span>Format: IEEE 830 style SRS plus design docs</span></div>
 </header>
+
+<h2 id="setup">D. Setup guide: do it one step at a time</h2>
+<div class="callout"><p><b>How to use this guide.</b> Each step says <em>where</em> to type the command (Mac, PC PowerShell, Ubuntu inside WSL, tablet) and ends with a <b>Check</b>. Do not go to the next step until the check passes. Replace the example values with your own: PC address <code>192.168.1.200</code>, router <code>192.168.1.1</code>, tablet <code>192.168.1.201</code>, customer <code>acme</code>.</p>
+<p><b>What runs today.</b> The working MVP is the Python app in <code>projects/recognition/face/entry-guard-compact</code> (web page, register, check, SQLite). This guide puts it behind Caddy with HTTPS and a private name so the tablet camera works. PocketBase, MinIO, the Auth service and the RTSP engine from sections A to C are later milestones and are not needed for the steps below.</p></div>
+
+<h3>D.0 Plan and order</h3>
+<div class="scroll"><table>
+<tr><th>Phase</th><th>Where</th><th>Goal</th><th>Needs the PC?</th></tr>
+<tr><td>1</td><td>Mac</td><td>Run the app, register and check a face</td><td>No</td></tr>
+<tr><td>2</td><td>Mac</td><td>Rehearse HTTPS, the private CA and the tablet</td><td>No (fastest way to find mistakes)</td></tr>
+<tr><td>3</td><td>Windows PC</td><td>Fixed address, firewall, WSL with Ubuntu</td><td>Yes</td></tr>
+<tr><td>4</td><td>Ubuntu (WSL)</td><td>Install the app and run it as a service</td><td>Yes</td></tr>
+<tr><td>5</td><td>Windows PC</td><td>Caddy (HTTPS) and CoreDNS (the name <code>guard.internal</code>) as services</td><td>Yes</td></tr>
+<tr><td>6</td><td>Mac and tablet</td><td>Install the CA, point DNS, open the site</td><td>Yes</td></tr>
+<tr><td>7</td><td>Ubuntu</td><td>Prepare and test the IP camera (RTSP)</td><td>Yes</td></tr>
+<tr><td>8</td><td>Port scan from the Mac: <code>nmap -p 1-1000 192.168.1.200</code> (<code>brew install nmap</code>)</td><td>Only 443 and 53 open</td></tr>
+<tr><td>9</td><td>All</td><td>Acceptance checklist and backup</td><td>Yes</td></tr>
+</table></div>
+
+<h3>D.1 Phase 1: run the app on the Mac</h3>
+<p><b>Where: Mac Terminal.</b></p>
+<pre><code>cd ~/Documents/priv/cv-playground/projects/recognition/face/entry-guard-compact
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# models (about 230 KB and 37 MB)
+curl -L -o models/yunet.onnx https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
+curl -L -o models/sface.onnx https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx
+ls -la models
+
+pytest -q
+python main.py --customer example
+</code></pre>
+<p>Open <code>http://127.0.0.1:8000</code>, allow the camera, add your name and unit, press <b>Register</b>, then <b>Check now</b>.</p>
+<p><b>Check:</b> <code>pytest</code> reports all tests passed; <code>ls</code> shows <code>sface.onnx</code> about 37 MB (a file of a few bytes is a download error page, delete it and download again); your face is labelled AUTHORIZED after registering.</p>
+
+<h4>Create your customer file</h4>
+<pre><code>cp config/customers/example.yaml config/customers/acme.yaml
+# edit: customer.name, person_fields, policy thresholds
+python main.py --customer acme
+</code></pre>
+<p>Customer files are git-ignored except <code>example.yaml</code>, so private settings stay local.</p>
+
+<h3>D.2 Phase 2: rehearse HTTPS and the private CA on the Mac</h3>
+<p>Do this before touching the PC. It proves the certificate, the camera on the tablet and the name, using only the Mac. If something fails later on the PC, you will know it is the PC and not the idea.</p>
+<p><b>Where: Mac Terminal.</b></p>
+<pre><code>brew install caddy
+mkdir -p ~/entryguard-rehearsal
+cd ~/entryguard-rehearsal
+cat &gt; Caddyfile &lt;&lt;'EOF'
+{
+    local_certs
+}
+guard.internal {
+    tls internal
+    header Permissions-Policy "camera=(self)"
+    reverse_proxy 127.0.0.1:8000
+}
+EOF
+ifconfig | grep "inet " | grep -v 127.0.0.1      # note the Mac's LAN address, e.g. 192.168.1.50
+echo "127.0.0.1 guard.internal" | sudo tee -a /etc/hosts
+sudo caddy run --config Caddyfile                # leave this terminal open
+</code></pre>
+<p>In a second terminal, start the app (step D.1), then trust the CA on the Mac:</p>
+<pre><code>sudo caddy trust --config ~/entryguard-rehearsal/Caddyfile
+</code></pre>
+<p>Open <code>https://guard.internal</code> in Chrome on the Mac.</p>
+<p><b>Check:</b> the padlock shows with no warning and the camera works.</p>
+<div class="callout warn"><p>For the tablet to reach the Mac you also need DNS for <code>guard.internal</code> on the tablet (step D.7) or, for a quick test only, open <code>https://192.168.1.50</code> and accept a name-mismatch warning. Remove the <code>guard.internal</code> line from <code>/etc/hosts</code> when you finish the rehearsal if the name will point to the PC.</p></div>
+
+<h3>D.3 Phase 3: prepare the Windows PC</h3>
+
+<h4>D.3.1 Check the PC</h4>
+<p><b>Where: PC, PowerShell.</b></p>
+<pre><code>winver                       # Windows 10 22H2 or Windows 11 needed
+systeminfo | findstr /C:"OS Name" /C:"Total Physical Memory" /C:"Processor"
+</code></pre>
+<p><b>Check:</b> at least 4 cores, 8 GB RAM, SSD. Connect the PC to the router with an <b>Ethernet cable</b>.</p>
+
+<h4>D.3.2 Fixed address</h4>
+<p>First look in the router page for "DHCP reservation" or "static lease" and reserve <code>192.168.1.200</code> for the PC. If the router has none, set it in Windows:</p>
+<pre><code># PowerShell as Administrator
+Get-NetIPConfiguration                           # note the interface name, gateway, current address
+ping 192.168.1.200                               # must NOT answer (address is free)
+Set-NetIPInterface -InterfaceAlias "Ethernet" -Dhcp Disabled
+New-NetIPAddress -InterfaceAlias "Ethernet" -IPAddress 192.168.1.200 -PrefixLength 24 -DefaultGateway 192.168.1.1
+Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ServerAddresses 192.168.1.1
+</code></pre>
+<p><b>Check:</b> <code>ipconfig</code> shows <code>192.168.1.200</code> and <code>ping 8.8.8.8</code> works.</p>
+
+<h4>D.3.3 Network profile and firewall</h4>
+<pre><code># PowerShell as Administrator
+Set-NetConnectionProfile -InterfaceAlias "Ethernet" -NetworkCategory Private
+New-NetFirewallRule -DisplayName "EntryGuard HTTPS"   -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow -Profile Private -RemoteAddress LocalSubnet
+New-NetFirewallRule -DisplayName "EntryGuard DNS UDP" -Direction Inbound -Protocol UDP -LocalPort 53  -Action Allow -Profile Private -RemoteAddress LocalSubnet
+New-NetFirewallRule -DisplayName "EntryGuard DNS TCP" -Direction Inbound -Protocol TCP -LocalPort 53  -Action Allow -Profile Private -RemoteAddress LocalSubnet
+Get-NetFirewallRule -DisplayName "EntryGuard*" | Format-Table DisplayName, Enabled, Profile
+</code></pre>
+<p><b>Check:</b> three rules listed, all enabled. Also in the router: turn off UPnP, port forwarding and DMZ.</p>
+
+<h4>D.3.4 WSL2 and Ubuntu</h4>
+<pre><code># PowerShell as Administrator
+wsl --install -d Ubuntu-22.04
+# restart when asked, then open "Ubuntu 22.04" from the Start menu and create your Linux user
+wsl -l -v                         # Ubuntu-22.04 should show VERSION 2
+</code></pre>
+<p>Limit memory so WSL does not starve an old PC. Create <code>C:\Users\YOURNAME\.wslconfig</code>:</p>
+<pre><code>[wsl2]
+memory=3GB
+processors=2
+</code></pre>
+<p>Then inside Ubuntu enable systemd (needed to run the app as a service):</p>
+<pre><code>sudo tee /etc/wsl.conf &lt;&lt;'EOF'
+[boot]
+systemd=true
+EOF
+</code></pre>
+<pre><code># back in PowerShell
+wsl --shutdown
+wsl -d Ubuntu-22.04 -- systemctl is-system-running
+</code></pre>
+<p><b>Check:</b> the last command prints <code>running</code> (or <code>degraded</code>, which is also fine).</p>
+
+<h3>D.4 Phase 4: install the app inside Ubuntu</h3>
+<p><b>Where: Ubuntu (WSL).</b></p>
+<pre><code>sudo apt update
+sudo apt install -y python3-venv python3-pip git ffmpeg libgl1 libglib2.0-0
+
+mkdir -p ~/apps &amp;&amp; cd ~/apps
+git clone git@github.com:nguyentheloc-eithan/cv-playground.git
+cd cv-playground/projects/recognition/face/entry-guard-compact
+
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+curl -L -o models/yunet.onnx https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
+curl -L -o models/sface.onnx https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx
+ls -la models
+.venv/bin/python -m pytest -q
+</code></pre>
+<p>If <code>git clone</code> over SSH is not set up yet, use the HTTPS URL, or copy the folder from the Mac with <code>scp -r</code>. Copy your customer file <code>config/customers/acme.yaml</code> across too (it is not in git).</p>
+
+<h4>Run it as a service</h4>
+<p>Find your Linux user name with <code>whoami</code> and use it below in place of <code>YOURUSER</code>.</p>
+<pre><code>sudo tee /etc/systemd/system/entryguard.service &lt;&lt;'EOF'
+[Unit]
+Description=Entry Guard
+After=network.target
+
+[Service]
+User=YOURUSER
+WorkingDirectory=/home/YOURUSER/apps/cv-playground/projects/recognition/face/entry-guard-compact
+ExecStart=/home/YOURUSER/apps/cv-playground/projects/recognition/face/entry-guard-compact/.venv/bin/python main.py --customer acme --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now entryguard
+systemctl status entryguard --no-pager
+curl -s http://127.0.0.1:8000/api/config
+journalctl -u entryguard -f            # live log, Ctrl+C to leave
+</code></pre>
+<p><b>Check:</b> status is <code>active (running)</code> and the <code>curl</code> returns your customer name. From Windows, <code>http://127.0.0.1:8000</code> in a browser also opens the page, because WSL forwards localhost. The app listens only on <code>127.0.0.1</code>, so nothing else on the network can reach it directly; Caddy is the only door.</p>
+
+<h3>D.5 Phase 5: Caddy (HTTPS) and CoreDNS (the name) on Windows</h3>
+
+<h4>D.5.1 Install tools</h4>
+<pre><code># PowerShell as Administrator
+winget install CaddyServer.Caddy
+winget install NSSM.NSSM            # runs programs as Windows services; if missing, download from nssm.cc
+mkdir C:\entryguard
+mkdir C:\entryguard\caddy-data
+mkdir C:\entryguard\coredns
+# open a NEW PowerShell window so PATH updates, then:
+caddy version
+where caddy
+</code></pre>
+
+<h4>D.5.2 Caddyfile</h4>
+<p>Save as <code>C:\entryguard\Caddyfile</code>. The fixed <code>storage</code> folder keeps the certificate authority in one known place whatever user runs the service.</p>
+<pre><code>{
+    local_certs
+    storage file_system C:/entryguard/caddy-data
+}
+
+guard.internal {
+    tls internal
+    header Permissions-Policy "camera=(self)"
+    reverse_proxy 127.0.0.1:8000
+}
+</code></pre>
+<pre><code># PowerShell as Administrator
+caddy validate --config C:\entryguard\Caddyfile
+caddy run --config C:\entryguard\Caddyfile       # test run, Ctrl+C after you see it start
+caddy trust --config C:\entryguard\Caddyfile     # trust the CA on the PC itself
+dir C:\entryguard\caddy-data\pki\authorities\local
+</code></pre>
+<p><b>Check:</b> <code>root.crt</code> exists in that folder. This is the one public file you will give to the tablet and the Mac. Never copy <code>root.key</code> anywhere.</p>
+
+<h4>D.5.3 Run Caddy as a service</h4>
+<pre><code># PowerShell as Administrator (replace the path with the output of: where caddy)
+nssm install Caddy "C:\Users\YOURNAME\AppData\Local\Microsoft\WinGet\Links\caddy.exe"
+nssm set Caddy AppParameters "run --config C:\entryguard\Caddyfile"
+nssm set Caddy AppDirectory C:\entryguard
+nssm set Caddy Start SERVICE_AUTO_START
+nssm start Caddy
+Get-Service Caddy
+</code></pre>
+<p><b>Check:</b> status <code>Running</code>. On the PC, open <code>https://guard.internal</code> only after the next step (the name must resolve first), or test now with <code>curl.exe -k https://127.0.0.1</code>.</p>
+
+<h4>D.5.4 CoreDNS: answer <code>guard.internal</code> on the LAN</h4>
+<p>Download the Windows <code>coredns_..._windows_amd64.tgz</code> from <code>https://github.com/coredns/coredns/releases</code> into <code>C:\entryguard\coredns</code>, then:</p>
+<pre><code># PowerShell
+cd C:\entryguard\coredns
+tar -xzf coredns_*_windows_amd64.tgz
+netstat -ano | findstr ":53 "          # must show nothing listening on port 53 yet
+</code></pre>
+<p>Create <code>C:\entryguard\coredns\Corefile</code>:</p>
+<pre><code>.:53 {
+    bind 192.168.1.200
+    hosts {
+        192.168.1.200 guard.internal
+        fallthrough
+    }
+    forward . 192.168.1.1
+    cache 30
+}
+</code></pre>
+<pre><code># PowerShell as Administrator
+nssm install CoreDNS C:\entryguard\coredns\coredns.exe
+nssm set CoreDNS AppParameters "-conf C:\entryguard\coredns\Corefile"
+nssm set CoreDNS AppDirectory C:\entryguard\coredns
+nssm set CoreDNS Start SERVICE_AUTO_START
+nssm start CoreDNS
+nslookup guard.internal 192.168.1.200
+nslookup example.com 192.168.1.200
+</code></pre>
+<p><b>Check:</b> the first lookup returns <code>192.168.1.200</code>; the second returns a normal public address (forwarded to the router). Now <code>https://guard.internal</code> on the PC should open with a padlock once the PC uses itself as DNS, or test from the Mac in D.6.</p>
+
+<h3>D.6 Phase 6: install the CA and the name on your devices</h3>
+<h4>Copy <code>root.crt</code> off the PC</h4>
+<p>Use a USB stick, or from the Mac (needs OpenSSH Server enabled on the PC):</p>
+<pre><code># Mac
+scp YOURNAME@192.168.1.200:C:/entryguard/caddy-data/pki/authorities/local/root.crt ~/Downloads/entryguard-root.crt
+</code></pre>
+
+<h4>Mac</h4>
+<pre><code>echo "192.168.1.200 guard.internal" | sudo tee -a /etc/hosts
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/Downloads/entryguard-root.crt
+dscacheutil -q host -a name guard.internal
+</code></pre>
+<p>If you did the rehearsal in D.2, first delete the old <code>127.0.0.1 guard.internal</code> line from <code>/etc/hosts</code> (<code>sudo nano /etc/hosts</code>). Restart Chrome, open <code>https://guard.internal</code>.</p>
+<p><b>Check:</b> padlock, no warning.</p>
+
+<h4>Android tablet</h4>
+<ol>
+  <li><b>Wi-Fi settings:</b> long-press your network, Modify, Advanced options, IP settings: <b>Static</b>. IP <code>192.168.1.201</code>, gateway <code>192.168.1.1</code>, DNS 1 <code>192.168.1.200</code>, DNS 2 <code>192.168.1.1</code>. Save. (Menu names vary by brand.)</li>
+  <li><b>Private DNS:</b> Settings, Network, Private DNS: set to <b>Off</b> or <b>Automatic</b>.</li>
+  <li><b>Copy <code>root.crt</code></b> to the tablet (USB, cloud drive or e-mail to yourself).</li>
+  <li><b>Install it:</b> Settings, Security, Encryption and credentials, Install a certificate, <b>CA certificate</b>, Install anyway, choose the file. Android shows a "network may be monitored" warning; that is normal for a private authority. You may need a screen lock set first.</li>
+  <li><b>Open Chrome</b> and go to <code>https://guard.internal</code>. Allow the camera when asked.</li>
+  <li><b>Install as an app:</b> Chrome menu, Add to Home screen.</li>
+</ol>
+<p><b>Check:</b> padlock, no warning, camera preview shows, you can register and check a face on the tablet.</p>
+
+<h3>D.7 Phase 7: prepare and test the IP camera</h3>
+<ol>
+  <li><b>Create a separate camera account</b> in the camera's web page (not your main account) and give it a long password.</li>
+  <li><b>Turn off</b> cloud, P2P and UPnP features in the camera settings. Give the camera a DHCP reservation in the router (for example <code>192.168.1.210</code>). Prefer PoE; otherwise use strong Wi-Fi.</li>
+  <li><b>Find the RTSP address.</b> Common forms (check your model's manual):
+<div class="scroll"><table>
+<tr><th>Brand family</th><th>RTSP URL</th></tr>
+<tr><td>Tapo</td><td><code>rtsp://USER:PASS@192.168.1.210:554/stream1</code> (stream2 = low quality)</td></tr>
+<tr><td>Hikvision</td><td><code>rtsp://USER:PASS@192.168.1.210:554/Streaming/Channels/101</code></td></tr>
+<tr><td>Dahua / Imou</td><td><code>rtsp://USER:PASS@192.168.1.210:554/cam/realmonitor?channel=1&amp;subtype=0</code></td></tr>
+</table></div></li>
+</ol>
+<p><b>Where: Ubuntu (WSL).</b> Keep the password out of files and shell history by using an environment variable:</p>
+<pre><code>read -s -p "Camera URL: " CAM_RTSP_URL; export CAM_RTSP_URL; echo
+ffprobe -rtsp_transport tcp "$CAM_RTSP_URL"          # prints codec, size, fps
+ffmpeg -rtsp_transport tcp -i "$CAM_RTSP_URL" -frames:v 1 -y /tmp/door.jpg
+ls -la /tmp/door.jpg
+</code></pre>
+<p>Optional: test that OpenCV can read the stream, which is what the engine will use.</p>
+<pre><code>cd ~/apps/cv-playground/projects/recognition/face/entry-guard-compact
+.venv/bin/python - &lt;&lt;'EOF'
+import os, cv2
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+cap = cv2.VideoCapture(os.environ["CAM_RTSP_URL"], cv2.CAP_FFMPEG)
+ok, frame = cap.read()
+print("opened:", cap.isOpened(), "frame:", ok, None if not ok else frame.shape)
+EOF
+</code></pre>
+<p><b>Check:</b> <code>ffprobe</code> prints a video stream and <code>/tmp/door.jpg</code> is a real picture of the door. Open it (copy it to Windows) and confirm the face is large and not backlit: faces should be at least 80 px across.</p>
+<div class="callout warn"><p><b>Status:</b> the compact MVP registers and checks from the <em>browser</em> camera. Reading the door camera continuously (RTSP loop, tracking, one decision per person) is the next milestone in section 13. This step makes sure the camera, network and URL are ready for it.</p></div>
+
+<h3>D.8 Phase 8: keep it running unattended</h3>
+<pre><code># PowerShell as Administrator
+powercfg /change standby-timeout-ac 0
+powercfg /change hibernate-timeout-ac 0
+powercfg /change monitor-timeout-ac 10
+
+# start WSL at every logon so the app service comes up (needs auto-login, see below)
+schtasks /Create /TN "WSL keepalive" /SC ONLOGON /RL HIGHEST /TR "wsl.exe -d Ubuntu-22.04 --exec sleep infinity"
+</code></pre>
+<ul>
+  <li><b>Auto-login:</b> run <code>netplwiz</code>, untick "Users must enter a user name and password", enter your password.</li>
+  <li><b>After a power cut:</b> BIOS/UEFI setting "Restore on AC power loss" = <b>Power on</b>.</li>
+  <li><b>Windows Update:</b> Settings, Windows Update, Advanced options, set active hours to cover the busy period, so restarts happen at night.</li>
+  <li><b>Disk encryption:</b> turn on BitLocker. The CA private key and the face database are on this disk.</li>
+</ul>
+<p><b>Check (the real test):</b> restart the PC and wait three minutes without touching it. <code>https://guard.internal</code> must work from the tablet.</p>
+
+<h3>D.9 Phase 9: acceptance checklist and backup</h3>
+<div class="scroll"><table>
+<tr><th>#</th><th>Test</th><th>Pass when</th></tr>
+<tr><td>1</td><td>Open <code>https://guard.internal</code> on the tablet</td><td>Padlock, no warning</td></tr>
+<tr><td>2</td><td>Camera page on the tablet</td><td>Chrome asks permission once and shows the preview</td></tr>
+<tr><td>3</td><td>Register a person with the tablet camera</td><td>Person appears in the list</td></tr>
+<tr><td>4</td><td>Check the same person</td><td>AUTHORIZED, score above the accept threshold</td></tr>
+<tr><td>5</td><td>Check a different person</td><td>UNKNOWN</td></tr>
+<tr><td>6</td><td>Unplug the router's internet (WAN) cable</td><td>1 to 5 still work</td></tr>
+<tr><td>7</td><td>Restart the PC, touch nothing</td><td>1 works within 3 minutes</td></tr>
+<tr><td>8</td><td>From the Mac: <code>curl -k https://192.168.1.200/api/people</code> from outside the LAN is impossible; from the LAN only 443 and 53 answer: <code>nmap -p 1-1000 192.168.1.200</code></td><td>Only 443 and 53 open (nmap is optional: <code>brew install nmap</code>)</td></tr>
+<tr><td>9</td><td><code>curl http://192.168.1.200:8000</code> from the Mac</td><td>Connection refused (app is reachable only through Caddy)</td></tr>
+</table></div>
+
+<h4>Backup</h4>
+<pre><code># Ubuntu: consistent copy of the database (safe while the app runs)
+sudo apt install -y sqlite3
+cd ~/apps/cv-playground/projects/recognition/face/entry-guard-compact
+mkdir -p ~/backups
+sqlite3 data/entryguard.db ".backup '/home/YOURUSER/backups/entryguard-$(date +%F).db'"
+ls -la ~/backups
+
+# copy it to the Mac (run on the Mac)
+scp YOURUSER@192.168.1.200:backups/entryguard-*.db ~/Documents/backups/
+</code></pre>
+<p>The database holds face vectors of real people. Keep backups encrypted or on an encrypted disk, and delete old ones when a person asks to be removed.</p>
+
+<h3>D.10 When something fails</h3>
+<div class="scroll"><table>
+<tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+<tr><td><code>ERR_NAME_NOT_RESOLVED</code> on the tablet</td><td>Tablet is not using the PC as DNS</td><td>Re-check static IP and DNS 1 = <code>192.168.1.200</code>; Private DNS off; <code>nslookup guard.internal 192.168.1.200</code> on the Mac</td></tr>
+<tr><td>Certificate warning on the tablet</td><td>CA not installed, or installed as a Wi-Fi/VPN certificate</td><td>Install as <b>CA certificate</b>; confirm in Settings, Security, Trusted credentials, User</td></tr>
+<tr><td>Warning appears again after reinstalling Caddy</td><td>Caddy created a new CA</td><td>Keep <code>C:\entryguard\caddy-data</code> (the <code>storage</code> line). Never delete it; reinstall the new <code>root.crt</code> if you must</td></tr>
+<tr><td>Camera preview is black or no permission prompt</td><td>Page is not HTTPS, wrong camera, or blocked permission</td><td>Use the padlock page; pick another camera in the page dropdown; site settings, allow camera</td></tr>
+<tr><td>Caddy shows 502 Bad Gateway</td><td>App not running or not on port 8000</td><td><code>systemctl status entryguard</code>, <code>journalctl -u entryguard -n 50</code>; from Windows open <code>http://127.0.0.1:8000</code></td></tr>
+<tr><td>CoreDNS fails to start</td><td>Port 53 already in use</td><td><code>netstat -ano | findstr ":53 "</code> then stop that program, or confirm <code>bind</code> uses the PC address</td></tr>
+<tr><td>App says "Missing unit" or a field error</td><td>Field is required in your customer file</td><td>Edit <code>person_fields</code> in <code>config/customers/acme.yaml</code>, then <code>sudo systemctl restart entryguard</code></td></tr>
+<tr><td>Everyone is UNKNOWN or UNCERTAIN</td><td>Thresholds or photo quality</td><td>Register 3 photos in the same light as the door; adjust <code>policy.accept_threshold</code> and restart</td></tr>
+<tr><td>Passkey not offered later</td><td>Chrome refuses <code>.internal</code> as a passkey name</td><td>Use <code>guard.home.arpa</code> instead; change it once, before creating passkeys</td></tr>
+</table></div>
+
+<h4>Useful commands</h4>
+<pre><code># Ubuntu
+sudo systemctl restart entryguard          # after changing config or code
+journalctl -u entryguard -n 100 --no-pager
+# PowerShell as Administrator
+nssm restart Caddy
+nssm restart CoreDNS
+Get-Service Caddy, CoreDNS
+# update the app after a new version
+cd ~/apps/cv-playground ; git pull ; sudo systemctl restart entryguard
+</code></pre>
+
 
 <h2 id="v05">C. Latest update (v0.5): IP camera, tablet camera registration, banking-style login</h2>
 <div class="callout"><p><b>New facts:</b> the door uses an <b>IP camera</b> for tracking. You register faces with the <b>Android tablet's own camera</b> in the browser. Your router cannot give the PC a fixed name or address. The web app must be secured <b>like a banking app</b>: the admin chooses password, PIN or face (fingerprint or face unlock of the tablet). The old-CPU question is parked: the one-hour benchmark stays in the plan and nothing more.</p></div>
@@ -2585,7 +2956,7 @@ gantt
   DB schema, enrollment service           :c1, 2026-11-30, 7d
   REST API, auth, events                  :c2, after c1, 7d
   section UI and alerts
-  Admin UI: residents, events, live       :d1, 2026-12-14, 10d
+  Admin UI (residents, events, live)       :d1, 2026-12-14, 10d
   Telegram alerts, retention jobs         :d2, 2026-12-21, 5d
   section Quality
   Site test set and benchmark             :e1, 2026-12-07, 14d
