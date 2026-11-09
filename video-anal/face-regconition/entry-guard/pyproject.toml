@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "entryguard"
+version = "0.1.0"
+description = "Face registration and authorization checks, configurable per customer"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "pyyaml",
+  "pydantic>=2",
+  "opencv-python>=4.10",   # YuNet + SFace models run through OpenCV
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+eg = "entryguard.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+entryguard = ["web/static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

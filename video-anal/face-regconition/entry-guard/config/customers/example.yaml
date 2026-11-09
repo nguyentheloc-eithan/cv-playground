@@ -1,0 +1,22 @@
+# Example customer override. Copy to config/customers/<customer-id>.yaml,
+# keep only the keys that differ from config/default.yaml.
+# Select with:  eg --customer <customer-id> ...   or   ENTRYGUARD_CUSTOMER=<customer-id>
+
+customer:
+  id: example
+  name: Example Apartments
+
+person_schema:
+  - { key: unit_no, label: Unit, required: true }
+  - { key: phone, label: Phone, required: false }
+
+policy:
+  accept_threshold: 0.40
+  frames_to_decide: 7
+
+cameras:
+  - id: lobby
+    name: Lobby
+    direction: in
+    fps: 10
+    source: { adapter: webcam, params: { index: 0 } }

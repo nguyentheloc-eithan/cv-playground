@@ -1,0 +1,66 @@
+# Entry Guard: default configuration (applies to every customer).
+# A customer file in config/customers/<id>.yaml overrides any key below (deep merge).
+# Env vars override both:  ENTRYGUARD__POLICY__ACCEPT_THRESHOLD=0.4
+# ${VAR} inside a string is replaced from the environment (use for secrets, camera URLs).
+
+customer:
+  id: default
+  name: Default customer
+
+system:
+  data_dir: ./data          # database, enrolled photos, snapshots
+  models_dir: ./models      # model files (*.onnx), not in git
+  log_level: INFO
+
+# Which implementation serves each AI stage. `name` selects a registered adapter,
+# `params` are passed to it. Swap a model by changing name/params only.
+models:
+  detector:
+    name: yunet
+    params: { path: yunet.onnx, score_threshold: 0.8, nms_threshold: 0.3, top_k: 20 }
+  embedder:
+    name: sface
+    params: { path: sface.onnx }
+  liveness:
+    name: none
+    params: {}
+
+# What an enrolled person is. Fields are customer-defined, nothing is hard-coded.
+# Values are stored as free attributes next to the required `name`.
+person_schema:
+  - { key: external_id, label: ID, required: false }
+  - { key: group, label: Group, required: false }
+
+enrollment:
+  min_photos: 1
+  max_photos: 10
+  min_face_px: 80           # smallest accepted face (shorter bbox side)
+  min_detect_score: 0.9
+  allowed_extensions: [.jpg, .jpeg, .png]
+
+# Decision policy. Scores are cosine similarity of embeddings.
+policy:
+  accept_threshold: 0.363   # >= accept: authorized (0.363 is the SFace default)
+  reject_threshold: 0.30    # <  reject: unknown; between the two: uncertain
+  min_face_px: 60           # ignore smaller faces in video
+  frames_to_decide: 5       # votes per track before a final decision
+  track_iou: 0.3
+  track_max_missed: 10
+  event_cooldown_s: 10      # do not repeat the same event for the same person
+
+storage:
+  backend: sqlite
+  params: { path: "${system.data_dir}/entryguard.db" }
+
+events:
+  save_snapshots: true
+  snapshot_retention_days: 30
+
+# Cameras / inputs. Empty list is valid: `eg check --image` works without cameras.
+# adapter: webcam | rtsp | file   (params depend on adapter)
+cameras: []
+#  - id: door
+#    name: Door camera
+#    direction: in
+#    fps: 10
+#    source: { adapter: rtsp, params: { url: "${CAM_RTSP_URL}" } }
