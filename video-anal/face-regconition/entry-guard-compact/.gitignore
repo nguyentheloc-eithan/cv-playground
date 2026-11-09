@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.pytest_cache/
+data/
+models/*.onnx
+config/customers/*.yaml
+!config/customers/example.yaml

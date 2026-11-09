@@ -1,0 +1,12 @@
+# Example customer: copy this file, rename it, keep only the lines that differ from default.yaml.
+# Run with:  python main.py --customer example
+
+customer:
+  name: Example Apartments
+
+person_fields:
+  - { key: unit_no, label: Unit, required: true }
+  - { key: phone, label: Phone, required: false }
+
+policy:
+  accept_threshold: 0.40

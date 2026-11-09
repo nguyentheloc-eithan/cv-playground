@@ -1,0 +1,31 @@
+# Settings every customer gets. A file in config/customers/ only lists what it changes.
+# Use ${NAME} to read a secret from an environment variable.
+
+customer:
+  name: Default customer
+
+# Fields shown in the "Register" form. Each customer decides what a person has.
+person_fields:
+  - { key: external_id, label: ID, required: false }
+
+models:
+  detector_file: models/yunet.onnx       # finds faces
+  recognizer_file: models/sface.onnx     # turns a face into numbers
+  detect_score_threshold: 0.8            # ignore detections the model is unsure about
+
+registration:
+  min_photos: 1
+  max_photos: 10
+  min_face_px: 80                        # smallest accepted face (pixels)
+
+# How a face is judged. The score is similarity, 0 to 1 (higher = more alike).
+#   score >= accept_threshold   -> authorized
+#   score <  reject_threshold   -> unknown
+#   in between                  -> uncertain
+policy:
+  accept_threshold: 0.363
+  reject_threshold: 0.30
+  min_face_px: 60                        # ignore tiny faces far away
+
+storage:
+  database: data/entryguard.db

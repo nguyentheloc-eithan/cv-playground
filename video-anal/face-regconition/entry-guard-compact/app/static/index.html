@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1" />
+    <title>Entry Guard</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --card: #fff;
+        --fg: #1b1f24;
+        --mut: #68707c;
+        --ok: #127a3a;
+        --bad: #c4281c;
+        --warn: #b45309;
+        --pri: #2557d6;
+        --bd: #dcdfe5;
+        --in: #f4f5f7;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111418;
+          --card: #1a1e24;
+          --fg: #e8eaee;
+          --mut: #98a0ac;
+          --bd: #2d333c;
+          --pri: #5b86ff;
+          --ok: #4ade80;
+          --bad: #f87171;
+          --warn: #fbbf24;
+          --in: #111418;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--bd);
+        background: var(--card);
+      }
+      header b {
+        font-size: 16px;
+      }
+      header span {
+        color: var(--mut);
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+      }
+      @media (max-width: 820px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--mut);
+      }
+      .stack {
+        display: grid;
+        gap: 20px;
+      }
+      .stage {
+        position: relative;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 16/10;
+      }
+      .stage video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .stage canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        background: transparent;
+      }
+      .bar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      select,
+      input[type='text'],
+      input:not([type]) {
+        width: 100%;
+        padding: 9px 10px;
+        border: 1px solid var(--bd);
+        border-radius: 7px;
+        background: var(--in);
+        color: var(--fg);
+        font: inherit;
+      }
+      select {
+        width: auto;
+        max-width: 100%;
+      }
+      label.f {
+        display: block;
+        margin: 10px 0 3px;
+        color: var(--mut);
+        font-size: 12px;
+      }
+      button {
+        padding: 9px 14px;
+        border: 1px solid var(--bd);
+        border-radius: 7px;
+        background: var(--card);
+        color: var(--fg);
+        cursor: pointer;
+        font: inherit;
+      }
+      button:hover {
+        border-color: var(--pri);
+      }
+      button.p {
+        background: var(--pri);
+        border-color: var(--pri);
+        color: #fff;
+        font-weight: 600;
+      }
+      button.sm {
+        padding: 4px 9px;
+        font-size: 12px;
+      }
+      .thumbs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .thumbs img {
+        width: 60px;
+        height: 45px;
+        object-fit: cover;
+        border-radius: 5px;
+        border: 1px solid var(--bd);
+      }
+      .msg {
+        margin-top: 10px;
+        min-height: 18px;
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .bad {
+        color: var(--bad);
+      }
+      .warn {
+        color: var(--warn);
+      }
+      .badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 700;
+        border: 2px solid currentColor;
+        margin: 4px 6px 4px 0;
+      }
+      .hint {
+        color: var(--mut);
+        font-size: 12px;
+        margin: 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      td {
+        padding: 8px 4px;
+        border-top: 1px solid var(--bd);
+      }
+      td:last-child {
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <header><b>Entry Guard</b><span id="cust"></span></header>
+    <main>
+      <section class="card">
+        <h2>Camera</h2>
+        <div class="stage">
+          <video
+            id="v"
+            autoplay
+            playsinline
+            muted></video
+          ><canvas id="overlay"></canvas>
+        </div>
+        <div class="bar">
+          <select id="camsel"></select
+          ><span
+            id="camerr"
+            class="warn"></span>
+        </div>
+      </section>
+
+      <div class="stack">
+        <section class="card">
+          <h2>Check face</h2>
+          <div
+            class="bar"
+            style="margin-top: 0">
+            <button
+              id="chk"
+              class="p">
+              Check now
+            </button>
+            <label
+              ><input
+                type="checkbox"
+                id="auto" />
+              Auto (every second)</label
+            >
+          </div>
+          <div
+            id="res"
+            class="msg">
+            <span class="hint">Look at the camera and press Check.</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Register face</h2>
+          <label class="f">Name</label
+          ><input
+            id="name"
+            autocomplete="off" />
+          <div id="fields"></div>
+          <div
+            class="thumbs"
+            id="thumbs"></div>
+          <div class="bar">
+            <button id="snap">Add photo</button
+            ><button id="clear">Clear</button>
+            <button
+              id="reg"
+              class="p">
+              Register
+            </button>
+          </div>
+          <p
+            class="hint"
+            style="margin-top: 8px">
+            Tip: add 2–3 photos at slightly different angles. If you add none,
+            Register takes one photo for you. One face per photo.
+          </p>
+          <div
+            id="msg"
+            class="msg"></div>
+        </section>
+      </div>
+
+      <section
+        class="card"
+        style="grid-column: 1/-1">
+        <h2>Registered people</h2>
+        <table id="ppl"></table>
+      </section>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let shots = [],
+        schema = { fields: [] };
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+        );
+      async function api(p, b) {
+        const r = await fetch(
+          p,
+          b === undefined ? {} : { method: 'POST', body: JSON.stringify(b) },
+        );
+        return r.json();
+      }
+      function frame() {
+        const v = $('v'),
+          c = document.createElement('canvas');
+        c.width = v.videoWidth;
+        c.height = v.videoHeight;
+        c.getContext('2d').drawImage(v, 0, 0);
+        return c.toDataURL('image/jpeg', 0.92);
+      }
+      async function init() {
+        schema = await api('/api/config');
+        $('cust').textContent = '· ' + schema.customer;
+        $('fields').innerHTML = schema.fields
+          .map(
+            (f) =>
+              `<label class="f">${esc(f.label || f.key)}${f.required ? ' *' : ''}</label><input data-k="${esc(f.key)}" autocomplete="off">`,
+          )
+          .join('');
+        people();
+        startCam();
+      }
+      async function startCam(id) {
+        const e = $('camerr'),
+          v = $('v');
+        e.className = 'warn';
+        e.textContent = 'Waiting for camera permission...';
+        if (!navigator.mediaDevices) {
+          e.className = 'bad';
+          e.textContent = 'Open via http://127.0.0.1:8000 or localhost';
+          return;
+        }
+        try {
+          if (v.srcObject) v.srcObject.getTracks().forEach((t) => t.stop());
+          const s = await navigator.mediaDevices.getUserMedia({
+            video: id ? { deviceId: { exact: id } } : true,
+          });
+          v.srcObject = s;
+          await v.play();
+          const cur = s.getVideoTracks()[0].getSettings().deviceId;
+          const devs = (await navigator.mediaDevices.enumerateDevices()).filter(
+            (d) => d.kind == 'videoinput',
+          );
+          $('camsel').innerHTML = devs
+            .map(
+              (d, i) =>
+                `<option value="${d.deviceId}" ${d.deviceId == cur ? 'selected' : ''}>${esc(d.label || 'Camera ' + (i + 1))}</option>`,
+            )
+            .join('');
+          $('camsel').onchange = () => startCam($('camsel').value);
+          e.textContent = '';
+        } catch (x) {
+          e.className = 'bad';
+          e.textContent = `Camera error (${x.name}): ${x.message}`;
+        }
+      }
+      async function people() {
+        const l = await api('/api/people');
+        $('ppl').innerHTML =
+          l
+            .map(
+              (p) =>
+                `<tr><td><b>${esc(p.name)}</b></td><td>${esc(Object.values(p.fields).join(' · '))}</td><td>${esc(p.status)}</td><td><button class="sm" onclick="del(${p.id})">Delete</button></td></tr>`,
+            )
+            .join('') || '<tr><td class="hint">No one registered yet</td></tr>';
+      }
+      async function del(id) {
+        if (confirm('Erase this person and face data?')) {
+          await api('/api/delete', { id });
+          people();
+        }
+      }
+      function addShot() {
+        if (!$('v').videoWidth) return false;
+        const d = frame();
+        shots.push(d);
+        $('thumbs').insertAdjacentHTML('beforeend', `<img src="${d}">`);
+        return true;
+      }
+      $('snap').onclick = addShot;
+      $('clear').onclick = () => {
+        shots = [];
+        $('thumbs').innerHTML = '';
+      };
+      $('reg').onclick = async () => {
+        const m = $('msg');
+        m.className = 'msg';
+        if (!$('name').value.trim()) {
+          m.className = 'msg bad';
+          m.textContent = 'Enter a name';
+          return;
+        }
+        if (!shots.length && !addShot()) {
+          m.className = 'msg bad';
+          m.textContent = 'Camera is not ready';
+          return;
+        }
+        const attributes = {};
+        document.querySelectorAll('#fields input').forEach((i) => {
+          if (i.value) attributes[i.dataset.k] = i.value;
+        });
+        m.textContent = 'Registering...';
+        const r = await api('/api/register', {
+          name: $('name').value,
+          fields: attributes,
+          images: shots,
+        });
+        if (r.error) {
+          m.className = 'msg bad';
+          m.textContent = `${r.error.code}: ${r.error.message || ''}`;
+        } else {
+          m.className = 'msg ok';
+          m.textContent = 'Registered ' + r.name;
+          $('name').value = '';
+          document
+            .querySelectorAll('#fields input')
+            .forEach((i) => (i.value = ''));
+          $('clear').click();
+          people();
+        }
+      };
+      function drawBoxes(list) {
+        const v = $('v'),
+          o = $('overlay'),
+          cw = o.clientWidth,
+          ch = o.clientHeight,
+          dpr = devicePixelRatio || 1;
+        o.width = cw * dpr;
+        o.height = ch * dpr;
+        const x = o.getContext('2d');
+        x.scale(dpr, dpr);
+        x.clearRect(0, 0, cw, ch);
+        if (!v.videoWidth) return;
+        const s = Math.min(cw / v.videoWidth, ch / v.videoHeight),
+          ox = (cw - v.videoWidth * s) / 2,
+          oy = (ch - v.videoHeight * s) / 2;
+        x.lineWidth = 3;
+        x.font = '600 15px system-ui';
+        const css = getComputedStyle(document.documentElement);
+        for (const a of list) {
+          if (!a.bbox) continue;
+          const cls =
+            a.decision == 'authorized'
+              ? 'ok'
+              : a.decision == 'uncertain'
+                ? 'warn'
+                : 'bad';
+          const col = css.getPropertyValue('--' + cls).trim(),
+            [bx, by, bw, bh] = a.bbox;
+          const X = ox + bx * s,
+            Y = oy + by * s,
+            W = bw * s,
+            H = bh * s,
+            L = Math.min(W, H) * 0.22;
+          x.strokeStyle = col;
+          x.lineWidth = 3;
+          x.lineCap = 'round';
+          x.beginPath();
+          for (const [px, py, dx, dy] of [
+            [X, Y, 1, 1],
+            [X + W, Y, -1, 1],
+            [X, Y + H, 1, -1],
+            [X + W, Y + H, -1, -1],
+          ]) {
+            x.moveTo(px + dx * L, py);
+            x.lineTo(px, py);
+            x.lineTo(px, py + dy * L);
+          }
+          x.stroke();
+          const t = a.person || a.decision,
+            tw = x.measureText(t).width + 14;
+          x.fillStyle = col;
+          x.beginPath();
+          x.roundRect(X, Y + H + 6, tw, 24, 6);
+          x.fill();
+          x.fillStyle = '#000';
+          x.fillText(t, X + 7, Y + H + 23);
+        }
+      }
+      let busy = false;
+      async function check() {
+        if (busy || !$('v').videoWidth) return;
+        busy = true;
+        let r;
+        try {
+          r = await api('/api/check', { image: frame() });
+        } finally {
+          busy = false;
+        }
+        drawBoxes(r);
+        $('res').innerHTML = r
+          .map((a) => {
+            const cls =
+              a.decision == 'authorized'
+                ? 'ok'
+                : a.decision == 'uncertain'
+                  ? 'warn'
+                  : 'bad';
+            const who = a.person
+              ? `<b>${esc(a.person)}</b> ${esc(Object.values(a.fields).join(' · '))}`
+              : '';
+            return `<div><span class="badge ${cls}">${a.decision.toUpperCase().replace('_', ' ')}</span>${who} <span class="hint">score ${a.score}</span></div>`;
+          })
+          .join('');
+      }
+      $('chk').onclick = check;
+      setInterval(() => {
+        $('auto').checked && check();
+      }, 1000);
+      init();
+    </script>
+  </body>
+</html>
