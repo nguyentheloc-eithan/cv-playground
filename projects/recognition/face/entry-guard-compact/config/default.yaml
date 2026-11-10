@@ -4,9 +4,73 @@
 customer:
   name: Default customer
 
-# Fields shown in the "Register" form. Each customer decides what a person has.
+server:
+  host: 127.0.0.1                        # keep 127.0.0.1; put a proxy (Caddy) in front for the LAN
+  port: 8000
+
+auth:
+  session_hours: 8                       # login expires after this many hours
+  secure_cookie: false                   # set true when the app is served over HTTPS (behind Caddy)
+
+# Alerts for watch-list people (criminal / banned). They stay open until someone acknowledges them.
+alerts:
+  watchlist_confirm_score: 0.45          # a match at or above this is "confirmed" (critical stays critical);
+                                         # between policy.accept_threshold and this it is only a "possible match" (downgraded to high, verify first)
+  cooldown_seconds: 120                  # the same person re-detected within this time updates the open alert instead of making a new one
+  # Outbound notifications (all off by default). Secrets come from environment variables, never from this file.
+  #   audience: security  = full details for guards and admins
+  #             residents = short "do not open the door" message, NO name and NO offence
+  #             all       = same as security
+  channels: []
+  #  - { type: telegram, audience: security,  token: "${TELEGRAM_BOT_TOKEN}", chat_id: "${TELEGRAM_SECURITY_CHAT}" }
+  #  - { type: telegram, audience: residents, token: "${TELEGRAM_BOT_TOKEN}", chat_id: "${TELEGRAM_RESIDENTS_CHAT}" }
+  #  - { type: webhook,  audience: residents, url: "${RESIDENT_ALERT_WEBHOOK}" }   # e.g. an SMS gateway or Home Assistant
+  watchlist_basis_text: >
+    I am authorised to record this information, it comes from a reliable source (for example the police or
+    the property's security provider), and I will review it regularly and remove it when it is no longer needed.
+
+security:
+  min_password_length: 12
+  max_failed_logins: 5                   # after this many wrong passwords the account is locked...
+  lockout_minutes: 10                    # ...for this long
+  mask_for_viewers: true                 # viewers see phone numbers and sensitive fields masked
+
+# The site (building, estate, office...) this installation protects.
+site:
+  id_prefix: EG                          # every person gets an automatic ID: EG-00001, EG-00002...
+  unit_label: "Unit / Room / House"      # what the unit number is called here (Apartment, Suite, Plot...)
+  units: []                              # optional list of valid units, e.g. [101, 102, 201]. Empty = any text
+
+# Kinds of people the system knows. Each customer can rename, add or remove types.
+#   needs_unit      the unit/room/house number is required
+#   needs_expiry    a "valid until" date is required (visitors, contractors)
+#   default_days    when set, "valid until" is pre-filled to today + this many days
+#   can_enter       false = always denied, and the scan raises an alert (blocked / watch list)
+#   watchlist       true = a watch-list type: needs a reason and a source, no consent needed, photos may be uploaded
+#   severity        critical = highest alert (siren, full-screen, residents notified); high = banner alert
+#   days, hours     optional weekly schedule for this type, otherwise the global `access` below applies
+person_types:
+  - { id: resident,   label: Resident,            needs_unit: true,  needs_expiry: false, can_enter: true }
+  - { id: staff,      label: Staff,               needs_unit: false, needs_expiry: false, can_enter: true }
+  - { id: visitor,    label: Visitor,             needs_unit: true,  needs_expiry: true,  default_days: 1,  can_enter: true }
+  - { id: contractor, label: Contractor,          needs_unit: false, needs_expiry: true,  default_days: 30, can_enter: true, hours: "07:00-19:00" }
+  - { id: delivery,   label: Delivery / courier,  needs_unit: false, needs_expiry: false, can_enter: true, hours: "07:00-22:00" }
+  - { id: criminal,   label: Criminal / wanted,   needs_unit: false, needs_expiry: false, can_enter: false, watchlist: true, severity: critical }
+  - { id: blocked,    label: Banned (trespass),   needs_unit: false, needs_expiry: false, can_enter: false, watchlist: true, severity: high }
+
+# Who may enter, and when (a person type can override this with its own days / hours).
+access:
+  days: [mon, tue, wed, thu, fri, sat, sun]
+  hours: "00:00-23:59"
+
+# Extra information collected at registration. Name, phone, person type, unit, validity dates and
+# notes are built in; add anything else a customer needs. `sensitive: true` hides the value from viewers.
 person_fields:
-  - { key: external_id, label: ID, required: false }
+  - { key: email, label: Email, required: false }
+  - { key: emergency_contact, label: Emergency contact name, required: false }
+  - { key: emergency_phone, label: Emergency contact phone, required: false, sensitive: true }
+  - { key: vehicle_plate, label: Vehicle plate(s), required: false }
+  - { key: id_document, label: ID / passport number, required: false, sensitive: true }
 
 models:
   detector_file: models/yunet.onnx       # finds faces
@@ -14,12 +78,23 @@ models:
   detect_score_threshold: 0.8            # ignore detections the model is unsure about
 
 registration:
+  require_phone: true
+  unique_phone: true                     # one phone number cannot be registered twice
+  block_duplicate_faces: true            # refuse a face that already belongs to someone registered
   min_photos: 1
+  recommended_photos: 3                  # the Register page guides the operator to take this many
   max_photos: 10
   min_face_px: 80                        # smallest accepted face (pixels)
+  min_sharpness: 40                      # below this a photo is "too blurry"
+  max_yaw: 0.45                          # above this the head is turned too far
+  require_consent: true
+  consent_text_version: v1
+  consent_text: >
+    The person agreed that their face photos and face data are stored to allow entry
+    recognition, and that they can ask for deletion at any time.
 
 # How a face is judged. The score is similarity, 0 to 1 (higher = more alike).
-#   score >= accept_threshold   -> authorized
+#   score >= accept_threshold   -> resident
 #   score <  reject_threshold   -> unknown
 #   in between                  -> uncertain
 policy:
@@ -27,5 +102,15 @@ policy:
   reject_threshold: 0.30
   min_face_px: 60                        # ignore tiny faces far away
 
+# The security console (/tf-check) scans the browser camera and logs every person it sees.
+scan:
+  camera_id: laptop                      # name written in the log
+  cooldown_seconds: 10                   # same person is logged at most once per this time
+  max_width: 800                         # frames are shrunk to this width before upload (speed)
+  snapshot_retention_days: 30            # unknown/uncertain snapshots are deleted after this
+
 storage:
   database: data/entryguard.db
+  photos_dir: data/photos
+  snapshots_dir: data/snapshots
+  secret_file: data/secret.key

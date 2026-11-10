@@ -4,9 +4,10 @@
 customer:
   name: Example Apartments
 
-person_fields:
-  - { key: unit_no, label: Unit, required: true }
-  - { key: phone, label: Phone, required: false }
+site:
+  id_prefix: APT
+  unit_label: Apartment
+  units: []                              # for example [101, 102, 103, 201, 202]
 
 policy:
   accept_threshold: 0.40

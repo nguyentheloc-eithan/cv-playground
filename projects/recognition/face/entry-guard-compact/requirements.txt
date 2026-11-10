@@ -1,4 +1,7 @@
 numpy
 pyyaml
 opencv-python>=4.10
+fastapi
+uvicorn
 pytest
+httpx

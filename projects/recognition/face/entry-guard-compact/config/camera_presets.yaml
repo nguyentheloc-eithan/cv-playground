@@ -1,0 +1,94 @@
+# Catalog of typical RTSP stream paths, grouped by brand. It only pre-fills the "Add camera" form;
+# every value can be edited or typed freely there. A customer can replace the whole catalog by
+# defining `camera_presets:` in config/customers/<name>.yaml. People can also save their own
+# templates in the app (Cameras > Add IP camera > "Save as template").
+#
+# Placeholders in a path:  {ch} = channel number (1, 2, ...)   {ch2} = channel with two digits (01, 02, ...)
+# These are typical paths. Models and firmware differ, so check the camera manual if one does not work,
+# or use "Find stream path automatically" in the form.
+
+brands:
+  - brand: Hikvision (also EZVIZ, Annke, Swann, Lorex, Night Owl)
+    port: 554
+    username: admin
+    note: "Hikvision-made cameras. EZVIZ: the password is usually the 6-letter verification code on the label, and RTSP/LAN live view must be enabled in the EZVIZ app."
+    streams:
+      - { label: Main stream, path: "/Streaming/Channels/{ch}01" }
+      - { label: Sub stream (lighter), path: "/Streaming/Channels/{ch}02" }
+      - { label: Main stream (older firmware), path: "/h264/ch{ch}/main/av_stream" }
+      - { label: Sub stream (older firmware), path: "/h264/ch{ch}/sub/av_stream" }
+
+  - brand: Dahua (also Amcrest, Imou, Lorex, Annke)
+    port: 554
+    username: admin
+    streams:
+      - { label: Main stream, path: "/cam/realmonitor?channel={ch}&subtype=0" }
+      - { label: Sub stream (lighter), path: "/cam/realmonitor?channel={ch}&subtype=1" }
+
+  - brand: Reolink
+    port: 554
+    username: admin
+    note: "RTSP may need to be enabled in the Reolink app or web page (Network > Advanced > Server settings)."
+    streams:
+      - { label: Main stream, path: "/h264Preview_{ch2}_main" }
+      - { label: Sub stream (lighter), path: "/h264Preview_{ch2}_sub" }
+      - { label: Main stream (H.265 models), path: "/Preview_{ch2}_main" }
+
+  - brand: TP-Link Tapo
+    port: 554
+    note: "Create a Camera Account in the Tapo app (Advanced Settings > Camera Account) and use that user name and password, not the TP-Link cloud login."
+    streams:
+      - { label: HD stream, path: "/stream1" }
+      - { label: SD stream (lighter), path: "/stream2" }
+
+  - brand: Uniview (UNV)
+    port: 554
+    username: admin
+    streams:
+      - { label: Main stream, path: "/media/video1" }
+      - { label: Sub stream (lighter), path: "/media/video2" }
+
+  - brand: Axis
+    port: 554
+    streams:
+      - { label: Default stream, path: "/axis-media/media.amp" }
+      - { label: H.264 720p, path: "/axis-media/media.amp?videocodec=h264&resolution=1280x720" }
+
+  - brand: Hanwha / Samsung Wisenet
+    port: 554
+    streams:
+      - { label: Profile 1, path: "/profile1/media.smp" }
+      - { label: Profile 2, path: "/profile2/media.smp" }
+
+  - brand: Vivotek
+    port: 554
+    streams:
+      - { label: Stream 1, path: "/live.sdp" }
+      - { label: Stream 2, path: "/live2.sdp" }
+
+  - brand: Foscam
+    port: 554
+    streams:
+      - { label: Main stream, path: "/videoMain" }
+      - { label: Sub stream (lighter), path: "/videoSub" }
+
+  - brand: Bosch
+    port: 554
+    streams:
+      - { label: Stream 1, path: "/?inst=1" }
+      - { label: Stream 2, path: "/?inst=2" }
+
+  - brand: Generic ONVIF / unknown brand
+    port: 554
+    note: "Not sure of the path? Use 'Find stream path automatically' in the form."
+    streams:
+      - { label: ONVIF profile 1, path: "/onvif1" }
+      - { label: ONVIF profile 2, path: "/onvif2" }
+      - { label: /live, path: "/live" }
+      - { label: /live/ch0, path: "/live/ch0" }
+      - { label: /stream, path: "/stream" }
+      - { label: /h264, path: "/h264" }
+      - { label: /1, path: "/1" }
+      - { label: /cam1/h264, path: "/cam1/h264" }
+      - { label: /ch0_0.h264, path: "/ch0_0.h264" }
+      - { label: No path (address only), path: "" }

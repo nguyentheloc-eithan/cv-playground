@@ -51,6 +51,8 @@ def load_config(customer=None):
             raise SystemExit(f"Customer config not found: {path}")
         cfg = _merge(cfg, _read(path))
     cfg = _fill_env(cfg)
+    if "camera_presets" not in cfg:   # the shipped catalog of RTSP stream paths (see that file)
+        cfg["camera_presets"] = _read(ROOT / "config" / "camera_presets.yaml").get("brands", [])
 
     # Fail early with a clear message if thresholds make no sense.
     p = cfg["policy"]
