@@ -79,3 +79,15 @@ Create the first administrator: `python main.py --customer example create-user a
 instructions and review date, and **upload photo files**. A detection opens an alert that stays on every screen with a
 siren until it is acknowledged; residents (role `resident`) see a short warning with the photo and no personal details.
 Telegram / webhook notifications are optional. Read `docs/SECURITY.md` (watch list, false matches, legal notes) first.
+
+## Settings: face / PIN confirmation
+Open **Settings** and switch on **Face authentication** and/or **PIN**. From then on, risky actions (delete a person,
+watch-list changes, user management, deleting a camera, exporting the log) ask "Confirm it's you" with the method you
+chose; the password is always the fallback. See `docs/SECURITY.md`.
+
+Face sign-in uses the same **Settings > Face authentication** switch: once your face is enrolled, the login screen has a
+**Sign in with face** button. Read the notes in `docs/SECURITY.md` before using it for administrators.
+
+## Wrong photo? Update it
+**People**, click the person, **Update photos**: replace all photos or add more (camera or files), remove single photos.
+Or delete the person and register again. For your own sign-in face: **Settings > Retake face**.

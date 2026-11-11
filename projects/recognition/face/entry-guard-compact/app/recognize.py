@@ -143,7 +143,15 @@ class Recognizer:
             raise RegisterError(
                 "PHOTO_COUNT", f"Send {cfg['min_photos']} to {cfg['max_photos']} photos", "photos")
 
-        # Each photo must be a clear, front-facing picture of exactly one face.
+        vectors, jpegs = self.process_photos(images)
+        person_id = self.db.add_person(profile, vectors, jpegs, cfg["consent_text_version"])
+        return {"id": person_id, "code": self.db.get_person(person_id)["code"]}
+
+    def process_photos(self, images, for_person=None):
+        """Check photos and turn them into face vectors. Returns (vectors, jpegs).
+
+        Each photo must be one clear, front-facing face. Security: the same face must not belong to someone ELSE
+        (stops double identities); `for_person` is the person being updated, who of course may match themselves."""
         vectors, jpegs = [], []
         with self.engine_lock:
             for number, image in enumerate(images, start=1):
@@ -154,19 +162,15 @@ class Recognizer:
                     raise RegisterError(code, f"Photo {number}: {message}", f"photos[{number}]")
                 vectors.append(self.engine.face_vector(image, faces[0]))
                 jpegs.append(self.engine.to_jpeg(image))
-
-        # Security: the same face must not be registered twice (stops double identities).
-        if cfg["block_duplicate_faces"]:
-            known = self.db.all_vectors()
+        if self.cfg["registration"]["block_duplicate_faces"]:
+            known = [(pid, v) for pid, v in self.db.all_vectors() if pid != for_person]
             for vector in vectors:
                 person_id, score = self._best_match(vector, known)
                 if person_id is not None and score >= self.cfg["policy"]["accept_threshold"]:
                     other = self.db.get_person(person_id)
                     raise RegisterError("DUPLICATE_FACE",
                                         f"This face is already registered as {other['name']} ({other['code']})", "photos")
-
-        person_id = self.db.add_person(profile, vectors, jpegs, cfg["consent_text_version"])
-        return {"id": person_id, "code": self.db.get_person(person_id)["code"]}
+        return vectors, jpegs
 
     # ----------------------------------------------------------- photo quality
     def _photo_problem(self, image, faces):
@@ -193,7 +197,20 @@ class Recognizer:
         face = faces[0] if len(faces) == 1 else None
         return {"ok": problem is None, "code": problem[0] if problem else None,
                 "message": problem[1] if problem else "Looking good",
-                "bbox": [face.x, face.y, face.w, face.h] if face else None}
+                "bbox": [face.x, face.y, face.w, face.h] if face else None,
+                "yaw": round(face.yaw, 3) if face else None}
+
+    def face_template(self, images):
+        """Face vectors of a few good photos of ONE person (used to enrol a user's face for confirmations)."""
+        vectors = []
+        with self.engine_lock:
+            for number, image in enumerate(images, start=1):
+                faces = self.engine.find_faces(image)
+                problem = self._photo_problem(image, faces)
+                if problem:
+                    raise RegisterError(problem[0], f"Photo {number}: {problem[1]}", "images")
+                vectors.append(self.engine.face_vector(image, faces[0]))
+        return vectors
 
     # ------------------------------------------------------------------- check
     def check(self, image):

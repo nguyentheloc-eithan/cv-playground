@@ -65,6 +65,7 @@ class FaceEngine:
 
 def build(tmp_path, opener, reachable=lambda host, port: True):
     cfg = load_config("example")
+    cfg["security"]["step_up"]["enabled"] = False
     db = Database(tmp_path / "t.db", tmp_path / "photos")
     recognizer = Recognizer(cfg, FaceEngine(), db)
     db.add_user("boss", auth.hash_password("longpassword1"), "admin")

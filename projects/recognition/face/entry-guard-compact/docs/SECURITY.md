@@ -18,6 +18,49 @@ Recognising a face is not the same as allowing entry. After a match the system a
 Disabled, expired and blocked people are still **recognised**, so the console can say "Access denied: Expired
 on 05 Nov" instead of showing a stranger. Denied scans keep a snapshot and are queued for review.
 
+## Signing in with the face
+There is **one** switch, **Settings > Face authentication**. When it is on, the same enrolled face is used to **sign in**
+(login screen: type the user name, press **Sign in with face**, look straight, then turn your head slightly) and to
+**confirm risky actions**. The server checks the face against the one that user enrolled (a 1-to-1 check, never a search
+over everyone).
+
+- Face sign-in has its **own lockout** (5 failures, 10 minutes, per user and per address), separate from the password's, so
+  failed face attempts can never lock someone out of the password login (and cannot be used to attack it).
+  A lockout can be cleared from the computer itself: `python main.py unlock USERNAME`.
+- Every refused attempt is in the audit log with the reason (`face_authentication_not_switched_on`, `face_not_matching`,
+  `account_disabled`, `no_such_user`) and the match scores; the person at the login screen only sees a generic message.
+- The password always still works. Disabling a user or changing their password signs them out everywhere.
+- Switch face sign-in off for the whole installation with `security.face_login.enabled: false`.
+
+**Be aware (how this differs from a banking app):** banks check the face **on the phone**, with depth/infrared hardware, and the
+server only receives a cryptographic signature, never a face. Here a normal webcam picture is compared on the server, so a good
+video replay or a 3D mask could pass the head-turn check. For administrators with access to the watch list, prefer the password,
+or use passkeys (WebAuthn: Touch ID / Windows Hello) in a later step. The live-feedback endpoint used at sign-in is public (it
+must work before login), so it is rate limited and only describes the picture, never an account.
+
+## Confirming risky actions (like a banking app)
+Being signed in is not enough for a dangerous action. These need a **fresh confirmation**, every time:
+delete a person, **replace, add or remove a person's photos**, add or change a watch-list entry (including switching one off),
+create or change a user, delete a camera, export the scan log. (The list is `security.step_up.actions` in the config; remove a line to relax it, or set
+`security.step_up.enabled: false`.)
+
+Each user chooses how to confirm in **Settings** with two switches:
+- **Face authentication:** look at the camera, then **turn your head slightly** to one side (a progress meter shows how far). A photo or a screen picture cannot do
+  that, and the face must also match the face you enrolled (`face_threshold`, stricter than normal recognition).
+- **PIN:** a 6-digit PIN (no repeats or simple sequences), entered on a keypad.
+- **Password:** always available as the fallback; it is also what turns a method on or off.
+When both are on you choose at confirmation time and the one you used last is offered first. Turning a method off,
+changing a PIN or enrolling a face needs your password.
+
+How it works: a successful check returns a **one-time token** that is valid for two minutes, only for that user and only
+for that action. The page repeats the request with it; the server accepts it once. Wrong attempts count towards the same
+lockout as logins (5 failures, 10 minutes). Every confirmation, failure and setting change is in the audit log. A PIN is
+stored hashed (scrypt) and a face as numbers, never as a photo.
+
+**Limits:** the head-turn check stops printed photos and screens showing one still picture; a video replay or a 3D mask
+could still fool it, so treat it as a convenience layer, not as proof of presence. A confirmation never grants a role:
+only admins can perform these actions in the first place.
+
 ## Watch list: criminals and banned people
 Staff can add people to a **watch list** (person types `criminal` and `blocked`, configurable) by typing the details and
 **uploading photo files** (or capturing them). Every entry needs a **reason** and a **source**, may carry a case number,
@@ -50,6 +93,15 @@ alerts:
     - { type: webhook,  audience: residents, url: "${RESIDENT_ALERT_WEBHOOK}", photo: false }   # SMS gateway, Home Assistant...
 ```
 
+## Fixing a wrong photo
+**People > open the person > Update photos** replaces all photos (or adds more) from the camera or from files, and single
+photos can be removed (the last one cannot). The new photos get the same checks as at registration, and a face that already
+belongs to **someone else** is refused. Changing the face that opens the door is an identity change, so it needs a
+confirmation and is audited (`person_photos_changed`). The old face stops being recognised straight away.
+
+The head turn is deliberately small (`security.step_up.head_turn_min_yaw: 0.20`). A larger value is stricter against held-up
+photos; `require_head_turn: false` removes the turn entirely (weaker).
+
 ## Registration safeguards
 - Phone, unit and person type are validated; a phone number cannot be registered twice.
 - **A face that already belongs to someone is refused** (`block_duplicate_faces`), which stops double identities.
@@ -80,7 +132,7 @@ Each audit line is **hash-chained** to the previous one; **Audit log > Verify in
   (Windows), and restrict who can read the folder. Application-level encryption at rest is a later step.
 - No anti-spoofing yet: a printed photo or a phone screen can be accepted as a real face. Add a liveness check
   before relying on this for access to a door.
-- No two-factor login (TOTP / passkeys) yet.
+- No two-factor login (TOTP / passkeys) at sign-in yet; step-up confirmation protects risky actions after sign-in.
 - The audit chain detects edits and deletions in the middle; removing only the newest lines is not detected.
   Keep an off-site copy of the exported log for stronger guarantees.
 - HTTPS is not terminated by the app. Put Caddy in front (see the setup guide in the specification), then set

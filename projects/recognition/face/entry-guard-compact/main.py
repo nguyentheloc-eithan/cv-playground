@@ -39,6 +39,14 @@ def create_user(cfg, username, role):
     print(f"Created {role} '{username}'")
 
 
+def unlock_user(cfg, username):
+    """Reset the lockout of a user. It runs on the computer itself, so it needs no password."""
+    db = open_database(cfg)
+    cleared = db.clear_failed_logins(username)
+    db.audit("cli", "lockout_cleared", {"username": username})
+    print(f"Lockout cleared for '{username}' ({cleared} failed attempts forgotten).")
+
+
 def serve(cfg, host, port):
     db = open_database(cfg)
     secret = auth.load_secret(path_in_project(cfg["storage"]["secret_file"]))
@@ -60,11 +68,15 @@ def main():
     cu = sub.add_parser("create-user", help="add a login")
     cu.add_argument("username")
     cu.add_argument("--role", choices=["admin", "viewer"], default="viewer")
+    ul = sub.add_parser("unlock", help="clear the lockout of a user (too many failed sign-ins)")
+    ul.add_argument("username")
     args = parser.parse_args()
 
     cfg = load_config(args.customer)
     if args.command == "create-user":
         create_user(cfg, args.username, args.role)
+    elif args.command == "unlock":
+        unlock_user(cfg, args.username)
     else:
         serve(cfg, args.host or cfg["server"]["host"], args.port or cfg["server"]["port"])
 

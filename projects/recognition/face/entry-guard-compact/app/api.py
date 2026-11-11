@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import access, alerts, auth, cameras, privacy
+from . import access, alerts, auth, cameras, privacy, stepup
 from .config import ROOT
 from .recognize import RegisterError
 from .scan import Scanner
@@ -61,6 +61,51 @@ class PersonEdit(BaseModel):
     watch: dict | None = None
     fields: dict | None = None
     status: str | None = None          # active | disabled
+
+
+class PinBody(BaseModel):
+    pin: str
+    current_password: str = ""
+
+
+class FaceEnrol(BaseModel):
+    images: list[str]
+    current_password: str = ""
+
+
+class FaceLogin(BaseModel):
+    username: str
+    images: list[str]
+
+
+class SecurityToggle(BaseModel):
+    face_enabled: bool | None = None
+    pin_enabled: bool | None = None
+    current_password: str = ""
+
+
+class PasswordOnly(BaseModel):
+    current_password: str = ""
+
+
+class StepUpPin(BaseModel):
+    action: str
+    pin: str
+
+
+class StepUpFace(BaseModel):
+    action: str
+    images: list[str]
+
+
+class StepUpPassword(BaseModel):
+    action: str
+    password: str
+
+
+class PhotosBody(BaseModel):
+    images: list[str]
+    replace: bool = True            # True: these photos REPLACE the old ones. False: they are added.
 
 
 class AckBody(BaseModel):
@@ -137,9 +182,9 @@ class CameraBody(BaseModel):
 
 class ApiError(Exception):
     """An error with an HTTP status and a stable code the page can react to."""
-    def __init__(self, status, code, message, field=None):
+    def __init__(self, status, code, message, field=None, extra=None):
         super().__init__(message)
-        self.status, self.code, self.field = status, code, field
+        self.status, self.code, self.field, self.extra = status, code, field, extra or {}
 
 
 def date_text(timestamp):
@@ -172,9 +217,9 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
     app.state.workers = workers
 
     # ---- turn problems into the one error shape ---------------------------
-    def error(status, code, message, field=None):
+    def error(status, code, message, field=None, extra=None):
         return JSONResponse(status_code=status,
-                            content={"error": {"code": code, "message": message, "field": field}})
+                            content={"error": {"code": code, "message": message, "field": field, **(extra or {})}})
 
     @app.exception_handler(RegisterError)
     async def register_error(request, e):
@@ -193,7 +238,7 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
 
     @app.exception_handler(ApiError)
     async def api_error(request, e):
-        return error(e.status, e.code, str(e), e.field)
+        return error(e.status, e.code, str(e), e.field, e.extra)
 
     # ---- security layer for every request ------------------------------------
     @app.middleware("http")
@@ -254,6 +299,9 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
                 "scan_width": cfg["scan"]["max_width"],
                 "accept_threshold": cfg["policy"]["accept_threshold"],
                 "min_password_length": cfg["security"]["min_password_length"],
+                "face_login": cfg["security"]["face_login"]["enabled"],
+                "head_turn": cfg["security"]["step_up"]["require_head_turn"],
+                "head_turn_min_yaw": cfg["security"]["step_up"]["head_turn_min_yaw"],
                 "needs_setup": db.count_users() == 0}
 
     security = cfg["security"]
@@ -268,6 +316,25 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
             if len(fails) >= allowed:
                 return int(fails[-allowed] + window - now) + 1
         return 0
+
+    step_up = security["step_up"]
+
+    def check_step_up(request, user, action):
+        """Banking-style confirmation. If this action is protected, the request must carry a fresh,
+        unused confirmation token for this user and action (header X-Step-Up); otherwise answer 403 with
+        the list of ways the user can confirm."""
+        if not step_up["enabled"] or action not in step_up["actions"]:
+            return
+        token = request.headers.get("x-step-up")
+        if token and db.consume_grant(stepup.token_hash(token), user["id"], action):
+            return
+        methods = stepup.available_methods(db.get_security(user["id"]))
+        raise ApiError(403, "STEP_UP_REQUIRED", "Confirm it is you to continue", extra={
+            "action": action, "label": step_up["actions"][action], "methods": methods, "preferred": methods[0],
+            "pin_length": step_up["pin_length"], "head_turn": step_up["require_head_turn"]})
+
+    def watchlist_type(type_id):
+        return bool(access.person_type(cfg, type_id).get("watchlist"))
 
     @app.post("/api/login")
     def login(body: Login, request: Request, response: Response):
@@ -289,6 +356,63 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
                             max_age=int(hours * 3600), httponly=True, samesite="strict",
                             secure=cfg["auth"]["secure_cookie"])
         db.audit(user["username"], "login", {"ip": ip})
+        return {"username": user["username"], "role": user["role"]}
+
+    # ---- sign in with the face ----------------------------------------------------
+    quality_hits = {}                                    # ip -> recent times (a small rate limit on the public endpoint)
+
+    def face_login_on():
+        if not security["face_login"]["enabled"]:
+            raise HTTPException(404, "Face sign-in is not available")
+
+    @app.post("/api/login/face/quality")
+    def login_face_quality(body: CheckRequest, request: Request):
+        """Live feedback for the sign-in camera (is a face visible, how far is the head turned). Public, so it is
+        rate limited and only answers about the picture, never about any account."""
+        face_login_on()
+        ip, now = (request.client.host if request.client else ""), time.time()
+        hits = [t for t in quality_hits.get(ip, []) if now - t < 5] + [now]
+        quality_hits[ip] = hits
+        if len(hits) > 25:
+            raise ApiError(429, "SLOW_DOWN", "Too many requests, slow down")
+        return recognizer.assess(decode_image(body.image))
+
+    @app.post("/api/login/face")
+    def login_face(body: FaceLogin, request: Request, response: Response):
+        face_login_on()
+        username = body.username.strip()
+        ip = request.client.host if request.client else ""
+        lock_key = f"face:{username}"                  # a separate counter from the password login
+        wait = locked_for(lock_key, ip)
+        if wait:
+            db.audit(username or "?", "login_blocked", {"ip": ip, "method": "face"})
+            raise ApiError(429, "ACCOUNT_LOCKED",
+                           f"Too many failed attempts. Try again in {max(1, round(wait / 60))} minute(s).")
+        images = [decode_image(i) for i in body.images[:3]]
+        user = db.get_user(username=username)
+        sec = db.get_security(user["id"]) if user else None
+        eligible = bool(user and user["active"] and sec["face_enabled"])
+        scores = []
+        why = "face_not_matching"
+        if eligible:
+            ok, reason = stepup.verify_face(recognizer, cfg, images, db.face_vectors(user["id"]), scores)
+        else:   # same pose checks as everyone, so the answer does not reveal whether this account uses face sign-in
+            reason = stepup.pose_check(recognizer, cfg, images)
+            ok = False
+            why = "no_such_user" if not user else "account_disabled" if not user["active"] else "face_authentication_not_switched_on"
+            # (the reason is written to the audit log for administrators; the person at the login screen never sees it)
+        if not ok and reason and reason != stepup.NOT_RECOGNISED:
+            raise ApiError(400, "FACE_POSE", reason)             # only a pose problem: try again, not a failed login
+        if not ok:
+            db.record_login(lock_key, ip, False)
+            db.audit(username or "?", "login_failed", {"ip": ip, "method": "face", "reason": why, "scores": scores})
+            raise HTTPException(401, "Face sign-in failed. Your face did not match, or Face authentication is not switched on "
+                                     "for this account (Settings). Use your password instead.")
+        db.record_login(lock_key, ip, True)
+        response.set_cookie(COOKIE, auth.make_token(secret, user["id"], hours, user["epoch"]),
+                            max_age=int(hours * 3600), httponly=True, samesite="strict",
+                            secure=cfg["auth"]["secure_cookie"])
+        db.audit(user["username"], "login", {"ip": ip, "method": "face"})
         return {"username": user["username"], "role": user["role"]}
 
     @app.post("/api/logout")
@@ -334,12 +458,19 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
         if not person:
             raise HTTPException(404, "No such person")
         events, total = db.list_events(person_id=person_id, limit=15)
-        return {**person_view(person, user), "scans_total": total,
+        return {**person_view(person, user), "scans_total": total, "photos": [{"id": p["id"]} for p in db.list_photos(person_id)],
                 "recent_events": [privacy.visible(e, cfg, user["role"]) for e in events]}
 
     @app.get("/api/people/{person_id}/photo")
     def person_photo(person_id: int, user=Depends(current_user)):
         path = db.first_photo(person_id)
+        if not path or not path.exists():
+            raise HTTPException(404, "No photo")
+        return FileResponse(path, media_type="image/jpeg")
+
+    @app.get("/api/people/{person_id}/photos/{photo_id}")
+    def person_photo_file(person_id: int, photo_id: int, user=Depends(current_user)):
+        path = db.photo_path(person_id, photo_id)
         if not path or not path.exists():
             raise HTTPException(404, "No photo")
         return FileResponse(path, media_type="image/jpeg")
@@ -372,8 +503,9 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
         return db.event_stats(since if since is not None else midnight)
 
     @app.get("/api/events/export.csv")
-    def export_events(decision: str | None = None, since: float | None = None,
+    def export_events(request: Request, decision: str | None = None, since: float | None = None,
                       until: float | None = None, q: str | None = None, user=Depends(admin_only)):
+        check_step_up(request, user, "events_export")
         events, _ = db.list_events(decision, None, since, until, q, None, None, 100000, 0)
         out = io.StringIO()
         writer = csv.writer(out)
@@ -411,8 +543,10 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
         return privacy.visible(db.get_event(event_id), cfg, user["role"])
 
     @app.post("/api/events/{event_id}/enroll", status_code=201)
-    def enroll_from_event(event_id: int, body: EnrollFromEvent, user=Depends(admin_only)):
+    def enroll_from_event(event_id: int, body: EnrollFromEvent, request: Request, user=Depends(admin_only)):
         """Turn an unknown person in the log into a registered resident, using the snapshot."""
+        if watchlist_type(body.person_type):
+            check_step_up(request, user, "watchlist_change")
         path = db.snapshot_path(event_id)
         image = cv2.imread(str(path)) if path and path.exists() else None
         if image is None:
@@ -422,6 +556,118 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
         db.audit(user["username"], "person_created",
                  {"id": created["id"], "code": created["code"], "name": body.name.strip(), "from_event": event_id})
         return {**created, "name": body.name.strip()}
+
+    # ---- my security settings (PIN / face confirmation) -------------------------
+    def need_password(user, password):
+        if not auth.verify_password(password or "", user["pw_hash"]):
+            raise ApiError(400, "WRONG_PASSWORD", "Your password is wrong", "current_password")
+
+    @app.get("/api/me/security")
+    def my_security(user=Depends(session_user)):
+        sec = db.get_security(user["id"])
+        return {"enabled": step_up["enabled"], "pin_length": step_up["pin_length"], "head_turn": step_up["require_head_turn"],
+                "face": {"enrolled": sec["face_enrolled"], "enabled": sec["face_enabled"]},
+                "face_login": {"available": security["face_login"]["enabled"]},      # sign-in follows the Face authentication switch
+                "pin": {"set": sec["pin_set"], "enabled": sec["pin_enabled"]},
+                "last_method": sec["last_method"], "actions": step_up["actions"],
+                "methods": stepup.available_methods(sec)}
+
+    @app.post("/api/me/security/pin")
+    def set_my_pin(body: PinBody, user=Depends(session_user)):
+        need_password(user, body.current_password)
+        problem = stepup.pin_problem(body.pin, step_up["pin_length"])
+        if problem:
+            raise ApiError(400, "WEAK_PIN", problem, "pin")
+        db.set_pin(user["id"], auth.hash_password(body.pin))
+        db.audit(user["username"], "pin_set")
+        return my_security(user)
+
+    @app.post("/api/me/security/face")
+    def enrol_my_face(body: FaceEnrol, user=Depends(session_user)):
+        need_password(user, body.current_password)
+        if len(body.images) < 3:
+            raise ApiError(400, "PHOTO_COUNT", "Take 3 photos of your face", "images")
+        vectors = recognizer.face_template([decode_image(i) for i in body.images[:5]])
+        db.save_face(user["id"], vectors)
+        db.audit(user["username"], "face_enrolled", {"photos": len(vectors)})
+        return my_security(user)
+
+    @app.patch("/api/me/security")
+    def toggle_my_security(body: SecurityToggle, user=Depends(session_user)):
+        """The switches. Turning a method ON needs it to be set up; turning one OFF needs your password
+        (weakening your own security is a risky action too)."""
+        sec = db.get_security(user["id"])
+        changes = {}
+        for key, ready, label in (("face_enabled", sec["face_enrolled"], "face"), ("pin_enabled", sec["pin_set"], "PIN")):
+            wanted = getattr(body, key)
+            if wanted is None:
+                continue
+            if wanted and not ready:
+                raise ApiError(400, "NOT_SET_UP", f"Set up your {label} first", key)
+            if not wanted:                              # weakening your own security needs the password
+                need_password(user, body.current_password)
+            changes[key] = wanted
+        db.set_security_flags(user["id"], **changes)
+        db.audit(user["username"], "security_setting_changed", changes)
+        return my_security(user)
+
+    @app.delete("/api/me/security/pin")
+    def remove_my_pin(body: PasswordOnly, user=Depends(session_user)):
+        need_password(user, body.current_password)
+        db.remove_pin(user["id"])
+        db.audit(user["username"], "pin_removed")
+        return my_security(user)
+
+    @app.delete("/api/me/security/face")
+    def remove_my_face(body: PasswordOnly, user=Depends(session_user)):
+        need_password(user, body.current_password)
+        db.delete_face(user["id"])
+        db.audit(user["username"], "face_removed")
+        return my_security(user)
+
+    # ---- confirm a risky action: returns a one-time token ------------------------
+    def grant_after(request, user, action, method, ok, reason="wrong", detail=None):
+        """Shared tail of the three confirmation endpoints: lockout, audit, grant."""
+        if action not in step_up["actions"]:
+            raise ApiError(400, "UNKNOWN_ACTION", "Unknown action")
+        key, ip = f"stepup:{user['username']}", request.client.host if request.client else ""
+        if not ok:
+            db.record_login(key, ip, False)
+            db.audit(user["username"], "step_up_failed", {"action": action, "method": method, **(detail or {})})
+            raise ApiError(401, "STEP_UP_FAILED", reason)
+        db.record_login(key, ip, True)
+        db.set_security_flags(user["id"], last_method=method if method != "password" else None)
+        db.audit(user["username"], "step_up_ok", {"action": action, "method": method})
+        return {"token": stepup.new_grant(db, user["id"], action, method, step_up["grant_seconds"]),
+                "expires_in": step_up["grant_seconds"]}
+
+    def step_up_guard(request, user):
+        wait = locked_for(f"stepup:{user['username']}", request.client.host if request.client else "")
+        if wait:
+            db.audit(user["username"], "step_up_locked")
+            raise ApiError(429, "ACCOUNT_LOCKED", f"Too many failed confirmations. Try again in {max(1, round(wait / 60))} minute(s).")
+
+    @app.post("/api/step-up/pin")
+    def step_up_pin(body: StepUpPin, request: Request, user=Depends(current_user)):
+        step_up_guard(request, user)
+        sec = db.get_security(user["id"])
+        ok = sec["pin_enabled"] and auth.verify_password(body.pin, db.get_pin_hash(user["id"]) or "")
+        return grant_after(request, user, body.action, "pin", ok, "Wrong PIN")
+
+    @app.post("/api/step-up/password")
+    def step_up_password(body: StepUpPassword, request: Request, user=Depends(current_user)):
+        step_up_guard(request, user)
+        return grant_after(request, user, body.action, "password", auth.verify_password(body.password, user["pw_hash"]), "Wrong password")
+
+    @app.post("/api/step-up/face")
+    def step_up_face(body: StepUpFace, request: Request, user=Depends(current_user)):
+        step_up_guard(request, user)
+        sec = db.get_security(user["id"])
+        if not sec["face_enabled"]:
+            raise ApiError(400, "NOT_SET_UP", "Face confirmation is not turned on for this account")
+        scores = []
+        ok, reason = stepup.verify_face(recognizer, cfg, [decode_image(i) for i in body.images[:3]], db.face_vectors(user["id"]), scores)
+        return grant_after(request, user, body.action, "face", ok, reason, {"scores": scores})
 
     # ---- alerts ---------------------------------------------------------------
     def alert_view(a, user):
@@ -562,12 +808,13 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
         return cameras.public(db.get_camera(camera_id))
 
     @app.delete("/api/cameras/{camera_id}", status_code=204)
-    def delete_camera(camera_id: str, user=Depends(admin_only)):
+    def delete_camera(camera_id: str, request: Request, user=Depends(admin_only)):
         cam = db.get_camera(camera_id)
         if not cam:
             raise HTTPException(404, "No such camera")
         if cam["builtin"]:
             raise HTTPException(400, "The laptop camera cannot be deleted")
+        check_step_up(request, user, "camera_delete")
         workers.stop(camera_id)
         db.delete_camera(camera_id)
         db.audit(user["username"], "camera_deleted", {"id": camera_id, "name": cam["name"]})
@@ -594,7 +841,9 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
 
     # ---- admin only --------------------------------------------------------
     @app.post("/api/people", status_code=201)
-    def register(body: NewPerson, user=Depends(admin_only)):
+    def register(body: NewPerson, request: Request, user=Depends(admin_only)):
+        if watchlist_type(body.person_type):
+            check_step_up(request, user, "watchlist_change")
         images = [decode_image(i) for i in body.images]
         data = body.model_dump(exclude={"images", "consent"})
         data["watch"] = {**(body.watch or {}), "added_by": user["username"]}
@@ -607,12 +856,15 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
         return {**created, "name": body.name.strip()}
 
     @app.patch("/api/people/{person_id}")
-    def edit_person(person_id: int, body: PersonEdit, user=Depends(admin_only)):
+    def edit_person(person_id: int, body: PersonEdit, request: Request, user=Depends(admin_only)):
         person = db.get_person(person_id)
         if not person:
             raise HTTPException(404, "No such person")
         if body.status not in (None, "active", "disabled"):
             raise HTTPException(400, "Bad status")
+        # any change to a watch-list person, or turning someone INTO one, needs a confirmation
+        if watchlist_type(person["person_type"]) or (body.person_type and watchlist_type(body.person_type)):
+            check_step_up(request, user, "watchlist_change")
         sent = body.model_dump(exclude_none=True)
         status = sent.pop("status", None)
         core = {}
@@ -636,11 +888,41 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
                                                      "changed": sorted(body.model_dump(exclude_none=True))})
         return person_view(db.get_person(person_id), user)
 
-    @app.delete("/api/people/{person_id}", status_code=204)
-    def delete_person(person_id: int, user=Depends(admin_only)):
+    @app.post("/api/people/{person_id}/photos")
+    def change_person_photos(person_id: int, body: PhotosBody, request: Request, user=Depends(admin_only)):
+        """Replace (or add to) the photos of a registered person, for example after a wrong photo was uploaded.
+        Changing the face that opens the door is an identity change, so it needs a confirmation."""
         person = db.get_person(person_id)
         if not person:
             raise HTTPException(404, "No such person")
+        if not body.images:
+            raise ApiError(400, "PHOTO_COUNT", "Send at least one photo", "photos")
+        # check the photos first, so a wrong file does not use up the one-time confirmation
+        vectors, jpegs = recognizer.process_photos([decode_image(i) for i in body.images[:10]], for_person=person_id)
+        check_step_up(request, user, "person_photos")
+        total = db.change_photos(person_id, vectors, jpegs, body.replace)
+        db.audit(user["username"], "person_photos_changed", {"id": person_id, "code": person["code"],
+                                                              "mode": "replace" if body.replace else "add",
+                                                              "added": len(vectors), "total": total})
+        return {"photos": [{"id": p["id"]} for p in db.list_photos(person_id)]}
+
+    @app.delete("/api/people/{person_id}/photos/{photo_id}")
+    def delete_person_photo(person_id: int, photo_id: int, request: Request, user=Depends(admin_only)):
+        person = db.get_person(person_id)
+        if not person:
+            raise HTTPException(404, "No such person")
+        check_step_up(request, user, "person_photos")
+        if not db.delete_photo(person_id, photo_id):
+            raise ApiError(400, "LAST_PHOTO", "A person needs at least one photo. Add the new photo first, then remove this one.")
+        db.audit(user["username"], "person_photo_removed", {"id": person_id, "code": person["code"]})
+        return {"photos": [{"id": p["id"]} for p in db.list_photos(person_id)]}
+
+    @app.delete("/api/people/{person_id}", status_code=204)
+    def delete_person(person_id: int, request: Request, user=Depends(admin_only)):
+        person = db.get_person(person_id)
+        if not person:
+            raise HTTPException(404, "No such person")
+        check_step_up(request, user, "person_delete")
         db.delete_person(person_id)
         db.audit(user["username"], "person_deleted", {"id": person_id, "name": person["name"]})
         return Response(status_code=204)
@@ -663,7 +945,8 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
         return [user_view(u) for u in db.list_users()]
 
     @app.post("/api/users", status_code=201)
-    def create_user(body: UserCreate, user=Depends(admin_only)):
+    def create_user(body: UserCreate, request: Request, user=Depends(admin_only)):
+        check_step_up(request, user, "user_manage")
         name = body.username.strip()
         if not re.fullmatch(r"[A-Za-z0-9_.\-]{3,32}", name):
             raise ApiError(400, "BAD_USERNAME", "User name: 3 to 32 letters, digits, dot, dash or underscore", "username")
@@ -679,10 +962,11 @@ def create_app(cfg, recognizer, db, secret, opener=None, reachable=cameras.tcp_r
         return user_view(db.get_user(user_id=user_id))
 
     @app.patch("/api/users/{user_id}")
-    def edit_user(user_id: int, body: UserEdit, user=Depends(admin_only)):
+    def edit_user(user_id: int, body: UserEdit, request: Request, user=Depends(admin_only)):
         target = db.get_user(user_id=user_id)
         if not target:
             raise HTTPException(404, "No such user")
+        check_step_up(request, user, "user_manage")
         if body.role not in (None, "admin", "viewer", "resident"):
             raise ApiError(400, "BAD_ROLE", "Role must be admin, viewer or resident", "role")
         losing_admin = target["role"] == "admin" and target["active"] and (

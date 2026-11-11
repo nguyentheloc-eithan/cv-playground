@@ -30,6 +30,26 @@ alerts:
     the property's security provider), and I will review it regularly and remove it when it is no longer needed.
 
 security:
+  # Sign in with the face instead of the password. Each user must switch it on in Settings (off by default).
+  # It uses the same live check as step-up (look straight, then turn the head) and the same lockout.
+  face_login:
+    enabled: true
+  # Step-up confirmation, like a banking app: a risky action needs a fresh confirmation by PIN, face or
+  # password. Each user turns PIN / face on in Settings; the password is always the fallback.
+  step_up:
+    enabled: true
+    grant_seconds: 120                   # a confirmation is valid once, for this long
+    pin_length: 6
+    face_threshold: 0.50                 # similarity needed to accept a face (higher than normal recognition)
+    require_head_turn: true              # face check = look straight, then turn your head (a held-up photo cannot do that)
+    head_turn_min_yaw: 0.20              # how far the head must turn: a small, natural turn (0.35 = a big turn)
+    actions:                             # which actions need confirmation (remove a line to relax it)
+      person_delete: Delete a person
+      person_photos: Replace, add or remove a person's photos
+      watchlist_change: Add or change a watch-list entry
+      user_manage: Create, change or reset a user
+      camera_delete: Delete a camera
+      events_export: Export the scan log
   min_password_length: 12
   max_failed_logins: 5                   # after this many wrong passwords the account is locked...
   lockout_minutes: 10                    # ...for this long

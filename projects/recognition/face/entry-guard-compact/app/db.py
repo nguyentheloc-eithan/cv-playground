@@ -26,7 +26,23 @@ CREATE TABLE IF NOT EXISTS user (
     pw_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin', 'viewer', 'resident')),
     active INTEGER NOT NULL DEFAULT 1,
-    epoch INTEGER NOT NULL DEFAULT 0);
+    epoch INTEGER NOT NULL DEFAULT 0,
+    pin_hash TEXT,
+    pin_enabled INTEGER NOT NULL DEFAULT 0,
+    face_enabled INTEGER NOT NULL DEFAULT 0,
+    last_method TEXT,
+    face_login INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS user_face (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    data BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS step_up_grant (
+    token_hash TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    method TEXT NOT NULL,
+    expires REAL NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS person (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT,
@@ -50,7 +66,8 @@ CREATE TABLE IF NOT EXISTS photo (
 CREATE TABLE IF NOT EXISTS vector (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     person_id INTEGER NOT NULL REFERENCES person(id) ON DELETE CASCADE,
-    data BLOB NOT NULL);
+    data BLOB NOT NULL,
+    photo_id INTEGER);
 CREATE TABLE IF NOT EXISTS event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts REAL NOT NULL,
@@ -154,9 +171,12 @@ class Database:
                        "person_type": "TEXT NOT NULL DEFAULT 'resident'", "unit": "TEXT NOT NULL DEFAULT ''",
                        "valid_from": "REAL", "valid_until": "REAL", "notes": "TEXT NOT NULL DEFAULT ''",
                        "watch": "TEXT NOT NULL DEFAULT '{}'"},
+            "vector": {"photo_id": "INTEGER"},
             "event": {"access": "TEXT", "reason": "TEXT NOT NULL DEFAULT ''", "alert": "TEXT"},
             "audit": {"prev_hash": "TEXT", "hash": "TEXT"},
-            "user": {"epoch": "INTEGER NOT NULL DEFAULT 0"},
+            "user": {"epoch": "INTEGER NOT NULL DEFAULT 0", "pin_hash": "TEXT", "pin_enabled": "INTEGER NOT NULL DEFAULT 0",
+                     "face_enabled": "INTEGER NOT NULL DEFAULT 0", "last_method": "TEXT",
+                     "face_login": "INTEGER NOT NULL DEFAULT 0"},
         }
         with self.db:
             for table, columns in wanted.items():
@@ -168,7 +188,19 @@ class Database:
             for (person_id,) in self.db.execute("SELECT id FROM person WHERE code IS NULL").fetchall():
                 self.db.execute("UPDATE person SET code = ? WHERE id = ?", (self._code(person_id), person_id))
             self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS person_code ON person(code)")
+        self._link_old_vectors_to_photos()
         self._allow_resident_role()
+
+    def _link_old_vectors_to_photos(self):
+        """Vectors saved before photo management have no photo_id. Photos and vectors were always saved in the same
+        order, so when a person has as many of each, pair them up (this lets single photos be removed later)."""
+        with self.db:
+            for (person_id,) in self.db.execute("SELECT DISTINCT person_id FROM vector WHERE photo_id IS NULL").fetchall():
+                photos = [r[0] for r in self.db.execute("SELECT id FROM photo WHERE person_id = ? ORDER BY id", (person_id,))]
+                vectors = [r[0] for r in self.db.execute("SELECT id FROM vector WHERE person_id = ? ORDER BY id", (person_id,))]
+                if len(photos) == len(vectors):
+                    for photo_id, vector_id in zip(photos, vectors):
+                        self.db.execute("UPDATE vector SET photo_id = ? WHERE id = ?", (photo_id, vector_id))
 
     def _allow_resident_role(self):
         """Older databases only allow the roles admin/viewer in a CHECK rule. SQLite cannot alter a
@@ -176,15 +208,26 @@ class Database:
         sql = self.db.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'user'").fetchone()[0]
         if "'resident'" in sql:
             return
-        with self.db:
-            self.db.execute("ALTER TABLE user RENAME TO user_old")
-            self.db.execute("""CREATE TABLE user (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, pw_hash TEXT NOT NULL,
-                role TEXT NOT NULL CHECK (role IN ('admin', 'viewer', 'resident')),
-                active INTEGER NOT NULL DEFAULT 1, epoch INTEGER NOT NULL DEFAULT 0)""")
-            self.db.execute("INSERT INTO user(id, username, pw_hash, role, active, epoch) "
-                            "SELECT id, username, pw_hash, role, active, epoch FROM user_old")
-            self.db.execute("DROP TABLE user_old")
+        # Safe order for SQLite: build the new table, copy, drop the old one, rename the new one.
+        # (Renaming the OLD table first would rewrite other tables' foreign keys to point at it.)
+        # Foreign keys are paused so that dropping the old table cannot cascade into user_face.
+        self.db.execute("PRAGMA foreign_keys = OFF")
+        try:
+            with self.db:
+                self.db.execute("""CREATE TABLE user_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, pw_hash TEXT NOT NULL,
+                    role TEXT NOT NULL CHECK (role IN ('admin', 'viewer', 'resident')),
+                    active INTEGER NOT NULL DEFAULT 1, epoch INTEGER NOT NULL DEFAULT 0, pin_hash TEXT,
+                    pin_enabled INTEGER NOT NULL DEFAULT 0, face_enabled INTEGER NOT NULL DEFAULT 0, last_method TEXT,
+                    face_login INTEGER NOT NULL DEFAULT 0)""")
+                have = {row[1] for row in self.db.execute("PRAGMA table_info(user)")}
+                columns = ", ".join(c for c in ("id", "username", "pw_hash", "role", "active", "epoch", "pin_hash",
+                                                "pin_enabled", "face_enabled", "last_method", "face_login") if c in have)
+                self.db.execute(f"INSERT INTO user_new({columns}) SELECT {columns} FROM user")
+                self.db.execute("DROP TABLE user")
+                self.db.execute("ALTER TABLE user_new RENAME TO user")
+        finally:
+            self.db.execute("PRAGMA foreign_keys = ON")
 
     def _code(self, person_id):
         """The automatic, human-friendly ID of a person, for example EG-00042."""
@@ -314,12 +357,91 @@ class Database:
                 self.db.execute("UPDATE user SET pw_hash = ? WHERE id = ?", (pw_hash, user_id))
             self.db.execute("UPDATE user SET epoch = epoch + 1 WHERE id = ?", (user_id,))
 
+    # ------------------------------------------------- step-up security settings
+    @_locked
+    def get_security(self, user_id):
+        r = self.db.execute("SELECT pin_hash, pin_enabled, face_enabled, last_method, face_login FROM user WHERE id = ?",
+                            (user_id,)).fetchone()
+        faces = self.db.execute("SELECT COUNT(*) FROM user_face WHERE user_id = ?", (user_id,)).fetchone()[0]
+        return {"pin_set": bool(r[0]), "pin_enabled": bool(r[1] and r[0]), "face_enrolled": faces > 0,
+                "face_enabled": bool(r[2] and faces), "last_method": r[3], "face_login": bool(r[4] and faces)}
+
+    @_locked
+    def get_pin_hash(self, user_id):
+        return self.db.execute("SELECT pin_hash FROM user WHERE id = ?", (user_id,)).fetchone()[0]
+
+    @_locked
+    def set_pin(self, user_id, pin_hash):
+        with self.db:
+            self.db.execute("UPDATE user SET pin_hash = ?, pin_enabled = 1 WHERE id = ?", (pin_hash, user_id))
+
+    @_locked
+    def remove_pin(self, user_id):
+        with self.db:
+            self.db.execute("UPDATE user SET pin_hash = NULL, pin_enabled = 0 WHERE id = ?", (user_id,))
+
+    @_locked
+    def set_security_flags(self, user_id, pin_enabled=None, face_enabled=None, last_method=None, face_login=None):
+        with self.db:
+            if face_login is not None:
+                self.db.execute("UPDATE user SET face_login = ? WHERE id = ?", (1 if face_login else 0, user_id))
+            if pin_enabled is not None:
+                self.db.execute("UPDATE user SET pin_enabled = ? WHERE id = ?", (1 if pin_enabled else 0, user_id))
+            if face_enabled is not None:
+                self.db.execute("UPDATE user SET face_enabled = ? WHERE id = ?", (1 if face_enabled else 0, user_id))
+            if last_method is not None:
+                self.db.execute("UPDATE user SET last_method = ? WHERE id = ?", (last_method, user_id))
+
+    @_locked
+    def save_face(self, user_id, vectors):
+        """Replace the user's face template (a few vectors) and switch face confirmation on."""
+        with self.db:
+            self.db.execute("DELETE FROM user_face WHERE user_id = ?", (user_id,))
+            for vector in vectors:
+                self.db.execute("INSERT INTO user_face(user_id, data) VALUES (?, ?)",
+                                (user_id, vector.astype(np.float32).tobytes()))
+            self.db.execute("UPDATE user SET face_enabled = 1 WHERE id = ?", (user_id,))
+
+    @_locked
+    def delete_face(self, user_id):
+        with self.db:
+            self.db.execute("DELETE FROM user_face WHERE user_id = ?", (user_id,))
+            self.db.execute("UPDATE user SET face_enabled = 0, face_login = 0 WHERE id = ?", (user_id,))
+
+    @_locked
+    def face_vectors(self, user_id):
+        rows = self.db.execute("SELECT data FROM user_face WHERE user_id = ?", (user_id,)).fetchall()
+        return [np.frombuffer(r[0], dtype=np.float32) for r in rows]
+
+    @_locked
+    def create_grant(self, token_hash, user_id, action, method, expires):
+        with self.db:
+            self.db.execute("DELETE FROM step_up_grant WHERE expires < ? OR used = 1", (time.time(),))
+            self.db.execute("INSERT INTO step_up_grant(token_hash, user_id, action, method, expires) VALUES (?, ?, ?, ?, ?)",
+                            (token_hash, user_id, action, method, expires))
+
+    @_locked
+    def consume_grant(self, token_hash, user_id, action):
+        """Use a confirmation. True only once, only for the same user and action, only before it expires."""
+        with self.db:
+            cur = self.db.execute("UPDATE step_up_grant SET used = 1 WHERE token_hash = ? AND user_id = ? AND action = ? "
+                                  "AND used = 0 AND expires > ?", (token_hash, user_id, action, time.time()))
+        return cur.rowcount == 1
+
     # ---------------------------------------------------------- login attempts
     @_locked
     def record_login(self, username, ip, success):
         with self.db:
             self.db.execute("INSERT INTO login_attempt(ts, username, ip, success) VALUES (?, ?, ?, ?)",
                             (time.time(), username, ip, 1 if success else 0))
+
+    @_locked
+    def clear_failed_logins(self, username):
+        """Forget the failed sign-in, face sign-in and confirmation attempts of one user (lockout reset)."""
+        with self.db:
+            cur = self.db.execute("DELETE FROM login_attempt WHERE username IN (?, ?, ?)",
+                                  (username, f"face:{username}", f"stepup:{username}"))
+        return cur.rowcount
 
     @_locked
     def failed_logins(self, username=None, ip=None, since=0):
@@ -358,9 +480,10 @@ class Database:
                 for number, (vector, jpeg) in enumerate(zip(vectors, photos), start=1):
                     filename = f"{number}.jpg"
                     (folder / filename).write_bytes(jpeg)
-                    self.db.execute("INSERT INTO photo(person_id, filename) VALUES (?, ?)", (person_id, filename))
-                    self.db.execute("INSERT INTO vector(person_id, data) VALUES (?, ?)",
-                                    (person_id, vector.astype(np.float32).tobytes()))
+                    photo_id = self.db.execute("INSERT INTO photo(person_id, filename) VALUES (?, ?)",
+                                               (person_id, filename)).lastrowid
+                    self.db.execute("INSERT INTO vector(person_id, data, photo_id) VALUES (?, ?, ?)",
+                                    (person_id, vector.astype(np.float32).tobytes(), photo_id))
             return person_id
         except Exception:
             if folder:
@@ -424,6 +547,59 @@ class Database:
         with self.db:
             self.db.execute("DELETE FROM person WHERE id = ?", (person_id,))
         shutil.rmtree(self.photos_dir / str(person_id), ignore_errors=True)
+
+    @_locked
+    def list_photos(self, person_id):
+        rows = self.db.execute("SELECT id, filename FROM photo WHERE person_id = ? ORDER BY id", (person_id,)).fetchall()
+        return [{"id": r[0], "filename": r[1]} for r in rows]
+
+    @_locked
+    def photo_path(self, person_id, photo_id):
+        r = self.db.execute("SELECT filename FROM photo WHERE id = ? AND person_id = ?", (photo_id, person_id)).fetchone()
+        return self.photos_dir / str(person_id) / r[0] if r else None
+
+    @_locked
+    def change_photos(self, person_id, vectors, jpegs, replace):
+        """Add new photos for a person, and (replace=True) remove ALL the old ones. The new photos are written
+        first, so a failure never leaves the person without a face. Returns how many photos the person has now."""
+        folder = self.photos_dir / str(person_id)
+        folder.mkdir(parents=True, exist_ok=True)
+        old = self.list_photos(person_id) if replace else []
+        written = []
+        try:
+            with self.db:
+                for vector, jpeg in zip(vectors, jpegs):
+                    filename = f"{int(time.time() * 1000)}-{len(written)}.jpg"
+                    (folder / filename).write_bytes(jpeg)
+                    written.append(filename)
+                    photo_id = self.db.execute("INSERT INTO photo(person_id, filename) VALUES (?, ?)",
+                                               (person_id, filename)).lastrowid
+                    self.db.execute("INSERT INTO vector(person_id, data, photo_id) VALUES (?, ?, ?)",
+                                    (person_id, vector.astype(np.float32).tobytes(), photo_id))
+                for photo in old:
+                    self.db.execute("DELETE FROM vector WHERE photo_id = ? OR (person_id = ? AND photo_id IS NULL)",
+                                    (photo["id"], person_id))
+                    self.db.execute("DELETE FROM photo WHERE id = ?", (photo["id"],))
+        except Exception:
+            for filename in written:
+                (folder / filename).unlink(missing_ok=True)
+            raise
+        for photo in old:
+            (folder / photo["filename"]).unlink(missing_ok=True)
+        return len(self.list_photos(person_id))
+
+    @_locked
+    def delete_photo(self, person_id, photo_id):
+        """Remove one photo and its face vector. The last photo cannot be removed. Returns True if removed."""
+        photos = self.list_photos(person_id)
+        target = next((p for p in photos if p["id"] == photo_id), None)
+        if not target or len(photos) <= 1:
+            return False
+        with self.db:
+            self.db.execute("DELETE FROM vector WHERE photo_id = ?", (photo_id,))
+            self.db.execute("DELETE FROM photo WHERE id = ?", (photo_id,))
+        (self.photos_dir / str(person_id) / target["filename"]).unlink(missing_ok=True)
+        return True
 
     @_locked
     def first_photo(self, person_id):

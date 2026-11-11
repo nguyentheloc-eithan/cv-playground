@@ -36,9 +36,9 @@ class Face:
 
         Uses the nose position between the two eyes (landmarks 0, 1 = eyes, 2 = nose).
         """
-        right_eye_x, left_eye_x, nose_x = self.row[4], self.row[6], self.row[8]
+        right_eye_x, left_eye_x, nose_x = float(self.row[4]), float(self.row[6]), float(self.row[8])
         eye_distance = abs(left_eye_x - right_eye_x) or 1.0
-        return abs(nose_x - (right_eye_x + left_eye_x) / 2) / eye_distance
+        return float(abs(nose_x - (right_eye_x + left_eye_x) / 2) / eye_distance)
 
 
 class FaceEngine:

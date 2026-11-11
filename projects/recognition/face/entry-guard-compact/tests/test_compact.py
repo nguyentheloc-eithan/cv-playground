@@ -23,12 +23,14 @@ class FakeEngine:
     size = 100.0
 
     def find_faces(self, image):
-        nose_x = 50 + self.yaw_shift
-        row = np.array([0, 0, self.size, self.size, 30, 40, 70, 40, nose_x, 60, 35, 80, 65, 80, 0.99])
+        # a 5th number in the test image = nose shift in pixels (20 -> yaw 0.5, a clearly turned head)
+        nose_x = 50 + (float(image[4]) if len(image) > 4 else self.yaw_shift)
+        row = np.array([0, 0, self.size, self.size, 30, 40, 70, 40, nose_x, 60, 35, 80, 65, 80, 0.99], dtype=np.float32)
         return [Face(0, 0, self.size, self.size, 0.99, row)]
 
     def face_vector(self, image, face):
-        return image / np.linalg.norm(image)
+        vector = np.asarray(image[:4], dtype=np.float32)
+        return vector / np.linalg.norm(vector)
 
     def sharpness(self, image, face):
         return self.sharp

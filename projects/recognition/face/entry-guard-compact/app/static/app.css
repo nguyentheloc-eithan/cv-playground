@@ -270,3 +270,45 @@ button.big { padding: 15px; font-size: 17px; }
 @keyframes bannerflash { 50% { background: #d97706; } }
 body.has-banner { padding-top: 48px; }
 @media (max-width: 700px) { .alert-main { grid-template-columns: 1fr; } }
+
+/* ---------- 13. settings: banking-style switches, PIN pad, confirmation ---------- */
+.setting-row { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+.ico-circle { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
+.ico-circle svg.i { width: 20px; height: 20px; }
+.switch { position: relative; display: inline-block; width: 52px; height: 30px; flex: none; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 2; }
+.switch .track { position: absolute; inset: 0; border-radius: 99px; background: var(--border-strong); transition: background .18s; }
+.switch .knob { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .18s; }
+.switch input:checked + .track { background: var(--ok); }
+.switch input:checked + .track .knob { transform: translateX(22px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--brand); outline-offset: 2px; }
+.lock-badge { width: 64px; height: 64px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.lock-badge svg.i { width: 30px; height: 30px; }
+.pin-dots { display: flex; gap: 14px; justify-content: center; margin: 14px 0 18px; }
+.pin-dots span { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--border-strong); transition: background .1s; }
+.pin-dots span.on { background: var(--brand); border-color: var(--brand); }
+.pin-dots.shake { animation: shake .35s; }
+@keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.pinpad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; justify-content: center; margin: 0 auto; }
+.pinpad button { width: 72px; height: 72px; padding: 0; border-radius: 50%; font-size: 24px; font-weight: 500; }
+
+.or-line { display: flex; align-items: center; gap: 10px; color: var(--text-3); font-size: 12px; }
+.or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+/* ---------- 14. photos of a person ---------- */
+.photo-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.photo-grid .ph { position: relative; }
+.photo-grid .ph img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); display: block; background: var(--surface-2); }
+.photo-grid .ph button { position: absolute; top: -6px; right: -6px; padding: 0 7px; border-radius: 99px; font-size: 14px; line-height: 20px; background: var(--surface); }
+
+/* ---------- 15. head-turn cue ---------- */
+.turn-cue { position: absolute; inset: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 5%; pointer-events: none; }
+.turn-cue .arr { font-size: clamp(36px, 8vw, 84px); color: #fff; text-shadow: 0 2px 14px rgba(0, 0, 0, .65); opacity: .9; animation: nudge 1.1s ease-in-out infinite; }
+.turn-cue .arr.l { animation-name: nudge-l; }
+@keyframes nudge { 50% { transform: translateX(10px); opacity: .45; } }
+@keyframes nudge-l { 50% { transform: translateX(-10px); opacity: .45; } }
+.turn-meter { position: absolute; left: 8%; right: 8%; bottom: 14px; pointer-events: none; }
+.turn-label { text-align: center; font-weight: 700; color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, .8); margin-bottom: 6px; font-size: 14px; }
+.bar-track { position: relative; height: 14px; border-radius: 99px; background: rgba(255, 255, 255, .28); overflow: hidden; }
+.bar-fill { height: 100%; width: 0; background: #4ade80; border-radius: 99px; transition: width .15s; }
+.bar-goal { position: absolute; right: 0; top: 0; bottom: 0; width: 3px; background: #fff; }
