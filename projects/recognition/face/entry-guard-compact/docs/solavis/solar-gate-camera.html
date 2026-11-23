@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar Gate Camera</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: single reading column, sticky section nav on wide screens, tables scroll inside their own wrapper. */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#14202b; --muted:#5a6b7a; --line:#d8dfe5;
+  --accent:#b7791f; --accent-soft:#fbefd5; --accent-ink:#7a4d0b;
+  --good:#1f7a4d; --good-soft:#dff3e8; --warn:#b4531a; --warn-soft:#fde8da; --crit:#b3261e;
+  --code-bg:#e9edf1;
+  --font-display:"Space Grotesk",system-ui,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f161d; --surface:#17212b; --ink:#e6edf3; --muted:#98a8b6; --line:#2a3744;
+  --accent:#e8b04a; --accent-soft:#2c2412; --accent-ink:#f0c777;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10; --crit:#ff8a80;
+  --code-bg:#1f2b36; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161d; --surface:#17212b; --ink:#e6edf3; --muted:#98a8b6; --line:#2a3744;
+  --accent:#e8b04a; --accent-soft:#2c2412; --accent-ink:#f0c777;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10; --crit:#ff8a80;
+  --code-bg:#1f2b36; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6;
+  padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:40px;min-width:0}
+h1,h2,h3{font-family:var(--font-display);line-height:1.2;text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,5vw,40px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:22px;font-weight:700;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h3{font-size:16px;font-weight:500}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+.lede{color:var(--muted);font-size:16px;max-width:65ch}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-ink);font-weight:600}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+a{color:var(--accent-ink)}
+a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.decision{background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.decision h3{font-size:17px;font-weight:700;color:var(--accent-ink)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.fact b{display:block;font-family:var(--font-display);font-size:22px;font-variant-numeric:tabular-nums}
+.fact span{color:var(--muted);font-size:13px}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+tfoot td{font-weight:600;background:var(--bg)}
+
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+
+.phases{display:flex;flex-direction:column;gap:12px;padding:0;list-style:none}
+.phase{display:grid;grid-template-columns:92px 1fr;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.phase .when{font-family:var(--font-display);font-weight:700;color:var(--accent-ink);font-size:14px}
+.phase .when small{display:block;font-family:var(--font-body);font-weight:400;color:var(--muted)}
+.phase .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.gate{font-size:13px;color:var(--muted)}
+.gate b{color:var(--good)}
+@media (max-width:520px){.phase{grid-template-columns:1fr;gap:6px}}
+.note{font-size:13px;color:var(--muted)}
+.risk td:first-child{font-weight:600}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:12px">
+  <span class="eyebrow">Hardware and build plan · built on entry-guard-compact</span>
+  <h1>Solar Gate Camera</h1>
+  <p class="lede">A small solar-powered camera at your gate. It recognises people on the device, flags banned people, uploads event snapshots to your cloud, and switches from Wi-Fi to a 4G SIM when Wi-Fi drops. Every part can be bought in Vietnam.</p>
+</header>
+
+<div class="decision">
+  <h3>Recommended build</h3>
+  <ul>
+    <li><b>Brain:</b> Raspberry Pi Zero 2 W running your existing Python recognition code, headless, with no browser needed.</li>
+    <li><b>Eyes:</b> Pi Camera Module 3 (autofocus) plus a small white LED that switches on when someone approaches at night.</li>
+    <li><b>Network:</b> Wi-Fi first. A 4G LTE USB dongle or SIM7600 HAT is the backup. Only small snapshots go over 4G.</li>
+    <li><b>Power:</b> 40 W solar panel, MPPT charge controller, 12.8 V 12 Ah LiFePO4 battery (about 3 days without sun).</li>
+    <li><b>Cloud:</b> any S3-compatible bucket (Cloudflare R2, Backblaze B2, AWS S3), plus Telegram for instant alerts.</li>
+  </ul>
+</div>
+
+<div class="facts">
+  <div class="fact"><b>≈ 6.3 M ₫</b><span>one unit, parts only (estimate ±30%)</span></div>
+  <div class="fact"><b>≈ 55 Wh/day</b><span>average load, to be measured in phase 0</span></div>
+  <div class="fact"><b>6 weeks</b><span>from bench test to a field pilot</span></div>
+  <div class="fact"><b>≈ 100 k ₫/mo</b><span>4G data SIM, snapshots only</span></div>
+</div>
+
+<section id="arch">
+  <h2>How it works</h2>
+  <p>Recognition runs on the device, so the camera still works and still alerts locally when the internet is down. The cloud only receives results: a small snapshot, a name or "unknown", a score, and a timestamp. Events are queued on the SD card and sent when a link comes back.</p>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  CAM[Camera + PIR] --> AG[Edge agent on Pi]
+  AG -->|face vector| REC[recognize.py check]
+  REC --> DB[(SQLite: people, vectors, outbox)]
+  AG --> NET{Link monitor}
+  NET -->|primary| WIFI[Wi-Fi]
+  NET -->|fallback| LTE[4G LTE]
+  WIFI --> CLOUD[(S3 bucket: snapshots + events)]
+  LTE --> CLOUD
+  WIFI --> TG[Telegram alert]
+  LTE --> TG
+  CLOUD -->|watchlist sync| AG
+</pre>
+  </div>
+</section>
+
+<section id="hardware">
+  <h2>Hardware and bill of materials</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>Pick</th><th class="n">≈ VND</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Computer</td><td>Raspberry Pi Zero 2 W (or Orange Pi Zero 2W)</td><td class="n">900,000</td><td>About 1 W idle, runs Python and OpenCV, small enough for a compact box.</td></tr>
+      <tr><td>Camera</td><td>Pi Camera Module 3, standard lens</td><td class="n">1,000,000</td><td>Autofocus and 1080p. The sharpest face at 1–2.5 m beats a wide lens.</td></tr>
+      <tr><td>Storage</td><td>32 GB high-endurance microSD</td><td class="n">200,000</td><td>Holds the outbox when offline. Use "endurance" cards, they survive constant writes.</td></tr>
+      <tr><td>4G modem</td><td>Huawei E3372 USB dongle, or SIM7600 HAT</td><td class="n">1,200,000</td><td>Choose LTE Cat-4. 2G is being phased out in Vietnam, so avoid 2G-only modules.</td></tr>
+      <tr><td>Motion wake</td><td>HC-SR501 PIR sensor</td><td class="n">50,000</td><td>Runs the heavy model only when someone is there, which saves power and heat.</td></tr>
+      <tr><td>Night light</td><td>3 W warm-white LED + MOSFET</td><td class="n">100,000</td><td>Infrared often hurts recognition accuracy. White light on trigger gives better faces.</td></tr>
+      <tr><td>Solar panel</td><td>40 W, 18 V monocrystalline</td><td class="n">600,000</td><td>Sized for cloudy weeks, see the power section.</td></tr>
+      <tr><td>Charge controller</td><td>12 V MPPT with a LiFePO4 profile</td><td class="n">300,000</td><td>A plain PWM or lead-acid profile will under-charge or damage LiFePO4.</td></tr>
+      <tr><td>Battery</td><td>12.8 V 12 Ah LiFePO4 (≈ 154 Wh)</td><td class="n">1,300,000</td><td>Safe, 2000+ cycles, handles heat better than lead-acid or 18650 packs.</td></tr>
+      <tr><td>Power step-down</td><td>12 V → 5.1 V 3 A buck converter</td><td class="n">100,000</td><td>Clean 5 V for the Pi. Add a 3 A fuse on the battery lead.</td></tr>
+      <tr><td>Enclosure</td><td>IP65 box, cable glands, pole bracket</td><td class="n">400,000</td><td>Light colour, with a hood over the lens. See the heat risk below.</td></tr>
+      <tr><td>Wire, fuse, connectors</td><td>MC4, 2.5 mm² cable, inline fuse</td><td class="n">150,000</td><td></td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="2">Total, one unit</td><td class="n">≈ 6,300,000</td><td></td></tr></tfoot>
+  </table></div>
+  <p class="note">Prices are rough guesses from memory. Check live prices at Hshop.vn, Thế Giới IC, Nshop, Linh kiện 3M, or the electronics streets in Hà Nội (Nhật Tảo) and TP.HCM (Ba Tháng Hai). Buy one of everything first, then order for more units.</p>
+</section>
+
+<section id="power">
+  <h2>Power budget</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Load</th><th class="n">Avg W</th><th class="n">Wh / day</th><th>Assumption</th></tr></thead>
+    <tbody>
+      <tr><td>Pi Zero 2 W + camera</td><td class="n">1.4</td><td class="n">34</td><td>Idle plus a low-fps motion check; face model runs only on trigger</td></tr>
+      <tr><td>4G modem, registered and idle</td><td class="n">0.4</td><td class="n">10</td><td>Could drop to about 0.1 W if the modem is powered off while Wi-Fi is up</td></tr>
+      <tr><td>Night LED</td><td class="n">0.1</td><td class="n">2</td><td>3 W for about 40 minutes a day</td></tr>
+      <tr><td>Conversion losses</td><td class="n">—</td><td class="n">≈ 7</td><td>About 15% on top</td></tr>
+    </tbody>
+    <tfoot><tr><td>Total</td><td class="n">≈ 2.3</td><td class="n">≈ 55</td><td></td></tr></tfoot>
+  </table></div>
+  <div class="cols">
+    <div class="panel"><h3>Panel</h3><p>40 W × 4 sun hours × 0.75 ≈ <b>120 Wh/day</b> in the south and centre. A Hà Nội winter gives about 2 sun hours, so ≈ 60 Wh/day, which is just enough. A 20 W panel is not enough.</p></div>
+    <div class="panel"><h3>Battery</h3><p>154 Wh ÷ 55 Wh ≈ <b>2.8 days</b> with no sun. Do not discharge below 20%, so plan on about 2 days of real reserve.</p></div>
+  </div>
+  <p class="note">These are design estimates. Phase 0 measures the real draw with a USB power meter before any panel or battery is bought.</p>
+</section>
+
+<section id="network">
+  <h2>Wi-Fi to 4G failover</h2>
+  <ul>
+    <li>Use NetworkManager. Give Wi-Fi the lower route metric (preferred) and the 4G interface the higher one, so Linux switches on its own when Wi-Fi goes down.</li>
+    <li>"Wi-Fi connected" is not "internet works". A small link monitor pings your bucket endpoint every 30 s. After 3 failures it brings up 4G, and it checks Wi-Fi again every 5 minutes to switch back.</li>
+    <li><b>Save SIM data:</b> on 4G send only 640 px JPEG snapshots (≈ 40 KB) and JSON events. Video clips and full-size images wait for Wi-Fi.</li>
+    <li>If both links fail, the agent keeps recognising and queues events in SQLite. A local buzzer or relay output can still trigger on a banned match.</li>
+    <li>Use a data SIM from Viettel, VinaPhone or MobiFone with a monthly data plan. Disable voice and SMS-based extras.</li>
+  </ul>
+</section>
+
+<section id="software">
+  <h2>Software changes to this repo</h2>
+  <p>Keep <code>faces.py</code>, <code>db.py</code> and <code>recognize.py</code>. The security console stays as the office tool for registering people. The device gets a new headless agent.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>New file</th><th>Job</th></tr></thead>
+    <tbody>
+      <tr><td><code>edge/agent.py</code></td><td>Camera loop. Wake on PIR or motion, detect a face, call <code>check</code>, apply a 30 s per-person cooldown, save a snapshot.</td></tr>
+      <tr><td><code>edge/uplink.py</code></td><td>Outbox table in SQLite. Uploads snapshot and JSON to S3, retries with backoff, sends Telegram alerts, never blocks recognition.</td></tr>
+      <tr><td><code>edge/netwatch.py</code></td><td>Link monitor described above. Exposes "which link is active" to the uplink so it can choose snapshot size.</td></tr>
+      <tr><td><code>edge/sync.py</code></td><td>Pulls the people list and the banned list from the cloud, so you can manage the watchlist from the office.</td></tr>
+      <tr><td><code>config/gate.yaml</code></td><td>Camera index, thresholds, cooldown, bucket, Telegram token (from env vars, not the file).</td></tr>
+      <tr><td><code>deploy/gate.service</code></td><td>systemd unit with auto-restart and a hardware watchdog, so a hang reboots the Pi.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Verdict rules at the gate</h3>
+  <ul>
+    <li><span class="pill good">Known</span> Logged only. Optional silent Telegram message for family or staff arrivals.</li>
+    <li><span class="pill warn">Unknown</span> Snapshot to cloud, normal notification.</li>
+    <li><span class="pill acc">Banned match</span> Immediate alert with snapshot and score. Require two matches in a row above a high threshold before alerting, to cut false alarms.</li>
+  </ul>
+</section>
+
+<section id="cloud">
+  <h2>Cloud, alerts and data</h2>
+  <div class="cols">
+    <div class="panel"><h3>Storage</h3><p>Any S3-compatible bucket works through one library. Cloudflare R2 and Backblaze B2 have free tiers and cheap storage. Layout: <code>/gate-01/2026/11/23/14-05-33_unknown.jpg</code> plus a matching <code>.json</code>. Add a lifecycle rule that deletes snapshots after 30–90 days.</p></div>
+    <div class="panel"><h3>Alerts</h3><p>Telegram bot first: free, instant, works in Vietnam, and supports photos. Zalo OA can be added later if family members do not use Telegram.</p></div>
+    <div class="panel"><h3>Security</h3><p>Use a bucket key that can only write to one prefix. Encrypt the disk or at least the face vectors. Keep tokens in environment variables and rotate them if a device is stolen.</p></div>
+  </div>
+</section>
+
+<section id="lowcost">
+  <h2>Cheapest option: custom ESP32-S3 board</h2>
+  <p>A custom PCB around an ESP32-S3 module cuts the unit cost from about 6.3 M ₫ to about <b>1.1 M ₫</b> (0.75 M ₫ without 4G). It sleeps until a PIR sensor fires, so it uses roughly 1 Wh/day instead of 55. One 18650 pair and a 5 W panel are enough. The price is that the small chip cannot run your current Python recognition, so the heavy part moves to a cheap server.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>Pi build (above)</th><th>ESP32-S3 custom PCB</th></tr></thead>
+    <tbody>
+      <tr><td>Unit cost</td><td>≈ 6.3 M ₫</td><td>≈ 1.1 M ₫ with 4G</td></tr>
+      <tr><td>Average power</td><td>≈ 55 Wh/day</td><td>≈ 1 Wh/day (estimate)</td></tr>
+      <tr><td>Solar</td><td>40 W panel, 154 Wh battery</td><td>5 W panel, 2 × 18650</td></tr>
+      <tr><td>Recognition</td><td>On the device, works offline</td><td>Face detected on device, crop uploaded, recognised on a server by your existing code</td></tr>
+      <tr><td>Alert delay</td><td>Under 1 s</td><td>3–8 s (wake, upload, match)</td></tr>
+      <tr><td>Extra running cost</td><td>None</td><td>A small server (VPS ≈ 100–200 k ₫/month, or a home PC)</td></tr>
+      <tr><td>Effort</td><td>Software only</td><td>PCB design, firmware in C/C++ (ESP-IDF), plus the server</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Parts on the board (≈ VND, assembled, 10 units)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>Pick</th><th class="n">≈ VND</th></tr></thead>
+    <tbody>
+      <tr><td>MCU module</td><td>ESP32-S3-WROOM-1 N16R8 (certified module, 8 MB PSRAM)</td><td class="n">180,000</td></tr>
+      <tr><td>Camera</td><td>OV2640 on a 24-pin FPC (OV5640 if you want autofocus)</td><td class="n">60,000</td></tr>
+      <tr><td>4G</td><td>SIMCom A7670C LTE Cat-1 module, nano-SIM socket, FPC antenna</td><td class="n">325,000</td></tr>
+      <tr><td>Solar charging</td><td>CN3791 charger for a 6 V panel, battery protection, NTC</td><td class="n">45,000</td></tr>
+      <tr><td>Battery and panel</td><td>2 × 18650 with holder, 6 V 5 W panel</td><td class="n">180,000</td></tr>
+      <tr><td>Wake sensor and light</td><td>AM312 PIR (≈ 12 µA), white LED with MOSFET</td><td class="n">30,000</td></tr>
+      <tr><td>Power and I/O</td><td>3.3 V buck, USB-C, ESD, fuse, connectors, passives</td><td class="n">70,000</td></tr>
+      <tr><td>PCB and assembly</td><td>2-layer board from JLCPCB or PCBWay, assembled</td><td class="n">130,000</td></tr>
+      <tr><td>Enclosure</td><td>Small IP65 box, gland, lens window</td><td class="n">80,000</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="2">Total</td><td class="n">≈ 1,100,000</td></tr></tfoot>
+  </table></div>
+  <h3>How it runs</h3>
+  <ul>
+    <li>Deep sleep. The PIR wakes the chip, the camera takes 3–5 frames, on-device face detection keeps the best crop (10–20 KB).</li>
+    <li>It tries Wi-Fi for 5 s. If that fails it powers the 4G module, uploads the crop, then powers the module off again.</li>
+    <li>The server runs your <code>recognize.py</code> on the crop and sends the Telegram alert and the cloud log. The server also holds the people list and the banned list, so the device stores no face data.</li>
+    <li>A person who walks past fast may be partly missed in the first second of wake-up. The PIR sees about 5–6 m ahead, which gives the board lead time. Test this early.</li>
+  </ul>
+  <h3>PCB notes for Altium</h3>
+  <ul>
+    <li>Use a certified ESP32-S3 module and keep the antenna end clear of copper and the battery. Do not design the RF part from the bare chip.</li>
+    <li>The 4G module pulls peaks of about 2 A. Place 470 µF or more of bulk capacitance next to it, use wide traces, and switch it with a load switch so it is fully off between events.</li>
+    <li>Charge Li-ion only between 0 and 45 °C. Put an NTC on the cell and keep the battery in the shaded part of the box, since Vietnamese heat can exceed that inside a closed enclosure.</li>
+    <li>Add test pads, a boot and reset button, a debug UART header, and a solar input fuse plus TVS diode.</li>
+    <li>Export Gerber, BOM and pick-and-place files, and choose LCSC "basic" parts where you can to keep assembly fees down. Altium is paid software, so if you only have a trial, KiCad produces the same fab files.</li>
+    <li>Plan two board spins. The first one usually has at least one mistake.</li>
+  </ul>
+  <p class="note">Selling this as a product needs radio type approval in Vietnam for the 4G and Wi-Fi parts. A certified module helps but does not replace the approval for the finished device. All figures here are my estimates, so confirm them with a first prototype on a breadboard before ordering boards.</p>
+</section>
+
+<section id="esp-plan">
+  <h2>ESP32 build: plan and cost to a 5-unit pilot</h2>
+  <p>About <b>12 weeks</b> and <b>≈ 17 M ₫</b>, not counting your own time. Most of the money is two rounds of assembled boards, because the first round almost always has a mistake.</p>
+  <ol class="phases">
+    <li class="phase"><div class="when">Phase 1<small>weeks 1–3</small></div><div class="body"><h3>Breadboard prototype</h3><p>ESP32-S3 camera dev board, a 4G dev board (A7670C), PIR, charger and panel. Write the firmware: sleep, PIR wake, face crop, upload, power off 4G. Build the small server that runs <code>recognize.py</code> and sends Telegram.</p><p class="gate"><b>Pass if:</b> wake to alert in under 8 s on 4G, average draw under 1.5 Wh/day, and a walking person is caught at 3 m.</p></div></li>
+    <li class="phase"><div class="when">Phase 2<small>weeks 3–5</small></div><div class="body"><h3>Schematic and PCB v1 in Altium</h3><p>Design from the proven prototype, order 5 assembled boards from JLCPCB or PCBWay (about 5 days to build, 5–10 days shipping).</p><p class="gate"><b>Pass if:</b> design review done against the checklist (power, RF keepout, 4G peak current, battery temperature cutoff).</p></div></li>
+    <li class="phase"><div class="when">Phase 3<small>weeks 6–7</small></div><div class="body"><h3>Bring-up and fixes</h3><p>Measure real sleep current and 4G peaks, test solar charging in the sun, list every board error.</p><p class="gate"><b>Pass if:</b> sleep current under 200 µA and the board runs 3 days from the battery with no sun.</p></div></li>
+    <li class="phase"><div class="when">Phase 4<small>weeks 8–9</small></div><div class="body"><h3>PCB v2 and enclosures</h3><p>Fix the errors, order 5 more boards, fit them in IP65 boxes with the panel on a pole bracket.</p></div></li>
+    <li class="phase"><div class="when">Phase 5<small>weeks 10–12</small></div><div class="body"><h3>Field pilot, 3 weeks</h3><p>Run at your gate and two other sites. Review every alert, tune thresholds, log battery voltage and CPU resets.</p><p class="gate"><b>Pass if:</b> no dead battery, at most 1 false banned alert per week, and missed arrivals under 5%.</p></div></li>
+  </ol>
+  <h3>Cost estimate</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th>Detail</th><th class="n">≈ VND</th></tr></thead>
+    <tbody>
+      <tr><td>Prototype parts</td><td>ESP32-S3 camera board, A7670C 4G board, PIR, charger, 18650s, 5 W panel, wires</td><td class="n">1,500,000</td></tr>
+      <tr><td>Test tools</td><td>USB power meter, USB-UART adapter, spare antennas</td><td class="n">500,000</td></tr>
+      <tr><td>PCB v1</td><td>5 assembled boards, including setup, stencil, shipping and import</td><td class="n">5,000,000</td></tr>
+      <tr><td>PCB v2</td><td>5 assembled boards</td><td class="n">5,500,000</td></tr>
+      <tr><td>Enclosures and mounting</td><td>5 IP65 boxes, glands, pole brackets, panels</td><td class="n">500,000</td></tr>
+      <tr><td>Server</td><td>Small VPS for 3 months</td><td class="n">450,000</td></tr>
+      <tr><td>4G data SIMs</td><td>Development and pilot, about 4 months</td><td class="n">600,000</td></tr>
+      <tr><td>Cloud storage</td><td>Free tier is enough for 5 units</td><td class="n">0</td></tr>
+      <tr><td>Contingency</td><td>20% for a third board spin or broken parts</td><td class="n">2,800,000</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="2">Total to a 5-unit pilot</td><td class="n">≈ 16,850,000</td></tr></tfoot>
+  </table></div>
+  <div class="cols">
+    <div class="panel"><h3>Per unit after the pilot</h3><p>≈ 1.1 M ₫ at 10 units. Expect ≈ 0.9–1.0 M ₫ at 100 units from part discounts, before radio approval and enclosure tooling.</p></div>
+    <div class="panel"><h3>Running cost per month</h3><p>≈ 100 k ₫ for the SIM, ≈ 0–50 k ₫ for cloud storage, plus the server (≈ 150 k ₫) shared across all units.</p></div>
+  </div>
+  <p class="note">Estimates only. Not included: Altium licence, your time, radio type approval if you sell it, and any custom injection-moulded case.</p>
+</section>
+
+<section id="box">
+  <h2>One-box enclosure for 3D printing</h2>
+  <p>Everything sits in one wedge-shaped box: the solar panel on the sloped top, the camera, motion sensor and LED on the front, and the board and batteries inside. You screw the back plate to the gate post or wall, then the cover slides on and is held by 4 screws from underneath. The wall screws are hidden under the cover, which helps against theft. This is <b>Rev A</b>: it has not been printed or fitted yet.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 420 230" width="100%" style="max-width:520px;display:block;margin:0 auto" role="img" aria-label="Side view of the enclosure: 150 mm deep, 120 mm high at the wall, 80 mm at the front, panel tilted 15 degrees">
+      <rect x="30" y="10" width="8" height="185" fill="var(--line)"/>
+      <text x="34" y="210" font-size="11" fill="var(--muted)" text-anchor="middle">wall</text>
+      <polygon points="38,195 273,195 273,91 38,39" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+      <line x1="38" y1="39" x2="273" y2="91" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"/>
+      <text x="125" y="46" font-size="12" fill="var(--accent-ink)" transform="rotate(12.5 125 46)">solar panel 15°</text>
+      <rect x="72" y="170" width="108" height="18" rx="3" fill="var(--code-bg)" stroke="var(--muted)"/>
+      <text x="126" y="183" font-size="10" fill="var(--ink)" text-anchor="middle">2 × 18650</text>
+      <rect x="250" y="112" width="10" height="60" fill="var(--code-bg)" stroke="var(--muted)"/>
+      <text x="232" y="145" font-size="10" fill="var(--ink)" text-anchor="end">board</text>
+      <rect x="273" y="122" width="22" height="16" fill="var(--ink)"/>
+      <text x="300" y="134" font-size="11" fill="var(--ink)">camera + hood</text>
+      <text x="282" y="215" font-size="11" fill="var(--muted)" text-anchor="end">150 deep</text>
+      <text x="282" y="70" font-size="11" fill="var(--muted)">80 at front</text>
+      <text x="6" y="120" font-size="11" fill="var(--muted)" transform="rotate(-90 12 120)">120 at wall</text>
+    </svg>
+  </div>
+  <div class="cols">
+    <div class="panel"><h3>Size</h3><p>200 wide × 150 deep × 120 high (80 at the front), in mm. The size is set by the panel, which needs a pocket about 165 × 140 mm.</p></div>
+    <div class="panel"><h3>Front face</h3><p>16 mm camera opening with a 20 mm glass or acrylic window disc, a glued-on sun hood, a 12 mm PIR opening on the left and an 8 mm LED opening on the right.</p></div>
+    <div class="panel"><h3>Inside</h3><p>Four PCB posts on the front wall, a cradle for a 2 × 18650 holder on the floor, a cable hole under the panel, and a 12 mm hole for an optional vent plug.</p></div>
+  </div>
+  <h3>What to order</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>File</th><th>Print as</th></tr></thead>
+    <tbody>
+      <tr><td>Cover</td><td><code>cover.stl</code></td><td>Front face down, 200 × 120 × 150 mm. No supports except the small battery cradle.</td></tr>
+      <tr><td>Back plate</td><td><code>backplate.stl</code></td><td>Back face down, 200 × 120 × 21 mm.</td></tr>
+      <tr><td>Lens hood</td><td><code>lens_hood.stl</code></td><td>Upright, 28 × 28 × 12 mm. Print 2, one is a spare.</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b>Material:</b> ASA (best for sun and rain). PETG is the fallback. Do not use PLA, it softens in a hot box.</li>
+    <li><b>Settings:</b> 0.2 mm layers, at least 4 perimeters, 30% infill, black or light grey (light grey runs cooler in the sun). Ask for the outside to stay smooth, with no ironing or brim marks on the front.</li>
+    <li><b>Files and source:</b> in the repo at <code>hardware/enclosure/</code>. <code>build_enclosure.py</code> rebuilds all three STL files after you change a size.</li>
+    <li><b>Hardware to buy with it:</b> 4 × M3 × 12 screws, 4 × M3 heat-set inserts, 4 × M2.5 self-tapping screws for the board, 4 × wall screws with plugs, 2 mm foam tape or a silicone bead for the seam, neutral-cure silicone for the window, PIR and panel cable, and a 20 mm window disc.</li>
+  </ul>
+  <h3>Assembly order</h3>
+  <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+    <li>Press the 4 inserts into the shelves on the back plate with a soldering iron.</li>
+    <li>Screw the back plate to the post or wall. Face the panel south, with no shade.</li>
+    <li>Glue the window disc into its recess and the hood around it. Fit the PIR and LED with silicone.</li>
+    <li>Glue the panel into its pocket and pass its cable through the hole. Seal the hole with silicone.</li>
+    <li>Screw the board onto its posts, set the battery holder in its cradle, and connect everything.</li>
+    <li>Put foam tape around the cover rim, slide the cover onto the plate, and fit the 4 screws from underneath.</li>
+  </ol>
+  <div class="panel">
+    <h3>Cost of the box, and what is not checked yet</h3>
+    <p>The three parts use about 330 g of ASA. At 2,000–4,000 ₫ per gram that is roughly <b>0.7–1.3 M ₫</b> for a one-off print, well above the 80 k ₫ I put in the parts table. Rates differ a lot, so get quotes from two or three services in Vietnam. Before you order, check three sizes against the real parts: the solar panel (the pocket is a guess), the 18650 holder, and the board hole pattern, which is a placeholder until the Altium board exists. The body is closed with no moving parts, so for the first print I suggest only the cover in cheap PETG to test the fit.</p>
+  </div>
+</section>
+
+<section id="roadmap">
+  <h2>Roadmap</h2>
+  <ol class="phases">
+    <li class="phase"><div class="when">Phase 0<small>week 1</small></div><div class="body"><h3>Prove the code runs on the Pi</h3><p>Buy a Pi Zero 2 W, camera and USB power meter. Run the current <code>check</code> on it and measure time per face and watts.</p><p class="gate"><b>Pass if:</b> under 1 s per face and under 2 W average. Otherwise move to Pi 4 or add a lighter detector and revisit the power plan.</p></div></li>
+    <li class="phase"><div class="when">Phase 1<small>weeks 2–3</small></div><div class="body"><h3>Edge agent on the bench</h3><p>Write <code>agent.py</code>, <code>uplink.py</code> and the Telegram alert. Power from the wall, Wi-Fi only.</p><p class="gate"><b>Pass if:</b> 20 registered people and 5 test "banned" faces give no missed banned match at 2 m, and the outbox survives a pulled network cable.</p></div></li>
+    <li class="phase"><div class="when">Phase 2<small>week 4</small></div><div class="body"><h3>4G failover</h3><p>Add the modem and <code>netwatch.py</code>.</p><p class="gate"><b>Pass if:</b> switching to 4G takes under 60 s when Wi-Fi is switched off, and returns to Wi-Fi on its own.</p></div></li>
+    <li class="phase"><div class="when">Phase 3<small>week 5</small></div><div class="body"><h3>Solar and enclosure</h3><p>Panel, MPPT, LiFePO4 battery, buck converter, IP65 box. Mount at the gate at 1.5–1.7 m height, facing the entry path, with the panel on the same pole facing south.</p><p class="gate"><b>Pass if:</b> 7 days outdoors with no reboot, battery never below 30%, and enclosure air temperature below 60 °C at midday.</p></div></li>
+    <li class="phase"><div class="when">Phase 4<small>week 6+</small></div><div class="body"><h3>Field pilot</h3><p>Run for 2 weeks at your real gate. Review every alert in the console, tune thresholds, and record false alarms per day.</p><p class="gate"><b>Pass if:</b> at most 1 false banned alert per week and no missed test enrolment.</p></div></li>
+  </ol>
+</section>
+
+<section id="risks">
+  <h2>Risks to handle</h2>
+  <div class="tablewrap"><table class="risk">
+    <thead><tr><th>Risk</th><th>What happens</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Heat</td><td>A sealed box in Vietnamese sun passes 60 °C; the Pi throttles or the SD card fails.</td><td>White box, sun hood, panel shading the box, a heatsink. Log CPU temperature to the cloud.</td></tr>
+      <tr><td>Humidity and rain</td><td>Condensation and corrosion kill boards within months.</td><td>Silica gel pack, conformal coating spray on boards, glands pointing down, drip loops on cables.</td></tr>
+      <tr><td>Backlight and night</td><td>Faces turn into silhouettes against a bright street or a dark yard.</td><td>Aim the camera away from the sun path, use the white LED, and tune exposure in the camera config.</td></tr>
+      <tr><td>Photo spoofing</td><td>Someone holds up a photo of an allowed person.</td><td>Keep this as a "welcome" tool, not a door lock. Do not use it to open anything without liveness checking.</td></tr>
+      <tr><td>False banned alerts</td><td>A lookalike is flagged and someone confronts an innocent person.</td><td>Alerts say "possible match, please review", with the score and both photos. Never act on an alert alone.</td></tr>
+      <tr><td>Theft and tampering</td><td>Panel, battery or the whole unit is taken.</td><td>Mount high, use security screws, send a "device offline for 15 min" Telegram alert from a cloud check.</td></tr>
+      <tr><td>Lightning</td><td>Panel cable carries surges into the controller.</td><td>DC surge protector on the panel line and a grounded pole.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="panel">
+    <h3>Legal note for Vietnam</h3>
+    <p>Face data counts as sensitive personal data under Decree 13/2023/NĐ-CP. Put up a visible sign at the gate, get consent from family and staff you register, and keep only the retention you need. Build the banned list from your own incidents, not from police or third-party data. Check the details with a local lawyer before you sell this as a product.</p>
+  </div>
+</section>
+
+<section id="questions">
+  <h2>Decisions I need from you</h2>
+  <ul>
+    <li>Does the gate have any mains power nearby? If yes, solar can become a backup and the cost drops by about 2.2 M ₫.</li>
+    <li>Is this for one gate or a product you will sell? A product needs a custom enclosure, a provisioning flow and a fleet dashboard, which adds about 4 more weeks.</li>
+    <li>Do alerts only go to you, or to several people or a guard post?</li>
+    <li>Which cloud do you already have an account with? That sets the first uploader.</li>
+  </ul>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

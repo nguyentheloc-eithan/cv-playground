@@ -1,0 +1,601 @@
+<title>Solavis SRS</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: formal document. Cover block, contents list, numbered sections, appendices. Tables scroll inside their own wrapper. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#13202c; --muted:#586979; --line:#d9e0e6;
+  --brand:#0b3c5d; --accent:#e89b0c; --accent-soft:#fdf0d5; --accent-ink:#8a5600;
+  --good:#1f7a4d; --good-soft:#dff3e8; --warn:#b4531a; --warn-soft:#fde8da;
+  --code-bg:#e8edf1;
+  --font-display:"Space Grotesk",system-ui,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e151c; --surface:#16202a; --ink:#e6edf3; --muted:#97a7b5; --line:#293643;
+  --brand:#7cc0ea; --accent:#f0b24a; --accent-soft:#2b2312; --accent-ink:#f2c97c;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1e2a35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151c; --surface:#16202a; --ink:#e6edf3; --muted:#97a7b5; --line:#293643;
+  --brand:#7cc0ea; --accent:#f0b24a; --accent-soft:#2b2312; --accent-ink:#f2c97c;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1e2a35; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.65;
+  padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:44px;min-width:0}
+h1,h2,h3{font-family:var(--font-display);line-height:1.2;text-wrap:balance;margin:0;color:var(--ink)}
+h1{font-size:clamp(30px,5.5vw,44px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:23px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--brand);scroll-margin-top:16px}
+h3{font-size:16px;font-weight:600}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+a{color:var(--brand)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.note{font-size:13px;color:var(--muted)}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-ink);font-weight:600}
+.cover{display:flex;flex-direction:column;gap:20px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.brandrow{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:22px;color:var(--brand)}
+.lede{color:var(--muted);font-size:16px;max-width:66ch}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.meta div{background:var(--surface);padding:10px 14px;min-width:0}
+.meta small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.meta span{font-weight:600}
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 20px}
+.toc ol{columns:2 260px;column-gap:32px;gap:4px;padding-left:22px}
+.toc li{break-inside:avoid}
+.callout{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:6px;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
+.callout h3{color:var(--accent-ink)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.fact b{display:block;font-family:var(--font-display);font-size:22px;font-variant-numeric:tabular-nums;color:var(--brand)}
+.fact span{color:var(--muted);font-size:13px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+tfoot td{font-weight:600;background:var(--bg)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.phases{display:flex;flex-direction:column;gap:12px;padding:0;list-style:none}
+.phase{display:grid;grid-template-columns:100px 1fr;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.phase .when{font-family:var(--font-display);font-weight:700;color:var(--brand);font-size:14px}
+.phase .when small{display:block;font-family:var(--font-body);font-weight:400;color:var(--muted)}
+.phase .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.gate{font-size:13px;color:var(--muted)}
+.gate b{color:var(--good)}
+@media (max-width:520px){.phase{grid-template-columns:1fr;gap:6px}}
+.sig{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.sig div{border-top:1px solid var(--ink);padding-top:6px;font-size:13px;color:var(--muted)}
+</style>
+<div class="wrap">
+<header class="cover">
+  <div class="brandrow"><svg width="34" height="34" viewBox="0 0 40 40" role="img" aria-label="Solavis mark">
+      <g stroke="var(--accent)" stroke-width="3" stroke-linecap="round">
+        <line x1="20" y1="2" x2="20" y2="7"/><line x1="20" y1="33" x2="20" y2="38"/>
+        <line x1="2" y1="20" x2="7" y2="20"/><line x1="33" y1="20" x2="38" y2="20"/>
+        <line x1="7.3" y1="7.3" x2="10.8" y2="10.8"/><line x1="29.2" y1="29.2" x2="32.7" y2="32.7"/>
+        <line x1="32.7" y1="7.3" x2="29.2" y2="10.8"/><line x1="10.8" y1="29.2" x2="7.3" y2="32.7"/>
+      </g>
+      <circle cx="20" cy="20" r="9.5" fill="var(--brand)"/>
+      <circle cx="20" cy="20" r="4.2" fill="var(--surface)"/>
+      <circle cx="22" cy="18" r="1.4" fill="var(--accent)"/>
+    </svg> Solavis</div>
+  <span class="eyebrow">Requirements · system and software</span>
+  <h1>Software requirements specification</h1>
+  <p class="lede">What the Solavis system must do: camera, cloud service, apps, security activation and tamper protection, and the architecture rules that keep the later Platform product possible.</p>
+  <div class="meta">
+    <div><small>Document ID</small><span>SOL-SRS-001</span></div>
+    <div><small>Version</small><span>0.1 draft</span></div>
+    <div><small>Date</small><span>23 Nov 2026</span></div>
+    <div><small>Status</small><span>For review</span></div>
+    <div><small>Audience</small><span>Software, firmware, hardware, QA</span></div>
+    <div><small>Confidentiality</small><span>Internal</span></div>
+  </div>
+</header>
+<nav class="toc" aria-label="Contents"><h3 style="margin-bottom:8px">Contents</h3><ol>
+<li><a href="#intro">1. Introduction</a></li>
+<li><a href="#overall">2. Overall description</a></li>
+<li><a href="#func">3. Functional requirements</a></li>
+<li><a href="#interfaces">4. External interface requirements</a></li>
+<li><a href="#nfr">5. Non-functional requirements</a></li>
+<li><a href="#data">6. Data requirements</a></li>
+<li><a href="#accept">7. Verification and traceability</a></li>
+<li><a href="#open">8. Open issues</a></li>
+</ol></nav>
+<section>
+  <h2 id="intro">1. Introduction</h2>
+  <h3>1.1 Purpose</h3>
+  <p>This document states what the Solavis system must do. It is the single source of requirements for the camera firmware, the cloud service, the customer app and the admin console. The hardware design (SOL-HW-001) and the software design (SOL-SW-001) both trace back to the requirement IDs here.</p>
+  <h3>1.2 Scope</h3>
+  <p>Solavis is planned as two product lines that share one cloud service:</p>
+  <ul>
+    <li><b>Solavis Camera</b> (first, the MVP): a solar-powered camera that detects a person at a gate, recognises the face in the cloud, and alerts the owner. Sold as a camera plus a monthly subscription.</li>
+    <li><b>Solavis Platform</b> (working name, later): the same software sold on its own. Customers connect cameras they already own, set up streaming, and use our recognition, alerts, plans and apps.</li>
+  </ul>
+  <p>This SRS specifies the Camera MVP in full. It also states the <b>architecture requirements that the MVP must follow now</b> (ARCH) so the Platform product does not need a rewrite, and it lists the Platform requirements (BYO) for planning. It does not cover the custom circuit board, which is a later project.</p>
+  <h3>1.3 Conventions</h3>
+  <ul>
+    <li>Words: <b>shall</b> is a requirement. <b>should</b> is a goal that can slip. <b>may</b> is optional.</li>
+    <li>Priority: <span class="pill good">M</span> must have for the MVP. <span class="pill acc">S</span> should have for the MVP. <span class="pill warn">L</span> later.</li>
+    <li>Verification: <b>T</b> test, <b>D</b> demonstration, <b>I</b> inspection, <b>A</b> analysis.</li>
+    <li>Numbers marked <i>target</i> are goals to be confirmed by measurement. Numbers marked <i>TBD</i> have no value yet.</li>
+  </ul>
+  <h3>1.4 Definitions</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Camera</td><td>The Solavis hardware unit at the gate.</td></tr>
+      <tr><td>Tenant</td><td>One customer account. All data belongs to exactly one tenant.</td></tr>
+      <tr><td>Event</td><td>One wake-up that produced at least one face crop.</td></tr>
+      <tr><td>Crop</td><td>A small image of a detected face, sent from the camera.</td></tr>
+      <tr><td>Verdict</td><td>The result of recognition: known, unknown or possible banned match.</td></tr>
+      <tr><td>Watch list</td><td>People the customer wants to be warned about. Also called the banned list.</td></tr>
+      <tr><td>Claim code</td><td>A code, shown as a QR, that binds a camera to a tenant.</td></tr>
+      <tr><td>Plan state</td><td>trial, active, past due, suspended or closed.</td></tr>
+      <tr><td>Entitlement</td><td>The limits a plan gives: cameras, people, retention and features.</td></tr>
+      <tr><td>OTA</td><td>Over-the-air firmware update.</td></tr>
+      <tr><td>Source</td><td>Anything that sends images to the cloud: a Solavis camera, or a third-party camera through an agent. Every source has a type and a list of capabilities.</td></tr>
+      <tr><td>Agent</td><td>Solavis software that runs on the customer's own computer or small box, reads their cameras' streams locally, and sends face crops to the cloud. Used by the Platform product.</td></tr>
+      <tr><td>BYO</td><td>Bring your own camera, the Platform product.</td></tr>
+      <tr><td>Tamper</td><td>Any sign that the camera was moved, turned, covered, opened or removed.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>1.5 References</h3>
+  <ul>
+    <li>SOL-HW-001 Solavis hardware engineering specification.</li>
+    <li>SOL-SW-001 Solavis software design specification.</li>
+    <li>Solavis implementation plan (business and programme view).</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="overall">2. Overall description</h2>
+  <h3>2.1 Product perspective</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  OWN[Owner] --> APP[Customer app]
+  OWN -. alerts .- TG[Telegram]
+  CAM[Camera at gate] <-->|HTTPS| CLOUD[Solavis cloud]
+  APP <--> CLOUD
+  CLOUD --> TG
+  STAFF[Solavis staff] --> ADM[Admin console]
+  ADM <--> CLOUD
+  FAC[Factory operator] --> PROV[Provisioning script]
+  PROV --> CLOUD
+</pre>
+  </div>
+  <h3>2.2 Users</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>User</th><th>Goal</th><th>Skill</th></tr></thead>
+    <tbody>
+      <tr><td>Owner</td><td>Know who is at the gate, manage people and the watch list</td><td>Non-technical, uses a phone</td></tr>
+      <tr><td>Solavis staff</td><td>Run accounts, plans, support and device fleet</td><td>Trained, uses the admin console</td></tr>
+      <tr><td>Factory operator</td><td>Build, flash, label and test cameras</td><td>Trained, uses the provisioning script</td></tr>
+      <tr><td>Installer</td><td>Mount the camera and connect it to Wi-Fi</td><td>Basic tools, written guide</td></tr>
+    </tbody>
+  </table></div>
+  <h3>2.3 Operating environment</h3>
+  <ul>
+    <li>Outdoors in Vietnam: heat, humidity, heavy rain, direct sun, dust.</li>
+    <li>Home or business Wi-Fi of varying quality, and Vietnamese 4G LTE networks (Viettel, VinaPhone, MobiFone).</li>
+    <li>Cloud: one Linux server for the MVP, S3-compatible storage, Postgres.</li>
+    <li>Phones: current Android and iOS browsers that support installable web apps and push.</li>
+  </ul>
+  <h3>2.4 Constraints</h3>
+  <ul>
+    <li>The MVP uses ready-made boards and parts. No custom circuit board.</li>
+    <li>Power is a 1.5 W solar panel and one 18650 cell, so the camera must sleep most of the time.</li>
+    <li>The camera cannot run the full recognition model. Recognition runs in the cloud.</li>
+    <li>The recognition code reuses the existing repository code, which produces 128-number face vectors.</li>
+  </ul>
+  <h3>2.5 Assumptions and dependencies</h3>
+  <ul>
+    <li>The selected 4G board has a camera connector, a SIM slot and a usable deep-sleep mode. <i>To be confirmed on the real board.</i></li>
+    <li>Customers have Wi-Fi at the gate, or accept 4G with a SIM.</li>
+    <li>A third-party cloud (storage and Telegram) stays available and affordable.</li>
+    <li>Personal data law requirements are confirmed by counsel before public sale.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="func">3. Functional requirements</h2>
+
+  <h3>3.1 Camera (DEV)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>DEV-001</td><td>The camera shall wake from deep sleep on a motion signal from the PIR sensor.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-002</td><td>The camera shall wake on a timer every 6 hours to send a heartbeat and refresh its configuration.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-003</td><td>After a motion wake, the camera shall capture 3 to 5 frames and keep the sharpest.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-004</td><td>The camera shall detect whether a face is present. If none, it shall return to sleep without uploading.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-005</td><td>The camera shall limit uploads to one event per cooldown period, default 30 seconds, set by the server.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-006</td><td>The camera shall switch on the white light when the scene is dark during capture.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-007</td><td>The camera shall try to connect to the configured Wi-Fi for up to 5 seconds (server-configurable).</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-008</td><td>On the 4G version, if Wi-Fi fails and the plan allows 4G, the camera shall power the modem, connect, and power it off afterwards.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-009</td><td>The camera shall try Wi-Fi first on every wake-up.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-010</td><td>The camera shall fetch its configuration at least every 6 hours, cache it, and obey the plan state in it.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-011</td><td>The camera shall upload each crop through a short-lived upload link and then report the event.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-012</td><td>With no connection, the camera shall keep up to 20 events in flash, drop the oldest first, and send them when a connection returns.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-013</td><td>The camera shall send a heartbeat with battery voltage, board temperature, signal strength, firmware version, reset reason and queue depth.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-014</td><td>The camera shall install a signed firmware update, reject an unsigned one, and roll back if the new version does not confirm itself after start.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-015</td><td>An unconfigured camera shall open a hotspot named Solavis-XXXX with a local page to choose the Wi-Fi network. The hotspot shall also open after a reset-button hold of 10 seconds.</td><td>M</td><td>D</td></tr>
+      <tr><td>DEV-016</td><td>The camera shall keep its device ID and key in protected storage and shall send the key only as authentication to the Solavis API.</td><td>M</td><td>I</td></tr>
+      <tr><td>DEV-017</td><td>When the plan state is suspended, the camera shall upload no events, shall sleep 6 hours between checks, and shall keep sending heartbeats.</td><td>M</td><td>T</td></tr>
+      <tr><td>DEV-018</td><td>Below 3.4 V battery the camera shall disable the white light and cut events to a reduced rate. Below 3.2 V it shall sleep and send one heartbeat a day.</td><td>S</td><td>T</td></tr>
+      <tr><td>DEV-019</td><td>The camera shall set its clock from the network on each connection and use UTC timestamps.</td><td>S</td><td>T</td></tr>
+      <tr><td>DEV-020</td><td>The camera should send up to 3 crops per event (the best frames).</td><td>S</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.2 Recognition (REC)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>REC-001</td><td>The server shall compare each crop only with the face vectors of the camera's own tenant.</td><td>M</td><td>T</td></tr>
+      <tr><td>REC-002</td><td>The server shall return one verdict per event: known, unknown or possible banned match, with the score and the matched person.</td><td>M</td><td>T</td></tr>
+      <tr><td>REC-003</td><td>Match thresholds shall be settings, per tenant with defaults. The default values are <i>TBD</i> and shall be set from pilot data.</td><td>M</td><td>A</td></tr>
+      <tr><td>REC-004</td><td>A possible banned match shall need at least 2 of the event's crops to match the same person above the banned threshold, or a single crop above a higher threshold.</td><td>M</td><td>T</td></tr>
+      <tr><td>REC-005</td><td>The server shall reject low-quality crops (face narrower than 80 pixels, or too blurry). They are logged with no alert.</td><td>M</td><td>T</td></tr>
+      <tr><td>REC-006</td><td>The owner shall be able to confirm or dismiss each verdict. The decision is stored.</td><td>M</td><td>D</td></tr>
+      <tr><td>REC-007</td><td>Registering a person shall need at least 3 photos that pass the quality check.</td><td>S</td><td>D</td></tr>
+      <tr><td>REC-008</td><td>Spoof detection (photo or screen held up to the camera).</td><td>L</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.3 Customer app (APP)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>APP-001</td><td>The owner shall sign in with a one-time code sent to a phone number or email. There are no passwords.</td><td>M</td><td>T</td></tr>
+      <tr><td>APP-002</td><td>The owner shall claim a camera by scanning its QR or typing its claim code.</td><td>M</td><td>T</td></tr>
+      <tr><td>APP-003</td><td>The owner shall register a person with a name, photos, a kind (allowed or watch list) and a consent confirmation. The system records who confirmed and when.</td><td>M</td><td>T</td></tr>
+      <tr><td>APP-004</td><td>The owner shall be able to edit, disable and delete a person. Deleting erases photos and face vectors within 24 hours.</td><td>M</td><td>T</td></tr>
+      <tr><td>APP-005</td><td>The app shall show an event feed with photo, time, camera and verdict, filtered by date, verdict and person.</td><td>M</td><td>D</td></tr>
+      <tr><td>APP-006</td><td>The app shall let the owner review an event: confirm or dismiss, with a note.</td><td>M</td><td>D</td></tr>
+      <tr><td>APP-007</td><td>The app shall show each camera's status: online or offline, battery, signal, firmware and last seen.</td><td>M</td><td>D</td></tr>
+      <tr><td>APP-008</td><td>The app shall show the plan, its state and usage against each limit.</td><td>M</td><td>D</td></tr>
+      <tr><td>APP-009</td><td>The app shall install on a phone and deliver push alerts.</td><td>M</td><td>T</td></tr>
+      <tr><td>APP-010</td><td>The owner shall link a Telegram chat with a one-time code.</td><td>M</td><td>T</td></tr>
+      <tr><td>APP-011</td><td>The owner should set which verdicts alert, and quiet hours.</td><td>S</td><td>D</td></tr>
+      <tr><td>APP-012</td><td>The owner shall be able to export all their data and delete their account.</td><td>M</td><td>T</td></tr>
+      <tr><td>APP-013</td><td>The app shall be available in Vietnamese and English, with Vietnamese as default.</td><td>M</td><td>I</td></tr>
+      <tr><td>APP-014</td><td>The app shall offer a printable gate notice sign that says face recognition is in use.</td><td>M</td><td>I</td></tr>
+      <tr><td>APP-015</td><td>Several users per account with roles.</td><td>L</td><td>D</td></tr>
+      <tr><td>APP-016</td><td>The app shall guide arming: mount the camera, check the view, press Arm. It shall show each camera's security state (mounting, armed, service, locked).</td><td>M</td><td>D</td></tr>
+      <tr><td>APP-017</td><td>The app shall let the owner unlock a locked camera with a second one-time code, open and end a service window, turn recovery mode on or off, mark a camera stolen, and release it to a new owner.</td><td>M</td><td>T</td></tr>
+      <tr><td>APP-018</td><td>The app shall show tamper alerts with the photo, the type (moved, turned, covered, removed, relocated, offline) and the time.</td><td>M</td><td>D</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.4 Alerts (ALR)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>ALR-001</td><td>The server shall send an alert within 3 seconds of the verdict, on every channel the owner enabled.</td><td>M</td><td>T</td></tr>
+      <tr><td>ALR-002</td><td>An alert shall include the camera name, time, verdict, a thumbnail and a link to the event.</td><td>M</td><td>I</td></tr>
+      <tr><td>ALR-003</td><td>An alert for a watch list match shall say "possible match" and never state it as a fact.</td><td>M</td><td>I</td></tr>
+      <tr><td>ALR-004</td><td>The server shall alert the owner when a camera is silent for more than 12 hours or its battery is below 25%.</td><td>M</td><td>T</td></tr>
+      <tr><td>ALR-005</td><td>The server should limit alerts per camera (10 a minute) and send a digest above that.</td><td>S</td><td>T</td></tr>
+      <tr><td>ALR-006</td><td>Zalo notifications.</td><td>L</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.5 Admin console (ADM)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>ADM-001</td><td>Admin accounts shall use two-factor sign-in.</td><td>M</td><td>I</td></tr>
+      <tr><td>ADM-002</td><td>Staff shall search tenants and devices and see their state.</td><td>M</td><td>D</td></tr>
+      <tr><td>ADM-003</td><td>Staff shall suspend and reactivate a tenant. A camera shall obey by its next wake-up.</td><td>M</td><td>T</td></tr>
+      <tr><td>ADM-004</td><td>Staff shall revoke a device key.</td><td>M</td><td>T</td></tr>
+      <tr><td>ADM-005</td><td>Staff shall export and delete all data of a tenant.</td><td>M</td><td>T</td></tr>
+      <tr><td>ADM-006</td><td>Staff shall give a reason before opening customer photos. Every access is recorded in the audit log.</td><td>M</td><td>T</td></tr>
+      <tr><td>ADM-007</td><td>Staff shall register new cameras in inventory with serial number and claim code.</td><td>M</td><td>T</td></tr>
+      <tr><td>ADM-008</td><td>Staff shall edit plans and limits without a code release.</td><td>M</td><td>D</td></tr>
+      <tr><td>ADM-009</td><td>Staff shall record a payment and extend a subscription period.</td><td>M</td><td>D</td></tr>
+      <tr><td>ADM-010</td><td>Staff should see fleet health: offline cameras, low battery, firmware versions.</td><td>S</td><td>D</td></tr>
+      <tr><td>ADM-011</td><td>Staff should release firmware to a percentage of cameras first.</td><td>S</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.6 Subscriptions (SUB)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>SUB-001</td><td>Plan limits (cameras, people, retention days, watch list, 4G, alert channels) shall be stored as data, not in firmware.</td><td>M</td><td>I</td></tr>
+      <tr><td>SUB-002</td><td>A tenant shall be in one of five states: trial, active, past due, suspended, closed.</td><td>M</td><td>T</td></tr>
+      <tr><td>SUB-003</td><td>Claiming the first camera shall start a 14-day trial.</td><td>M</td><td>T</td></tr>
+      <tr><td>SUB-004</td><td>The server shall check limits and state on every request. A modified camera shall not get around them.</td><td>M</td><td>T</td></tr>
+      <tr><td>SUB-005</td><td>Past due shall last 7 days, then suspended. A tenant suspended for 30 days becomes closed, after an export is offered. Closed tenants' data is deleted.</td><td>M</td><td>T</td></tr>
+      <tr><td>SUB-006</td><td>A daily job shall delete photos older than the plan's retention.</td><td>M</td><td>T</td></tr>
+      <tr><td>SUB-007</td><td>Automatic payment and renewal.</td><td>L</td><td>D</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="tamper">3.7 Secure activation and tamper protection (TAM)</h3>
+  <p>A camera at a gate can be turned, covered, carried to another corner or stolen. The camera therefore ships <b>unarmed</b>, is <b>armed</b> by its owner at the final position, and then raises an alert and <b>locks itself</b> when anything suggests it was touched. Detection is layered, because no single sensor catches every case.</p>
+  <div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Unclaimed
+  Unclaimed --> Mounting: owner claims camera
+  Mounting --> Armed: owner presses Arm at final position
+  Armed --> Service: owner opens a service window
+  Service --> Armed: window ends or owner ends it
+  Armed --> Locked: tamper detected
+  Locked --> Mounting: owner unlocks with step-up check
+  Armed --> Revoked: owner marks stolen
+  Locked --> Revoked: owner marks stolen
+  Armed --> Unclaimed: owner releases camera
+</pre>
+  </div>
+  <h3>Arming</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>TAM-001</td><td>A new camera shall be unarmed. It shall arm only after the owner has claimed it and pressed Arm in the app at the final mounting position.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-002</td><td>Arming shall record a baseline: tilt (from the accelerometer), heading (from the compass, if fitted), a low-resolution reference image of the view, the Wi-Fi network fingerprint, and the position (if the board has satellite positioning).</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-003</td><td>Mounting mode shall end after 60 minutes if the owner has not armed the camera. The camera then sleeps and sends only heartbeats until armed.</td><td>M</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Detection</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>TAM-010</td><td><b>Moved.</b> An accelerometer interrupt shall wake the camera. Movement lasting 2 seconds or more, or a tilt change of 8° or more from the baseline (both server-set), shall count as tamper.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-011</td><td><b>Turned.</b> A heading change of 15° or more from the baseline shall count as tamper. A tilt sensor alone cannot see a pure left-right turn, so this needs a compass.</td><td>S</td><td>T</td></tr>
+      <tr><td>TAM-012</td><td><b>View changed or covered.</b> After any motion interrupt, and at every check-in, the camera shall send a small grayscale frame. The server shall compare it with the baseline and raise tamper when the view differs beyond a threshold, or stays dark or blocked for 5 minutes or more.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-013</td><td><b>Removed or opened.</b> A magnet-and-reed switch shall detect the cover separating from the back plate and raise tamper.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-014</td><td><b>Knocks.</b> A shock below the tamper level shall be logged with a photo. Three or more within 10 minutes shall send a warning without locking.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-015</td><td><b>Gone quiet.</b> An armed camera shall check in every 15 minutes on Wi-Fi, or every 60 minutes on 4G only. The server shall raise "offline while armed" after two missed check-ins.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-016</td><td><b>Relocated.</b> If the baseline Wi-Fi network is no longer seen, or the position moved more than 50 m, the camera shall report tamper.</td><td>S</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Response</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>TAM-020</td><td>On tamper the camera shall first take a photo, even with no face in view, then send a tamper alert with the photo, the type, the time, the battery level and the position if known. It shall use the best link available and retry until delivered.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-021</td><td>Next the camera shall <b>lock</b>: stop all recognition events, turn off the light, drop the customer Wi-Fi and data session, and sleep. It may wake only to send beacons allowed by TAM-024.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-022</td><td>The lock shall be stored in the camera's flash and on the server. A reboot, power loss or Wi-Fi reset shall not clear it.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-023</td><td>The server shall refuse every request from a locked camera except tamper beacons and unlock checks.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-024</td><td>If the owner turned on <b>recovery mode</b>, a locked camera shall send a minimal beacon each hour (battery, signal, position if known) until the battery is low. Recovery mode is off by default.</td><td>S</td><td>T</td></tr>
+      <tr><td>TAM-025</td><td>The owner shall be alerted at once on every enabled channel with high severity. The alert shall repeat after 15 minutes until the owner acknowledges it.</td><td>M</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Unlock, service and ownership</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>TAM-030</td><td>Only the signed-in owner shall be able to unlock a camera, after a second confirmation (a fresh one-time code).</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-031</td><td>An unlocked camera shall return to mounting mode and must be armed again, which records a new baseline.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-032</td><td>The owner shall be able to open a <b>service window</b> of 15 to 120 minutes (cleaning, battery swap) in which tamper is ignored. The owner is alerted when it starts and ends. It ends on its own.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-033</td><td>The owner shall be able to mark a camera <b>stolen</b>. Its key is then revoked for good.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-034</td><td>The owner shall be able to <b>release</b> a camera for a new owner. It becomes unclaimed with a new claim code.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-035</td><td>Staff shall unlock a camera only on the owner's verified request. The request and the action are written to the audit log.</td><td>M</td><td>I</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Resistance to bypass</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>TAM-040</td><td>The tamper state, baseline and thresholds shall be controlled by the server. The camera applies them, and the server also checks the view and the check-ins itself.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-041</td><td>Pressing the reset button or opening the Wi-Fi hotspot while armed shall count as tamper.</td><td>M</td><td>T</td></tr>
+      <tr><td>TAM-042</td><td>A locked or stolen camera shall be of no use to a thief for reaching customer data. It holds none, and its key no longer works.</td><td>M</td><td>I</td></tr>
+      <tr><td>TAM-043</td><td>Secure boot and flash encryption, so a thief cannot re-flash the board and remove the lock logic.</td><td>L</td><td>I</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <h3>What tamper detection cannot do</h3>
+    <p>It cannot stop a theft. It raises the alert, takes a photo and makes the camera useless to the thief. Someone who jams Wi-Fi and 4G at the same time can delay the alert. The camera keeps trying, and the server raises "offline while armed" when check-ins stop. A thief can still re-use the bare hardware for their own purposes until secure boot is enabled. Wind, birds and slamming gates can cause false alarms, so the thresholds must be tuned in the pilot.</p>
+  </div>
+
+  <h3 id="platform">3.8 Architecture now, Platform product later (ARCH, BYO)</h3>
+  <p>The second product sells the software alone. A customer adds any camera they own, sets up streaming, and uses Solavis recognition, alerts, plans and apps. The Camera MVP must be built so this needs new components, not a rewrite. The ARCH items below are <b>MVP work</b>. The BYO items are later.</p>
+  <h3>Design now (MVP)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>ARCH-001</td><td>The recognition service shall accept crops from any source type through one input contract: image, source ID, time, optional quality hints. It shall not depend on how the crop was produced.</td><td>M</td><td>I</td></tr>
+      <tr><td>ARCH-002</td><td>The data model shall describe every camera as a <b>source</b> with a type (<code>solavis_cam</code> now; <code>agent_rtsp</code>, <code>agent_onvif</code> later) and a list of capabilities (for example pir, imu, reed, night_light, ota).</td><td>M</td><td>I</td></tr>
+      <tr><td>ARCH-003</td><td>Plans shall limit sources by count and by allowed type.</td><td>M</td><td>T</td></tr>
+      <tr><td>ARCH-004</td><td>Usage (events and bytes) shall be counted per source per month, so per-channel billing can be added without a schema change.</td><td>M</td><td>T</td></tr>
+      <tr><td>ARCH-005</td><td>Apps and the API shall show only the features a source's capabilities support (for example tamper sensors appear only on Solavis cameras).</td><td>S</td><td>D</td></tr>
+      <tr><td>ARCH-006</td><td>The recognition code shall live in a separate library with no web or device code in it, so the same code can run in the cloud and, later, in an on-site agent.</td><td>M</td><td>I</td></tr>
+      <tr><td>ARCH-007</td><td>The device API shall be versioned (<code>/v1</code>) and shall be the only way any source talks to the cloud. No source type shall get a private path to the database or storage.</td><td>M</td><td>I</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Platform product (later)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>BYO-001</td><td>A customer shall add a third-party camera by RTSP address or by ONVIF discovery, through an on-site agent.</td><td>L</td><td>D</td></tr>
+      <tr><td>BYO-002</td><td>The agent shall run on Linux, Windows and Docker, including a Raspberry Pi or a small PC. It shall need no inbound network port.</td><td>L</td><td>T</td></tr>
+      <tr><td>BYO-003</td><td>The agent shall read the stream locally, find faces on the local machine, and send only face crops through the same device API as a Solavis camera.</td><td>L</td><td>T</td></tr>
+      <tr><td>BYO-004</td><td>The agent shall register with a one-time code and then use its own key, which can be revoked.</td><td>L</td><td>T</td></tr>
+      <tr><td>BYO-005</td><td>The agent shall report per-camera status in its heartbeat: stream up or down, frame rate, resolution, last frame time.</td><td>L</td><td>T</td></tr>
+      <tr><td>BYO-006</td><td>The agent shall update itself with signed updates and report its version.</td><td>L</td><td>T</td></tr>
+      <tr><td>BYO-007</td><td>One agent on a small PC shall handle at least 8 streams. <i>Target, to be benchmarked.</i></td><td>L</td><td>T</td></tr>
+      <tr><td>BYO-008</td><td>Plans and billing shall work per channel (per camera source) as well as per account.</td><td>L</td><td>T</td></tr>
+      <tr><td>BYO-009</td><td>Third-party sources shall get the view-changed and gone-quiet checks (TAM-012, TAM-015). Motion and removal sensors do not apply.</td><td>L</td><td>T</td></tr>
+      <tr><td>BYO-010</td><td>Camera passwords for third-party cameras shall be stored only on the agent's machine and never sent to the cloud.</td><td>L</td><td>I</td></tr>
+      <tr><td>BYO-011</td><td>The product shall publish a list of tested camera models and stream formats (H.264 and H.265 over RTSP, ONVIF Profile S or T).</td><td>L</td><td>I</td></tr>
+      <tr><td>BYO-012</td><td>The cloud shall not pull streams from customer networks. Customers shall not have to open ports.</td><td>L</td><td>I</td></tr>
+      <tr><td>BYO-013</td><td>A self-hosted edition with a licence server may be offered to customers who will not use the cloud.</td><td>L</td><td>D</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <h3>Why an on-site agent</h3>
+    <p>Pulling video from a customer's home or shop network into our cloud would need open ports, large video bandwidth, and storage of far more footage. An agent on the customer's side does the heavy work locally and sends only small face crops, the same thing a Solavis camera sends. The cloud stays the same for both products.</p>
+  </div>
+</section>
+
+<section>
+  <h2 id="interfaces">4. External interface requirements</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Interface</th><th>Requirement</th></tr></thead>
+    <tbody>
+      <tr><td>User interface</td><td>Customer app and admin console are web apps. The customer app works on a 360 px wide phone screen. Text is Vietnamese or English.</td></tr>
+      <tr><td>Camera to cloud</td><td>HTTPS with TLS 1.2 or higher, JSON bodies, bearer token per camera, timestamp and nonce on each request. Crops are uploaded by HTTPS PUT to a short-lived link.</td></tr>
+      <tr><td>Camera hardware</td><td>Camera sensor over its parallel interface, PIR as a wake input, accelerometer (and optional compass) over I2C with an interrupt line, reed switch as a wake input, light by a GPIO output, battery voltage by an analogue input, modem over its serial or USB link. Details in SOL-HW-001.</td></tr>
+      <tr><td>Object storage</td><td>S3-compatible API. Cameras have no storage credentials.</td></tr>
+      <tr><td>Telegram</td><td>Telegram Bot API for outbound messages and the link command.</td></tr>
+      <tr><td>Phone push</td><td>Web Push with VAPID keys.</td></tr>
+      <tr><td>Database</td><td>Postgres with a vector extension. Row-level security by tenant.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="nfr">5. Non-functional requirements</h2>
+  <h3>5.1 Performance and capacity</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>PERF-001</td><td>Median time from motion to alert shall be 5 seconds or less on Wi-Fi and 8 seconds or less on 4G. <i>Target.</i></td><td>M</td><td>T</td></tr>
+      <tr><td>PERF-002</td><td>Server recognition shall take 500 ms or less at the 95th percentile for a tenant with up to 500 people.</td><td>M</td><td>T</td></tr>
+      <tr><td>PERF-003</td><td>The camera config call shall answer in 300 ms or less at the 95th percentile.</td><td>M</td><td>T</td></tr>
+      <tr><td>PERF-004</td><td>The system shall handle 1,000 cameras at 100 events a day each (about 1.2 events a second on average, 10 a second at peak).</td><td>S</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.2 Power</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>PWR-001</td><td>The 4G camera shall use 1.5 Wh a day or less at 50 events a day. <i>Target.</i></td><td>M</td><td>T</td></tr>
+      <tr><td>PWR-002</td><td>With a full battery at 25 °C and no sun, the camera shall run for 7 days or more.</td><td>M</td><td>T</td></tr>
+      <tr><td>PWR-003</td><td>Sleep current shall be 1 mA or less on the ready-made board. A later custom board shall reach 200 µA or less.</td><td>S</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.3 Reliability and availability</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>REL-001</td><td>At least 98% of expected heartbeats shall arrive over any 7 days.</td><td>M</td><td>T</td></tr>
+      <tr><td>REL-002</td><td>The cloud service shall be available 99.5% of each month.</td><td>S</td><td>A</td></tr>
+      <tr><td>REL-003</td><td>An event accepted by the API shall not be lost. Daily backups, recovery point 24 hours, recovery time 4 hours.</td><td>M</td><td>A</td></tr>
+      <tr><td>REL-004</td><td>A camera that crashes shall restart itself and report the reset reason.</td><td>M</td><td>T</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.4 Environment</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>ENV-001</td><td>The camera shall work outdoors from 5 to 45 °C ambient. The board shall stay at or below 60 °C. Battery charging shall stop outside 0 to 45 °C.</td><td>M</td><td>T</td></tr>
+      <tr><td>ENV-002</td><td>The enclosure shall stop rain from any direction. The goal is the IPX4 level. No rating is claimed until tested.</td><td>M</td><td>T</td></tr>
+      <tr><td>ENV-003</td><td>The enclosure material shall resist sunlight (UV-stable).</td><td>M</td><td>I</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.5 Security</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>SEC-001</td><td>All network traffic shall use TLS 1.2 or higher.</td><td>M</td><td>T</td></tr>
+      <tr><td>SEC-002</td><td>Each camera shall have its own key. The server stores only a hash of it. The key can be revoked.</td><td>M</td><td>I</td></tr>
+      <tr><td>SEC-003</td><td>Upload links shall expire in 5 minutes or less, work once, and be limited to one tenant and camera.</td><td>M</td><td>T</td></tr>
+      <tr><td>SEC-004</td><td>The database shall enforce tenant separation with row-level security. Automatic tests shall try to cross tenants and fail.</td><td>M</td><td>T</td></tr>
+      <tr><td>SEC-005</td><td>Face vectors shall be encrypted at rest with a per-tenant key.</td><td>M</td><td>I</td></tr>
+      <tr><td>SEC-006</td><td>Cameras shall accept only signed firmware.</td><td>M</td><td>T</td></tr>
+      <tr><td>SEC-007</td><td>The API shall rate-limit requests and reject replayed ones.</td><td>M</td><td>T</td></tr>
+      <tr><td>SEC-008</td><td>No shared secret shall be present in the firmware image.</td><td>M</td><td>I</td></tr>
+      <tr><td>SEC-009</td><td>Secure boot and flash encryption shall be on before volume sales.</td><td>L</td><td>I</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.6 Privacy and compliance</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>PRV-001</td><td>The system shall record consent for every registered person.</td><td>M</td><td>T</td></tr>
+      <tr><td>PRV-002</td><td>Deletion on request shall complete within 30 days, with backups clearing 35 days after.</td><td>M</td><td>T</td></tr>
+      <tr><td>PRV-003</td><td>Data export shall be machine-readable (JSON) with the images.</td><td>M</td><td>T</td></tr>
+      <tr><td>PRV-004</td><td>The terms of use shall forbid use of police or third-party criminal data in watch lists, and shall say the owner is responsible for their lists.</td><td>M</td><td>I</td></tr>
+      <tr><td>PRV-005</td><td>Staff access to customer data shall be limited to roles that need it.</td><td>M</td><td>I</td></tr>
+      <tr><td>COM-001</td><td>The finished camera shall have Vietnamese radio type approval before public sale.</td><td>L</td><td>I</td></tr>
+      <tr><td>COM-002</td><td>The service shall meet Vietnamese personal data law, as confirmed by counsel, before public sale.</td><td>L</td><td>I</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.7 Usability, maintenance and scale</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Pri</th><th>Ver</th></tr></thead>
+    <tbody>
+      <tr><td>USE-001</td><td>A non-technical owner shall finish set-up (Wi-Fi, claim, first person) in 10 minutes or less.</td><td>M</td><td>D</td></tr>
+      <tr><td>MNT-001</td><td>Settings that may change (thresholds, cooldown, plan rules) shall come from the server so they need no firmware update.</td><td>M</td><td>I</td></tr>
+      <tr><td>MNT-002</td><td>The system shall log errors and expose health metrics for the API, queue and camera fleet.</td><td>M</td><td>I</td></tr>
+      <tr><td>SCL-001</td><td>The API shall be stateless and the recognition workers shall scale by adding processes.</td><td>S</td><td>A</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="data">6. Data requirements</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Data</th><th>Held by</th><th>Retention</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Face photos of registered people</td><td>Cloud storage</td><td>Until the owner deletes</td><td>Per-tenant path</td></tr>
+      <tr><td>Face vectors</td><td>Database, encrypted</td><td>Until the owner deletes</td><td>Per-tenant key</td></tr>
+      <tr><td>Event crops</td><td>Cloud storage</td><td>Plan retention (7, 30 or 90 days)</td><td>Deleted by a daily job</td></tr>
+      <tr><td>Event records (without photo)</td><td>Database</td><td>Plan retention</td><td>Verdict, score, time, review</td></tr>
+      <tr><td>Camera telemetry</td><td>Database</td><td>90 days</td><td>Heartbeats</td></tr>
+      <tr><td>Consent records</td><td>Database</td><td>For as long as the person is registered, plus 3 years <i>(TBD with counsel)</i></td><td>Who, when, which person</td></tr>
+      <tr><td>Audit log</td><td>Database</td><td>2 years <i>(TBD with counsel)</i></td><td>Staff access to customer data</td></tr>
+      <tr><td>Camera secrets</td><td>Camera (key), server (hash)</td><td>Until revoked</td><td>Never in logs</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="accept">7. Verification and traceability</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Requirement group</th><th>Verified by</th></tr></thead>
+    <tbody>
+      <tr><td>DEV-001 to DEV-020</td><td>Firmware bench tests and field tests, SOL-SW-001 section 10 and SOL-HW-001 section 10</td></tr>
+      <tr><td>REC-001 to REC-008</td><td>Recognition accuracy test and tenant isolation test, SOL-SW-001 section 10</td></tr>
+      <tr><td>APP, ALR, ADM, SUB</td><td>End-to-end scenario tests and demonstrations, SOL-SW-001 section 10</td></tr>
+      <tr><td>PERF, REL</td><td>Latency and load tests, SOL-SW-001 section 10</td></tr>
+      <tr><td>PWR, ENV</td><td>Power, heat and water tests, SOL-HW-001 section 10</td></tr>
+      <tr><td>SEC, PRV, COM</td><td>Security tests, inspections and legal review</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <h3>Pilot acceptance</h3>
+    <p>The MVP is accepted when every <b>M</b> requirement passes its verification, with these pilot results: recognition correct on at least 90% of the test set, at most 1 false watch list alert per camera per week, no dead battery in the pilot, and at least 3 of 5 pilot users agree to pay.</p>
+  </div>
+</section>
+
+<section>
+  <h2 id="open">8. Open issues</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Issue</th><th>Affects</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td>Confirm the exact 4G board, its deep-sleep current, and whether it charges from solar</td><td>DEV, PWR, HW</td><td>Hardware</td></tr>
+      <tr><td>Choose the on-camera face detector and measure its time and memory use</td><td>DEV-004, PERF-001</td><td>Firmware</td></tr>
+      <tr><td>Set default match thresholds from pilot data</td><td>REC-003, REC-004</td><td>Software</td></tr>
+      <tr><td>Retention periods for consent and audit records</td><td>PRV, Data</td><td>Counsel</td></tr>
+      <tr><td>SIM policy: included, customer-paid, or Wi-Fi only</td><td>DEV-008, SUB-001</td><td>Business</td></tr>
+      <tr><td>Reset button access in the enclosure (the Rev B enclosure has none)</td><td>DEV-015</td><td>Hardware</td></tr>
+      <tr><td>Radio type approval route and cost</td><td>COM-001</td><td>Business</td></tr>
+      <tr><td>Tamper thresholds (tilt, heading, view difference, knock count) tuned against wind, birds and gate slams</td><td>TAM-010 to TAM-014</td><td>Firmware, software</td></tr>
+      <tr><td>Whether the chosen board has satellite positioning and what it costs in power</td><td>TAM-002, TAM-016, TAM-024</td><td>Hardware</td></tr>
+      <tr><td>Enclosure Rev C: magnet pocket in the back plate and reed holder in the cover, plus access to the reset button</td><td>TAM-013, TAM-041</td><td>Hardware</td></tr>
+      <tr><td>Power cost of 15-minute armed check-ins on Wi-Fi and hourly on 4G</td><td>TAM-015, PWR-001</td><td>Hardware</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</div>

@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gate Camera MVP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: one reading column; tables and diagrams scroll inside their own wrapper. */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#14202b; --muted:#5a6b7a; --line:#d8dfe5;
+  --accent:#b7791f; --accent-soft:#fbefd5; --accent-ink:#7a4d0b;
+  --good:#1f7a4d; --good-soft:#dff3e8; --warn:#b4531a; --warn-soft:#fde8da;
+  --code-bg:#e9edf1;
+  --font-display:"Space Grotesk",system-ui,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f161d; --surface:#17212b; --ink:#e6edf3; --muted:#98a8b6; --line:#2a3744;
+  --accent:#e8b04a; --accent-soft:#2c2412; --accent-ink:#f0c777;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1f2b36; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161d; --surface:#17212b; --ink:#e6edf3; --muted:#98a8b6; --line:#2a3744;
+  --accent:#e8b04a; --accent-soft:#2c2412; --accent-ink:#f0c777;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1f2b36; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6;
+  padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:40px;min-width:0}
+h1,h2,h3{font-family:var(--font-display);line-height:1.2;text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,5vw,40px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:22px;font-weight:700;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h3{font-size:16px;font-weight:500}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+.lede{color:var(--muted);font-size:16px;max-width:65ch}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-ink);font-weight:600}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.decision{background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.decision h3{font-size:17px;font-weight:700;color:var(--accent-ink)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.fact b{display:block;font-family:var(--font-display);font-size:22px;font-variant-numeric:tabular-nums}
+.fact span{color:var(--muted);font-size:13px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+tfoot td{font-weight:600;background:var(--bg)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.phases{display:flex;flex-direction:column;gap:12px;padding:0;list-style:none}
+.phase{display:grid;grid-template-columns:92px 1fr;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.phase .when{font-family:var(--font-display);font-weight:700;color:var(--accent-ink);font-size:14px}
+.phase .when small{display:block;font-family:var(--font-body);font-weight:400;color:var(--muted)}
+.phase .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.gate{font-size:13px;color:var(--muted)}
+.gate b{color:var(--good)}
+@media (max-width:520px){.phase{grid-template-columns:1fr;gap:6px}}
+.note{font-size:13px;color:var(--muted)}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:12px">
+  <span class="eyebrow">MVP plan · no custom PCB · built on entry-guard-compact</span>
+  <h1>Gate Camera MVP</h1>
+  <p class="lede">You sell a compact solar 4G camera made from off-the-shelf parts. Customers pay a subscription. All faces, photos and settings live in your cloud, so you decide what each customer can do, and you can switch a camera off remotely.</p>
+</header>
+
+<div class="decision">
+  <h3>The idea in one paragraph</h3>
+  <p>The camera is deliberately simple: it wakes when someone walks past, takes a photo, finds the face, and sends the small face crop to your server. Your server recognises the person, stores the event, and alerts the customer. The camera holds no face data and no storage keys. Because everything important sits on your server, one camera design serves many customers, and plans, limits and cut-offs are database settings that you can change at any time without touching the hardware.</p>
+</div>
+
+<div class="facts">
+  <div class="fact"><b>≈ 1.9 M ₫</b><span>cost of one camera with 4G (estimate)</span></div>
+  <div class="fact"><b>125×90×79 mm</b><span>enclosure size, with panel on top</span></div>
+  <div class="fact"><b>≈ 20 M ₫</b><span>to reach a 5-camera pilot, excluding your time</span></div>
+  <div class="fact"><b>10 weeks</b><span>to the first paying pilot users</span></div>
+</div>
+
+<section id="arch">
+  <h2>How the system fits together</h2>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  CAM[Solar camera] -->|HTTPS, device key| API[Your API: auth + plan check]
+  API --> Q[Queue]
+  Q --> REC[Recognition worker]
+  REC --> DB[(Postgres: tenants, people, events)]
+  REC --> OBJ[(Object storage: snapshots)]
+  REC --> NOTE[Alerts: Telegram, push]
+  APP[Customer web app] <--> API
+  ADM[Your admin console] <--> API
+  API -->|config + plan status| CAM
+</pre>
+  </div>
+  <p class="note">The camera talks to one address only: your API. It has no cloud storage password. To upload a photo it asks your API for a short-lived upload link, and your API refuses the request if the customer's plan is off or over its limit.</p>
+</section>
+
+<section id="product">
+  <h2>What you sell</h2>
+  <div class="cols">
+    <div class="panel"><h3>The camera</h3><p>One sealed unit with a small solar panel, one battery, a motion sensor, a white light, a camera and (in the 4G version) a SIM slot. Same hardware for every customer.</p></div>
+    <div class="panel"><h3>The service</h3><p>Customer web app (works on a phone, no app store needed): register people, mark banned people, see events, manage cameras, see plan and usage.</p></div>
+    <div class="panel"><h3>The control</h3><p>You hold the accounts, data, plans and device keys. A customer who stops paying loses service, and the camera becomes a paperweight until reactivated.</p></div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Version</th><th>Network</th><th>Board</th><th class="n">≈ unit cost</th></tr></thead>
+    <tbody>
+      <tr><td>Lite</td><td>Wi-Fi only</td><td>ESP32-S3 camera board (about 350 k ₫)</td><td class="n">1.15 M ₫</td></tr>
+      <tr><td>4G</td><td>Wi-Fi first, 4G backup</td><td>ESP32-S3 + LTE board with a camera connector (LilyGO T-SIM7670G-S3 class)</td><td class="n">1.9 M ₫</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">I am not certain of the exact LilyGO model name, features and local price. Check it before buying. If it has no camera connector, use a plain ESP32-S3 camera board plus an A7670C breakout board wired over serial.</p>
+</section>
+
+<section id="bom">
+  <h2>Camera parts, all bought ready-made</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>Pick</th><th class="n">≈ VND</th></tr></thead>
+    <tbody>
+      <tr><td>Main board</td><td>ESP32-S3 + 4G Cat-1 board with camera connector</td><td class="n">1,100,000</td></tr>
+      <tr><td>Camera</td><td>OV2640 module, about 66° lens (OV5640 if you want autofocus)</td><td class="n">80,000</td></tr>
+      <tr><td>Motion sensor</td><td>AM312 mini PIR</td><td class="n">15,000</td></tr>
+      <tr><td>Night light</td><td>1 W white LED, resistor and small transistor</td><td class="n">15,000</td></tr>
+      <tr><td>Solar charger</td><td>CN3791 module for a 6 V panel (skip if the board already charges from solar)</td><td class="n">40,000</td></tr>
+      <tr><td>Battery</td><td>1 × protected 18650, 3000 mAh, with holder</td><td class="n">70,000</td></tr>
+      <tr><td>Solar panel</td><td>6 V 1.5 W, about 110 × 80 mm</td><td class="n">70,000</td></tr>
+      <tr><td>Small parts</td><td>Window disc, silicone, screws, inserts, foam tape</td><td class="n">60,000</td></tr>
+      <tr><td>Wiring</td><td>Wires and connectors</td><td class="n">20,000</td></tr>
+      <tr><td>Enclosure</td><td>3D print, about 140 g in ASA (see below)</td><td class="n">420,000</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="2">Total, 4G version</td><td class="n">≈ 1,890,000</td></tr></tfoot>
+  </table></div>
+  <p class="note">All prices are my guesses for about 10 units, bought on Shopee, Lazada, Hshop or from importers. The enclosure price depends heavily on the print service. If you sell more than about 30 cameras, buying your own printer is cheaper.</p>
+  <div class="panel">
+    <h3>Power check</h3>
+    <p>The camera sleeps most of the day. I estimate about 1 Wh/day including 4G bursts. A 1.5 W panel gives about 3 Wh/day in good light and about 1.7 Wh/day in a Hà Nội winter. One 18650 holds about 11 Wh, so roughly 10 days with no sun. Measure this on the bench in week 1 before you trust it.</p>
+  </div>
+</section>
+
+<section id="box">
+  <h2>Compact enclosure (Rev B)</h2>
+  <p>The same wedge design as before, shrunk to <b>125 wide × 90 deep × 79 high</b> mm (55 mm at the front). Panel on the sloped top, camera, motion sensor and light on the front, one 18650 inside. The back plate screws to the post or wall, then the cover slides on and is held by 3 screws from underneath. The wall screws are hidden under the cover.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>File</th><th>Print as</th></tr></thead>
+    <tbody>
+      <tr><td>Cover</td><td><code>cover.stl</code></td><td>Front face down, 125 × 79 × 90 mm, 143 cm³ solid</td></tr>
+      <tr><td>Back plate</td><td><code>backplate.stl</code></td><td>Back face down, 125 × 79 × 21 mm, 62 cm³ solid</td></tr>
+      <tr><td>Lens hood</td><td><code>lens_hood.stl</code></td><td>Upright, 28 × 28 × 12 mm. Print 2.</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b>Material:</b> ASA, black or light grey. PETG as a fallback. Not PLA.</li>
+    <li><b>Files:</b> <code>hardware/enclosure/</code> in the repo. <code>build_enclosure.py</code> rebuilds them after you change a size.</li>
+    <li><b>Not checked yet:</b> the 3D model has not been printed or viewed, and three sizes are guesses. Buy the board, panel and battery holder first, send me their sizes, and I will set the board posts, the panel pocket and the battery cradle to match before you order a print. Print the cover alone in cheap PETG first to test the fit.</li>
+  </ul>
+</section>
+
+<section id="data">
+  <h2>Keeping control of customer data</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Rule</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td>Nothing sensitive on the camera</td><td>The camera stores only its own ID, its key and the Wi-Fi password. No faces, no photos after upload, no cloud keys.</td></tr>
+      <tr><td>One customer cannot see another</td><td>Every database row carries a <code>tenant_id</code>, enforced with Postgres row-level security. Photos are stored under <code>t/{tenant}/d/{device}/...</code>.</td></tr>
+      <tr><td>Encrypted</td><td>TLS in transit. Disk encryption at rest. Face vectors encrypted with a per-customer key.</td></tr>
+      <tr><td>Retention by plan</td><td>A nightly job deletes photos older than the plan allows.</td></tr>
+      <tr><td>Your admin powers</td><td>Suspend a customer, export all their data, delete all their data, and read an audit log. Opening a customer's photos asks for a reason and is logged.</td></tr>
+      <tr><td>Backups</td><td>Daily encrypted backup to a second bucket. Deleted data also leaves backups after 35 days.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="subs">
+  <h2>Subscriptions and limits</h2>
+  <p>Limits are values in a <code>plans</code> table, not firmware. You can change a plan tomorrow and every camera follows on its next wake-up.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Limit</th><th>Basic</th><th>Plus</th><th>Pro</th></tr></thead>
+    <tbody>
+      <tr><td>Cameras</td><td>1</td><td>2</td><td>5</td></tr>
+      <tr><td>Registered people</td><td>20</td><td>100</td><td>500</td></tr>
+      <tr><td>History kept</td><td>7 days</td><td>30 days</td><td>90 days</td></tr>
+      <tr><td>Banned list and instant alert</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>4G backup</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Alert channels</td><td>Telegram</td><td>Telegram + push</td><td>+ webhook, several users</td></tr>
+      <tr><td>Example price per month</td><td>79 k ₫</td><td>149 k ₫</td><td>299 k ₫</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">The tiers and prices are only examples to show the design. Test them with your first pilot customers.</p>
+  <h3>How a customer's status is enforced</h3>
+  <ol>
+    <li>You register each camera in an inventory table when you build it, with its ID, secret and a printed QR claim code.</li>
+    <li>The customer scans the QR in the web app, creates an account and claims the camera. A 14-day trial starts.</li>
+    <li>On every wake-up the camera asks the API for its config. The answer includes the plan state: <span class="pill good">active</span> <span class="pill acc">trial</span> <span class="pill warn">past due</span> <span class="pill warn">suspended</span>. If suspended, it uploads nothing and sleeps for 6 hours.</li>
+    <li>The API also checks the limits on every upload, so modified firmware cannot get around them.</li>
+    <li>Past due gives 7 days of grace, then suspended. Data is kept 30 days, then deleted.</li>
+  </ol>
+  <p><b>Payments for the MVP:</b> prepaid periods (1, 6, 12 months) paid by bank transfer with a VietQR code, and you switch the account on by hand. Automatic payment (PayOS, VNPay or MoMo, or Stripe for overseas) comes after you have paying users.</p>
+</section>
+
+<section id="device">
+  <h2>Camera security and set-up</h2>
+  <ul>
+    <li><b>Unique key per camera.</b> Never one shared password. A stolen or sold-on camera is blocked by revoking its key.</li>
+    <li><b>Factory step, about 3 minutes per camera:</b> a script flashes the firmware, creates the ID and key, writes them to the board, adds the camera to your inventory, and prints the QR sticker.</li>
+    <li><b>Customer Wi-Fi set-up:</b> the camera opens a temporary hotspot, <code>GateCam-XXXX</code>. The customer joins it on their phone and picks their Wi-Fi.</li>
+    <li><b>Updates over the air:</b> signed firmware, rolled out to a few cameras first, with automatic rollback if the new version fails to start.</li>
+    <li><b>Later, before volume:</b> turn on ESP32 secure boot and flash encryption. Both are one-way, so test them on spare boards first.</li>
+  </ul>
+</section>
+
+<section id="backend">
+  <h2>Backend, built on this repo</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Piece</th><th>Choice</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>API</td><td>FastAPI (Python)</td><td>Same stack as the repo. Endpoints for device config, upload link, event, and the customer app.</td></tr>
+      <tr><td>Recognition</td><td>Reuse <code>faces.py</code> and <code>recognize.py</code></td><td>Change them to search one customer's people only, and run as a queue worker.</td></tr>
+      <tr><td>Database</td><td>Postgres with pgvector</td><td>One small server is enough for the first hundreds of cameras.</td></tr>
+      <tr><td>Photos</td><td>Cloudflare R2 or Backblaze B2</td><td>Free tier covers the pilot.</td></tr>
+      <tr><td>Customer app</td><td>Web app that installs on a phone</td><td>No app store review, one codebase.</td></tr>
+      <tr><td>Hosting</td><td>One VPS, 2 vCPU, 4 GB (about 300 k ₫/month)</td><td>Caddy for HTTPS, daily backups.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Each event costs about 50–100 ms of server time. 1,000 cameras at 100 events a day is about one event per second, which one small server handles. I have not load-tested this.</p>
+</section>
+
+<section id="money">
+  <h2>Cost estimate</h2>
+  <h3>To a 5-camera pilot</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th>Detail</th><th class="n">≈ VND</th></tr></thead>
+    <tbody>
+      <tr><td>Cameras</td><td>7 units: 2 for the bench, 5 for the pilot, at 1.9 M ₫</td><td class="n">13,300,000</td></tr>
+      <tr><td>Test tools</td><td>USB power meter, USB-serial adapter, sticker paper</td><td class="n">500,000</td></tr>
+      <tr><td>Server</td><td>VPS for 3 months</td><td class="n">900,000</td></tr>
+      <tr><td>Domain and email</td><td>One year</td><td class="n">400,000</td></tr>
+      <tr><td>4G SIMs</td><td>5 data SIMs for 3 months</td><td class="n">1,500,000</td></tr>
+      <tr><td>Contingency</td><td>20%</td><td class="n">3,300,000</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="2">Total</td><td class="n">≈ 19,900,000</td></tr></tfoot>
+  </table></div>
+  <p class="note">Not included: your own time, a lawyer's review, and radio type approval for public sale.</p>
+  <h3>Per customer, per month</h3>
+  <div class="cols">
+    <div class="panel"><h3>Wi-Fi customer</h3><p>Storage and compute are close to nothing: 100 events a day at 40 KB for 30 days is about 120 MB. Expect under 10 k ₫ per month including a share of the server.</p></div>
+    <div class="panel"><h3>4G customer</h3><p>Add the SIM. A backup-only SIM uses little data, but plan for 50–100 k ₫ a month and decide whether the plan price covers it or the customer buys their own SIM.</p></div>
+  </div>
+  <p class="note">Example margin, using my sample numbers: sell the 4G camera at about 2.9 M ₫ against a 1.9 M ₫ cost, then 149 k ₫ a month on Plus against roughly 100 k ₫ of SIM and server. That is thin if you include the SIM, so the SIM policy is the biggest pricing choice. Set real prices after the pilot.</p>
+</section>
+
+<section id="roadmap">
+  <h2>Roadmap to 10 weeks</h2>
+  <ol class="phases">
+    <li class="phase"><div class="when">Week 1<small>bench</small></div><div class="body"><h3>Buy 2 kits and prove the camera</h3><p>Test wake from PIR, face crop quality with the OV2640 at 2 m, 4G upload time, and real power draw.</p><p class="gate"><b>Pass if:</b> wake to upload under 8 s on 4G, under 1.5 Wh/day, and recognition correct on at least 9 of 10 test people.</p></div></li>
+    <li class="phase"><div class="when">Weeks 2–5<small>software</small></div><div class="body"><h3>Firmware and multi-tenant backend</h3><p>Firmware for wake, capture, upload, config, hotspot set-up and over-the-air updates. Backend with tenants, devices, plans, recognition worker and admin console.</p><p class="gate"><b>Pass if:</b> two test customers cannot see each other's data, and suspending one stops its camera within one wake-up.</p></div></li>
+    <li class="phase"><div class="when">Weeks 5–7<small>customer app</small></div><div class="body"><h3>Customer web app and alerts</h3><p>Claim a camera by QR, register people with consent, banned list, events feed, Telegram alerts, plan and usage page.</p></div></li>
+    <li class="phase"><div class="when">Weeks 7–8<small>build</small></div><div class="body"><h3>Factory script and 5 units</h3><p>Provisioning script with QR labels, final enclosure print, assemble 5 cameras.</p><p class="gate"><b>Pass if:</b> one camera takes under 30 minutes from parts to labelled unit.</p></div></li>
+    <li class="phase"><div class="when">Weeks 9–10<small>pilot</small></div><div class="body"><h3>5 friendly users, manual billing</h3><p>Install at their gates, charge by bank transfer, watch every alert, log resets and battery voltage.</p><p class="gate"><b>Pass if:</b> no dead battery, at most 1 false banned alert per week per camera, and at least 3 of 5 users agree to keep paying.</p></div></li>
+  </ol>
+  <p class="note">After the pilot: automatic payments, a proper plan editor, a first custom PCB to cut cost and size, radio type approval, and secure boot.</p>
+</section>
+
+<section id="risks">
+  <h2>Risks you carry as the seller</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Risk</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Personal data law</td><td>Face data is sensitive personal data. You process the faces of your customers' visitors. Vietnam's Decree 13/2023 and the newer personal data law set rules on consent, notice, and an impact assessment filing. Get a lawyer to check your terms and filings before public sale.</td></tr>
+      <tr><td>Banned lists</td><td>Customers add the names. Your terms must say they own the list, must not use police or third-party criminal data, must show a notice at the gate, and must review a match before acting. Alerts say "possible match".</td></tr>
+      <tr><td>Radio approval</td><td>Selling 4G and Wi-Fi devices needs Vietnamese type approval for the finished product. Certified boards help, but do not replace it. Pilot with friendly users first.</td></tr>
+      <tr><td>Battery shipping</td><td>Lithium cells have shipping limits, especially by air. Use protected cells and ground transport.</td></tr>
+      <tr><td>Accuracy</td><td>A cheap camera struggles with backlight and night. Tune thresholds on pilot data, and never use the camera to unlock a door.</td></tr>
+      <tr><td>Heat and rain</td><td>Light-coloured ASA, a sun hood, silicone seals and a vent plug. Log battery voltage and board temperature from the first day.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="questions">
+  <h2>Decisions I need from you</h2>
+  <ul>
+    <li>Who pays for the 4G SIM: you, the customer, or only Wi-Fi at launch?</li>
+    <li>Sell only in Vietnam at first, or abroad too? That changes payments and data law.</li>
+    <li>Should I start building the multi-tenant API and device endpoints in this repo now, while you order the two bench kits?</li>
+  </ul>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

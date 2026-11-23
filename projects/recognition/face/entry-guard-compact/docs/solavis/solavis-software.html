@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solavis Software Design</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: formal document. Cover block, contents list, numbered sections, appendices. Tables scroll inside their own wrapper. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#13202c; --muted:#586979; --line:#d9e0e6;
+  --brand:#0b3c5d; --accent:#e89b0c; --accent-soft:#fdf0d5; --accent-ink:#8a5600;
+  --good:#1f7a4d; --good-soft:#dff3e8; --warn:#b4531a; --warn-soft:#fde8da;
+  --code-bg:#e8edf1;
+  --font-display:"Space Grotesk",system-ui,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e151c; --surface:#16202a; --ink:#e6edf3; --muted:#97a7b5; --line:#293643;
+  --brand:#7cc0ea; --accent:#f0b24a; --accent-soft:#2b2312; --accent-ink:#f2c97c;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1e2a35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151c; --surface:#16202a; --ink:#e6edf3; --muted:#97a7b5; --line:#293643;
+  --brand:#7cc0ea; --accent:#f0b24a; --accent-soft:#2b2312; --accent-ink:#f2c97c;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1e2a35; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.65;
+  padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:44px;min-width:0}
+h1,h2,h3{font-family:var(--font-display);line-height:1.2;text-wrap:balance;margin:0;color:var(--ink)}
+h1{font-size:clamp(30px,5.5vw,44px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:23px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--brand);scroll-margin-top:16px}
+h3{font-size:16px;font-weight:600}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+a{color:var(--brand)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.note{font-size:13px;color:var(--muted)}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-ink);font-weight:600}
+.cover{display:flex;flex-direction:column;gap:20px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.brandrow{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:22px;color:var(--brand)}
+.lede{color:var(--muted);font-size:16px;max-width:66ch}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.meta div{background:var(--surface);padding:10px 14px;min-width:0}
+.meta small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.meta span{font-weight:600}
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 20px}
+.toc ol{columns:2 260px;column-gap:32px;gap:4px;padding-left:22px}
+.toc li{break-inside:avoid}
+.callout{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:6px;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
+.callout h3{color:var(--accent-ink)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.fact b{display:block;font-family:var(--font-display);font-size:22px;font-variant-numeric:tabular-nums;color:var(--brand)}
+.fact span{color:var(--muted);font-size:13px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+tfoot td{font-weight:600;background:var(--bg)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.phases{display:flex;flex-direction:column;gap:12px;padding:0;list-style:none}
+.phase{display:grid;grid-template-columns:100px 1fr;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.phase .when{font-family:var(--font-display);font-weight:700;color:var(--brand);font-size:14px}
+.phase .when small{display:block;font-family:var(--font-body);font-weight:400;color:var(--muted)}
+.phase .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.gate{font-size:13px;color:var(--muted)}
+.gate b{color:var(--good)}
+@media (max-width:520px){.phase{grid-template-columns:1fr;gap:6px}}
+.sig{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.sig div{border-top:1px solid var(--ink);padding-top:6px;font-size:13px;color:var(--muted)}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+<div class="wrap">
+<header class="cover">
+  <div class="brandrow"><svg width="34" height="34" viewBox="0 0 40 40" role="img" aria-label="Solavis mark">
+      <g stroke="var(--accent)" stroke-width="3" stroke-linecap="round">
+        <line x1="20" y1="2" x2="20" y2="7"/><line x1="20" y1="33" x2="20" y2="38"/>
+        <line x1="2" y1="20" x2="7" y2="20"/><line x1="33" y1="20" x2="38" y2="20"/>
+        <line x1="7.3" y1="7.3" x2="10.8" y2="10.8"/><line x1="29.2" y1="29.2" x2="32.7" y2="32.7"/>
+        <line x1="32.7" y1="7.3" x2="29.2" y2="10.8"/><line x1="10.8" y1="29.2" x2="7.3" y2="32.7"/>
+      </g>
+      <circle cx="20" cy="20" r="9.5" fill="var(--brand)"/>
+      <circle cx="20" cy="20" r="4.2" fill="var(--surface)"/>
+      <circle cx="22" cy="18" r="1.4" fill="var(--accent)"/>
+    </svg> Solavis</div>
+  <span class="eyebrow">Engineering · software and firmware</span>
+  <h1>Software design specification</h1>
+  <p class="lede">Architecture, firmware, device API, data model, recognition, entitlement, tests, and the plan for the Platform product that sells the software without our camera.</p>
+  <div class="meta">
+    <div><small>Document ID</small><span>SOL-SW-001</span></div>
+    <div><small>Version</small><span>0.1 draft</span></div>
+    <div><small>Date</small><span>23 Nov 2026</span></div>
+    <div><small>Status</small><span>For review</span></div>
+    <div><small>Audience</small><span>Software, firmware, QA</span></div>
+    <div><small>Confidentiality</small><span>Internal</span></div>
+  </div>
+</header>
+<nav class="toc" aria-label="Contents"><h3 style="margin-bottom:8px">Contents</h3><ol>
+<li><a href="#scope">1. Scope and product lines</a></li>
+<li><a href="#arch">2. Architecture</a></li>
+<li><a href="#source">3. Source abstraction</a></li>
+<li><a href="#firmware">4. Firmware design</a></li>
+<li><a href="#api">5. Device and customer API</a></li>
+<li><a href="#recog">6. Recognition and evaluators</a></li>
+<li><a href="#data">7. Data model</a></li>
+<li><a href="#subs">8. Subscription and entitlement engine</a></li>
+<li><a href="#notify">9. Notifications</a></li>
+<li><a href="#apps">10. Customer app and admin console</a></li>
+<li><a href="#test">11. Test strategy</a></li>
+<li><a href="#platform">12. Platform product: what to build now and later</a></li>
+<li><a href="#repo">13. Mapping to the existing repository</a></li>
+<li><a href="#plan">14. Delivery plan by epic</a></li>
+<li><a href="#open">15. Open decisions</a></li>
+</ol></nav>
+<section>
+  <h2 id="scope">1. Scope and product lines</h2>
+  <p>This document is the software design for Solavis. It turns the requirements in SOL-SRS-001 into components, interfaces, data and tests. It is written for the software and firmware team.</p>
+  <div class="cols">
+    <div class="panel"><h3>Product 1: Solavis Camera (MVP)</h3><p>Our camera plus subscription. Firmware, cloud, customer app and admin console. Built first.</p></div>
+    <div class="panel"><h3>Product 2: Solavis Platform (later)</h3><p>Our software sold alone. Customers connect cameras they already own through an on-site agent. Same cloud, same apps.</p></div>
+  </div>
+  <div class="callout">
+    <h3>The rule for the whole team</h3>
+    <p>Build the MVP so that <b>a Solavis camera is just one kind of source</b>. Anything that sends face crops to the device API is a source. Do not put camera-specific assumptions into the cloud, the data model or the recognition code. Section 12 lists what to do now and what to build later.</p>
+  </div>
+</section>
+
+<section>
+  <h2 id="arch">2. Architecture</h2>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph Sources
+    CAM[Solavis camera firmware]
+    AGT[Edge agent for third-party cameras, later]
+  end
+  CAM -->|device API v1| GW[API gateway]
+  AGT -->|device API v1| GW
+  GW --> ENT[Entitlement and auth]
+  ENT --> Q[Job queue in Postgres]
+  Q --> REC[Recognition worker]
+  Q --> TMP[Tamper and health evaluator]
+  REC --> DB[(Postgres + pgvector)]
+  REC --> OBJ[(Object storage)]
+  TMP --> DB
+  REC --> NOT[Notifier]
+  TMP --> NOT
+  NOT --> TG[Telegram]
+  NOT --> PUSH[Web push]
+  APP[Customer web app] <--> GW
+  ADM[Admin console] <--> GW
+</pre>
+  </div>
+  <h3>2.1 Technology</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Layer</th><th>Choice</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Firmware</td><td>C++ on ESP32 (Arduino or ESP-IDF), PlatformIO</td><td>Choose ESP-IDF if low-power control needs it</td></tr>
+      <tr><td>API</td><td>Python, FastAPI</td><td>Same language as the existing repository</td></tr>
+      <tr><td>Recognition</td><td>Python library <code>solavis_core</code></td><td>Taken from <code>faces.py</code> and <code>recognize.py</code>. No web code inside.</td></tr>
+      <tr><td>Database</td><td>Postgres with pgvector</td><td>Row-level security, queue with <code>SKIP LOCKED</code></td></tr>
+      <tr><td>Storage</td><td>S3-compatible (R2, B2)</td><td>Presigned links only</td></tr>
+      <tr><td>Customer app</td><td>Installable web app (TypeScript, a small framework)</td><td>Vietnamese and English strings from day one</td></tr>
+      <tr><td>Admin console</td><td>Web app with the same API</td><td>Two-factor sign-in</td></tr>
+      <tr><td>Deployment</td><td>Docker Compose on one VPS, Caddy for HTTPS</td><td>Move to several servers when needed</td></tr>
+      <tr><td>CI</td><td>GitHub Actions: lint, tests, build, firmware build</td><td>Signed firmware built only on tagged releases</td></tr>
+    </tbody>
+  </table></div>
+  <h3>2.2 Repository layout (proposed)</h3>
+<pre style="margin:0;overflow-x:auto;background:var(--code-bg);padding:12px;border-radius:8px;font-size:13px">solavis/
+  core/        solavis_core: face detect, embed, match, view-compare (no web code)
+  api/         FastAPI: device, customer, admin routes; entitlement; jobs
+  worker/      recognition, tamper evaluator, notifier, retention jobs
+  firmware/    ESP32 camera firmware (PlatformIO)
+  app/         customer web app
+  admin/       admin console
+  agent/       edge agent (Platform product, later)
+  tools/       provisioning script, label printing, test jigs
+  docs/        SRS, hardware spec, this document
+  deploy/      docker-compose, Caddy, backup scripts</pre>
+</section>
+
+<section>
+  <h2 id="source">3. Source abstraction</h2>
+  <p>This is the most important design decision for the two product lines. Every camera is a row in <code>sources</code>. The API and the recognition worker work with sources and never with camera models.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Source type</th><th>Product</th><th>Produces crops by</th><th>Capabilities</th></tr></thead>
+    <tbody>
+      <tr><td><code>solavis_cam</code></td><td>Camera</td><td>Firmware on the camera</td><td>pir, imu, compass, reed, night_light, ota, solar, lte</td></tr>
+      <tr><td><code>agent_rtsp</code></td><td>Platform</td><td>Agent reads an RTSP stream</td><td>stream_status, view_check</td></tr>
+      <tr><td><code>agent_onvif</code></td><td>Platform</td><td>Agent finds the camera by ONVIF and reads its stream and events</td><td>stream_status, view_check, onvif_motion</td></tr>
+      <tr><td><code>upload</code></td><td>Both</td><td>Manual image upload, for tests and tools</td><td>none</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b>One input contract.</b> A crop with <code>source_id</code>, time, optional quality hints and optional extra frames. The worker does not know where it came from.</li>
+    <li><b>Capabilities drive the UI and the rules.</b> The tamper screen appears only if the source has <code>imu</code> or <code>reed</code>. The heartbeat fields differ by type, but the table is the same.</li>
+    <li><b>Entitlements count sources.</b> A plan limits the number and the allowed types. Usage is metered per source, which later becomes per-channel billing.</li>
+    <li><b>Agents are devices too.</b> An agent holds a key and talks to the same device API. Each third-party camera it manages appears as a source under that agent.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="firmware">4. Firmware design</h2>
+  <h3>4.1 Security states</h3>
+  <div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Unclaimed
+  Unclaimed --> Mounting: claimed
+  Mounting --> Armed: arm command
+  Armed --> Service: service window
+  Service --> Armed: window ends
+  Armed --> Locked: tamper
+  Locked --> Mounting: unlock command
+  Armed --> Revoked: stolen
+  Locked --> Revoked: stolen
+</pre>
+  </div>
+  <p>The state lives in flash and on the server. The server is the authority. If they differ at check-in, the server wins, except that a camera that locked itself reports it and stays locked until the server says otherwise.</p>
+  <h3>4.2 One wake-up</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  W[Wake] --> R{Reason}
+  R -->|PIR| CAP[Capture 3 to 5 frames]
+  R -->|Accelerometer or reed| TAM[Tamper check]
+  R -->|Timer| CHK[Check-in]
+  CAP --> DET{Face found?}
+  DET -->|No| SLP[Sleep]
+  DET -->|Yes| NET[Connect: Wi-Fi, then 4G]
+  NET --> UP[Upload crops and event]
+  UP --> SLP
+  TAM --> SNAP[Take photo and send tamper alert]
+  SNAP --> LCK[Lock and sleep]
+  CHK --> NET2[Connect]
+  NET2 --> CFG[Send heartbeat, get config and commands]
+  CFG --> SLP
+</pre>
+  </div>
+  <h3>4.3 Modules</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Module</th><th>Job</th></tr></thead>
+    <tbody>
+      <tr><td><code>power</code></td><td>Deep sleep, wake reasons, battery reading, low-battery rules, modem power switch</td></tr>
+      <tr><td><code>capture</code></td><td>Camera set-up, take frames, pick sharpest, brightness check, light control</td></tr>
+      <tr><td><code>detect</code></td><td>Face detection on the board. Benchmark first. If too slow, send the best frame and let the server find the face.</td></tr>
+      <tr><td><code>net</code></td><td>Wi-Fi then 4G, timeouts, clock sync, TLS</td></tr>
+      <tr><td><code>api</code></td><td>Config, upload link, events, heartbeat, commands, firmware check</td></tr>
+      <tr><td><code>queue</code></td><td>Up to 20 events in flash with the oldest dropped first</td></tr>
+      <tr><td><code>tamper</code></td><td>Sensor reading, thresholds, debounce, lock and unlock, baseline storage</td></tr>
+      <tr><td><code>ota</code></td><td>Download, verify signature, switch slot, confirm or roll back</td></tr>
+      <tr><td><code>setup</code></td><td>Hotspot and local page for Wi-Fi, claim info</td></tr>
+      <tr><td><code>store</code></td><td>Settings, key and lock flag in protected storage</td></tr>
+    </tbody>
+  </table></div>
+  <h3>4.4 Tamper engine</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Layer</th><th>Trigger</th><th>Default</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Moved</td><td>Accelerometer motion for 2 s or more, or tilt change from baseline</td><td>2 s, 8°</td><td>Tamper: moved</td></tr>
+      <tr><td>Turned</td><td>Heading change from baseline</td><td>15°</td><td>Tamper: turned</td></tr>
+      <tr><td>Removed</td><td>Reed switch opens while armed</td><td>Immediate</td><td>Tamper: removed</td></tr>
+      <tr><td>Reset or hotspot</td><td>Reset button or hotspot start while armed</td><td>Immediate</td><td>Tamper: reset</td></tr>
+      <tr><td>View changed</td><td>Server compares a small frame with the baseline</td><td>Score set from pilot data</td><td>Tamper: view changed or covered</td></tr>
+      <tr><td>Relocated</td><td>Baseline Wi-Fi not seen, or position moved over 50 m</td><td>3 failed scans</td><td>Tamper: relocated</td></tr>
+      <tr><td>Gone quiet</td><td>Server misses two check-ins</td><td>2 × interval</td><td>Alert: offline while armed</td></tr>
+      <tr><td>Knock</td><td>Short shock below the moved level</td><td>3 in 10 minutes</td><td>Warning only</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b>On tamper:</b> take a photo, send the alert on the best link, retry until delivered or the battery is low, then set the lock flag, drop the customer's Wi-Fi and the data session, and sleep.</li>
+    <li><b>Lock flag</b> is written to protected storage before the alert is sent, so a power cut cannot lose it. A reboot reads it and goes straight back to sleep.</li>
+    <li><b>Unlock</b> comes only as a signed command from the server after the owner's step-up check. The camera never unlocks itself.</li>
+    <li><b>Arming</b> stores the baseline: gravity vector, heading, Wi-Fi fingerprint, and a reference frame sent to the server.</li>
+    <li><b>Service window</b> arrives as a command with an end time. The camera ignores tamper until then and returns to armed on its own.</li>
+  </ul>
+  <h3>4.5 Flash layout (16 MB, example)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Partition</th><th class="n">Size</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>bootloader and partition table</td><td class="n">64 KB</td><td>Fixed</td></tr>
+      <tr><td>nvs</td><td class="n">32 KB</td><td>Settings, device ID, key, lock flag, baseline</td></tr>
+      <tr><td>otadata</td><td class="n">8 KB</td><td>Active slot</td></tr>
+      <tr><td>app0 and app1</td><td class="n">2 × 4 MB</td><td>Two firmware slots for safe update</td></tr>
+      <tr><td>storage</td><td class="n">≈ 7 MB</td><td>Offline event queue (small file system)</td></tr>
+    </tbody>
+  </table></div>
+  <h3>4.6 Rules</h3>
+  <ul>
+    <li>Never log the device key. Never send it except as the bearer token.</li>
+    <li>Time out every network step. A camera that hangs must reset itself with a watchdog and report the reset reason.</li>
+    <li>Settings come from the server config. No threshold is hard-coded in a way that needs a new firmware to change.</li>
+    <li>Firmware images are signed. The camera accepts a new image only if the signature is valid and the version is newer.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="api">5. Device and customer API</h2>
+  <h3>5.1 Device authentication</h3>
+  <ul>
+    <li>Header <code>Authorization: Bearer &lt;device token&gt;</code>. The server stores only a hash. All calls use TLS.</li>
+    <li>Each request carries <code>X-Time</code> (UTC seconds) and <code>X-Nonce</code>. The server rejects stale times and repeated nonces.</li>
+    <li>Writes carry an <code>Idempotency-Key</code> so a retry after a lost reply does not make a duplicate event.</li>
+    <li>Rate limit per device. Return 429 with a <code>Retry-After</code>.</li>
+  </ul>
+  <h3>5.2 Device endpoints</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /v1/device/config</code></td><td>Plan state, security state, thresholds, cooldown, check-in interval, pending commands</td></tr>
+      <tr><td><code>POST /v1/device/heartbeat</code></td><td>Battery, temperature, signal, firmware, reset reason, queue depth, tamper sensor summary</td></tr>
+      <tr><td><code>POST /v1/device/upload-url</code></td><td>Short-lived, single-use upload link for a crop, a view frame or a tamper photo</td></tr>
+      <tr><td><code>POST /v1/device/events</code></td><td>Report an event with the keys of uploaded crops</td></tr>
+      <tr><td><code>POST /v1/device/tamper</code></td><td>Report tamper (type, time, sensor data, photo key). Allowed while locked.</td></tr>
+      <tr><td><code>POST /v1/device/arm</code></td><td>Send the baseline when the owner presses Arm</td></tr>
+      <tr><td><code>POST /v1/device/ack</code></td><td>Confirm that a command was applied</td></tr>
+      <tr><td><code>GET /v1/device/firmware</code></td><td>Signed firmware, when one is due</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.3 Examples</h3>
+<pre style="margin:0;overflow-x:auto;background:var(--code-bg);padding:12px;border-radius:8px;font-size:13px">GET /v1/device/config  →  200
+{
+  "plan_state": "active",
+  "security_state": "armed",
+  "checkin_seconds": 900,
+  "cooldown_seconds": 30,
+  "wifi_timeout_seconds": 5,
+  "lte_allowed": true,
+  "tamper": {"tilt_deg": 8, "motion_seconds": 2, "heading_deg": 15, "knocks": 3},
+  "commands": [{"id": "c_81", "type": "service_window", "until": "2026-12-01T09:30:00Z"}],
+  "firmware": {"target": "1.2.0"}
+}
+
+POST /v1/device/events  (Idempotency-Key: e_4f21)
+{
+  "taken_at": "2026-12-01T09:12:44Z",
+  "crops": ["t/…/d/…/2026/12/01/091244_a.jpg", "…_b.jpg"],
+  "link": "wifi",
+  "light_on": false
+}
+→ 202 {"event_id": "ev_9ac0"}
+
+POST /v1/device/tamper
+{
+  "type": "moved",
+  "at": "2026-12-01T09:14:02Z",
+  "detail": {"tilt_deg": 22.4, "motion_seconds": 3.1},
+  "photo": "t/…/tamper_091402.jpg",
+  "battery_v": 3.92
+}
+→ 200 {"state": "locked"}</pre>
+  <h3>5.4 Errors</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Code</th><th>Meaning</th><th>Camera action</th></tr></thead>
+    <tbody>
+      <tr><td>401</td><td>Unknown or revoked key</td><td>Stop uploads, sleep 24 h, keep the local queue</td></tr>
+      <tr><td>402</td><td>Plan suspended or over a limit</td><td>Upload nothing, sleep 6 h, keep sending heartbeats</td></tr>
+      <tr><td>403 <code>tamper_locked</code></td><td>Camera is locked</td><td>Stay locked, allow only tamper and unlock checks</td></tr>
+      <tr><td>409</td><td>Duplicate idempotency key</td><td>Treat as success</td></tr>
+      <tr><td>422</td><td>Bad request</td><td>Drop the item, report in heartbeat</td></tr>
+      <tr><td>429</td><td>Rate limited</td><td>Wait for <code>Retry-After</code></td></tr>
+      <tr><td>5xx</td><td>Server problem</td><td>Retry with back-off, keep the queue</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.5 Customer and admin endpoints</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST /v1/auth/otp</code>, <code>POST /v1/auth/verify</code></td><td>One-time code sign-in. Step-up check for unlock.</td></tr>
+      <tr><td><code>POST /v1/sources/claim</code></td><td>Bind a source to the account with its claim code</td></tr>
+      <tr><td><code>POST /v1/sources/{id}/arm</code>, <code>/unlock</code>, <code>/service-window</code>, <code>/recovery</code>, <code>/stolen</code>, <code>/release</code></td><td>Security actions for the owner</td></tr>
+      <tr><td><code>GET, POST /v1/people</code>, <code>DELETE /v1/people/{id}</code></td><td>Register and remove people, with consent</td></tr>
+      <tr><td><code>GET /v1/events</code>, <code>PATCH /v1/events/{id}</code></td><td>History and review</td></tr>
+      <tr><td><code>GET /v1/plan</code></td><td>Plan, state and usage</td></tr>
+      <tr><td><code>POST /v1/account/export</code>, <code>DELETE /v1/account</code></td><td>Export and delete</td></tr>
+      <tr><td><code>POST /admin/tenants/{id}/suspend</code>, <code>/export</code>, <code>DELETE /admin/tenants/{id}</code></td><td>Staff actions, audited</td></tr>
+      <tr><td><code>POST /admin/sources</code>, <code>PATCH /admin/plans/{id}</code></td><td>Inventory and plan changes</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="recog">6. Recognition and evaluators</h2>
+  <h3>6.1 Pipeline for one event</h3>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant S as Source
+  participant A as API
+  participant Q as Queue
+  participant W as Worker
+  participant D as Database
+  participant N as Notifier
+  S->>A: upload-url, then PUT crops
+  S->>A: POST events
+  A->>A: auth, plan state, limits
+  A->>Q: add job
+  A-->>S: 202
+  Q->>W: take job
+  W->>W: quality check, make vectors
+  W->>D: search this tenant's vectors
+  W->>W: apply thresholds and the two-crop rule
+  W->>D: save event and verdict
+  W->>N: alert if needed
+</pre>
+  </div>
+  <h3>6.2 Rules</h3>
+  <ul>
+    <li><b>Quality gate:</b> reject a crop if the face is under 80 px wide or the sharpness score is under the limit. Log it, do not alert.</li>
+    <li><b>Search:</b> only vectors with the event's <code>tenant_id</code>. Cosine distance with pgvector. Tenants have at most 500 people, so a plain scan is fast enough.</li>
+    <li><b>Verdict:</b> known if the best score passes the known threshold. Possible banned match only if at least 2 crops of the event match the same watch list person above the banned threshold, or one crop passes a higher threshold. Otherwise unknown.</li>
+    <li><b>Model version:</b> store <code>embedding_model</code> on every vector. A model change means re-computing vectors from the stored photos, so keep the registration photos.</li>
+    <li><b>Thresholds</b> are tenant settings with defaults. Defaults are TBD until pilot data exists.</li>
+  </ul>
+  <h3>6.3 Tamper and health evaluator</h3>
+  <ul>
+    <li><b>View compare:</b> convert both frames to grayscale at the same size, compare with edge features and a structure score against the baseline, and allow for brightness changes. Report a score, and flag blocked or dark views.</li>
+    <li><b>Gone quiet:</b> a scheduled job looks for armed sources with no check-in for two intervals, and raises the alert once, then reminds every 15 minutes until acknowledged.</li>
+    <li><b>Low battery and offline:</b> alert at under 25% battery, and for any source silent over 12 hours.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="data">7. Data model</h2>
+<pre style="margin:0;overflow-x:auto;background:var(--code-bg);padding:12px;border-radius:8px;font-size:13px">create table tenants (
+  id uuid primary key, name text, plan_id uuid, state text not null default 'trial',
+  trial_ends timestamptz, period_ends timestamptz, created_at timestamptz default now());
+
+create table plans (
+  id uuid primary key, name text, max_sources int, allowed_source_types text[],
+  max_people int, retention_days int, watch_list bool, lte_allowed bool,
+  channels text[], features jsonb);
+
+create table sources (
+  id uuid primary key, tenant_id uuid references tenants(id),
+  type text not null,                 -- solavis_cam | agent_rtsp | agent_onvif | upload
+  parent_id uuid references sources(id), -- agent that manages this camera
+  name text, serial text unique, key_hash text, claim_code_hash text,
+  capabilities text[] not null default '{}',
+  security_state text not null default 'unclaimed',
+  baseline jsonb, config jsonb,
+  firmware text, last_seen timestamptz, battery_v real, created_at timestamptz default now());
+
+create table people (
+  id uuid primary key, tenant_id uuid not null, name text, kind text not null,  -- allowed | watch
+  consent_at timestamptz not null, consent_by uuid, note text, disabled bool default false);
+
+create table face_vectors (
+  id uuid primary key, tenant_id uuid not null, person_id uuid references people(id) on delete cascade,
+  embedding_model text not null, vector vector(128), photo_key text);
+
+create table events (
+  id uuid primary key, tenant_id uuid not null, source_id uuid references sources(id),
+  at timestamptz not null, verdict text, person_id uuid, score real,
+  crop_keys text[], reviewed_by uuid, review text, link text);
+
+create table tamper_events (
+  id uuid primary key, tenant_id uuid not null, source_id uuid references sources(id),
+  at timestamptz not null, type text not null, detail jsonb, photo_key text,
+  acknowledged_by uuid, acknowledged_at timestamptz);
+
+create table usage_counters (tenant_id uuid, source_id uuid, month date,
+  events int default 0, bytes bigint default 0, primary key (source_id, month));
+
+create table audit_log (id bigserial primary key, actor text, action text,
+  tenant_id uuid, target text, reason text, at timestamptz default now());
+
+-- tenant separation, repeated for every tenant table
+alter table people enable row level security;
+create policy tenant_isolation on people
+  using (tenant_id = current_setting('app.tenant_id')::uuid);</pre>
+  <p class="note">Each request sets <code>app.tenant_id</code> for its database session. Staff routes use a separate role that can read across tenants only through audited functions.</p>
+</section>
+
+<section>
+  <h2 id="subs">8. Subscription and entitlement engine</h2>
+<pre style="margin:0;overflow-x:auto;background:var(--code-bg);padding:12px;border-radius:8px;font-size:13px">def check(tenant, source, action):
+    if tenant.state in ("suspended", "closed"):      return deny(402)
+    if source.security_state in ("locked", "revoked") \
+       and action not in ("tamper", "unlock_check"): return deny(403)
+    plan = tenant.plan
+    if source.type not in plan.allowed_source_types:  return deny(402)
+    if action == "event" and usage(source).events >= plan.monthly_event_cap: return deny(402)
+    return allow()</pre>
+  <ul>
+    <li>States: trial (14 days), active, past due (7 days), suspended, closed (after 30 days suspended, with an export offered first).</li>
+    <li>Daily jobs: end trials, move past due to suspended, delete data of closed tenants, remove photos past the plan's retention.</li>
+    <li>Payment, MVP: staff record a bank transfer and extend <code>period_ends</code>. Automatic payment is a later module behind the same fields.</li>
+    <li>Every check runs on the server for every request, so changed firmware gains nothing.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="notify">9. Notifications</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Alert</th><th>Channels</th><th>Repeat</th></tr></thead>
+    <tbody>
+      <tr><td>Tamper (moved, turned, removed, view changed, relocated)</td><td>Push and Telegram, high severity</td><td>Every 15 minutes until acknowledged</td></tr>
+      <tr><td>Offline while armed</td><td>Push and Telegram</td><td>Every 15 minutes, then hourly</td></tr>
+      <tr><td>Possible banned match</td><td>Push and Telegram with the photo</td><td>None</td></tr>
+      <tr><td>Unknown person</td><td>As the owner set</td><td>None</td></tr>
+      <tr><td>Low battery, service window start and end</td><td>Push</td><td>None</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>Telegram link: the app shows a one-time code, the owner sends it to the bot, the bot stores the chat ID.</li>
+    <li>Web push uses VAPID keys. Test iPhone behaviour early, since it is the least reliable channel.</li>
+    <li>Alert text for watch list matches always says "possible match".</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="apps">10. Customer app and admin console</h2>
+  <div class="cols">
+    <div class="panel"><h3>Customer app screens</h3><ul>
+      <li>Sign in with a one-time code</li>
+      <li>Claim and arm a camera (guided: mount, check the view, press Arm)</li>
+      <li>Cameras: status, security state, service window, recovery mode, unlock</li>
+      <li>People: register with consent, watch list</li>
+      <li>Events and tamper alerts, review</li>
+      <li>Alerts: channels, quiet hours, Telegram link</li>
+      <li>Plan and usage, export and delete</li>
+      <li>Gate sign (printable)</li>
+    </ul></div>
+    <div class="panel"><h3>Admin console screens</h3><ul>
+      <li>Tenants and sources, search and state</li>
+      <li>Suspend, reactivate, export, delete</li>
+      <li>Inventory: register cameras, claim codes</li>
+      <li>Plans and limits editor</li>
+      <li>Payments and periods</li>
+      <li>Fleet health: offline, low battery, versions</li>
+      <li>Firmware releases with percentage rollout</li>
+      <li>Audit log</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2 id="test">11. Test strategy</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Level</th><th>What</th><th>Covers</th></tr></thead>
+    <tbody>
+      <tr><td>Unit</td><td>Thresholds, verdict rule, entitlement check, view compare, retention</td><td>REC, SUB</td></tr>
+      <tr><td>Integration</td><td>API with a real Postgres and storage in containers: upload, event, verdict, alert</td><td>DEV, REC, ALR</td></tr>
+      <tr><td>Tenant isolation</td><td>Automatic: two tenants try to read each other's people, events and photos by every route</td><td>SEC-004</td></tr>
+      <tr><td>Plan enforcement</td><td>Suspended and over-limit tenants, modified client</td><td>SUB-004</td></tr>
+      <tr><td>Firmware on the bench</td><td>Test rig with a camera, a tilt table and a switchable Wi-Fi: wake paths, failover, queue, OTA and rollback</td><td>DEV, TAM</td></tr>
+      <tr><td>Tamper matrix</td><td>Tilt, turn, lift, remove cover, cover lens, relocate, knock, wind, power loss, Wi-Fi and 4G jam</td><td>TAM-010 to TAM-043</td></tr>
+      <tr><td>Recognition accuracy</td><td>20 registered people and 5 watch list faces at 2 m: day, dusk, backlight</td><td>REC, pilot acceptance</td></tr>
+      <tr><td>Load</td><td>Simulated 1,000 sources at 100 events a day</td><td>PERF-004</td></tr>
+      <tr><td>Security</td><td>Replay, forged tokens, upload link reuse, rate limits, dependency scan</td><td>SEC</td></tr>
+      <tr><td>End to end</td><td>Claim, arm, event, alert, tamper, lock, unlock, suspend, delete</td><td>All</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="platform">12. Platform product: what to build now and later</h2>
+  <h3>12.1 Do now, inside the MVP</h3>
+  <ul>
+    <li>Use <code>sources</code> with type and capabilities from the first migration, not a <code>cameras</code> table (ARCH-002).</li>
+    <li>Keep recognition in <code>solavis_core</code> with no web imports, so the agent can use it (ARCH-006).</li>
+    <li>Count usage per source (ARCH-004) and limit by source type in plans (ARCH-003).</li>
+    <li>Version the device API and make it the only way in (ARCH-007).</li>
+    <li>Make the app and API show features by capability (ARCH-005).</li>
+    <li>Keep the view-compare and gone-quiet evaluators source-independent, since third-party cameras need them.</li>
+  </ul>
+  <h3>12.2 Build later: the edge agent</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  C1[Customer camera 1] -->|RTSP| AG[Solavis agent]
+  C2[Customer camera 2] -->|ONVIF| AG
+  AG -->|face crops, device API v1| CLOUD[Solavis cloud]
+  CLOUD -->|config, commands| AG
+</pre>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Topic</th><th>Design</th></tr></thead>
+    <tbody>
+      <tr><td>Where it runs</td><td>Docker, Linux service, Windows service, Raspberry Pi. A small PC or NVR box on the customer's network.</td></tr>
+      <tr><td>Streams</td><td>Reads RTSP (H.264 and H.265). Samples 2 to 5 frames a second, runs motion and face detection locally, and sends crops. No video leaves the site.</td></tr>
+      <tr><td>Discovery</td><td>ONVIF discovery and the camera's own events when available. Manual RTSP address otherwise.</td></tr>
+      <tr><td>Network</td><td>Outbound HTTPS only. No open ports, no cloud pull from customer networks.</td></tr>
+      <tr><td>Identity</td><td>Registers with a one-time code, then has its own revocable key. Each camera becomes a source under the agent.</td></tr>
+      <tr><td>Secrets</td><td>Camera passwords stay on the agent's machine and are never sent to the cloud.</td></tr>
+      <tr><td>Reuse</td><td>The face detector and quality gate from <code>solavis_core</code>. The existing repository already has IP camera support to learn from.</td></tr>
+      <tr><td>Checks</td><td>Stream up or down, frame rate, view changed, covered, gone quiet. No motion or removal sensors.</td></tr>
+      <tr><td>Updates</td><td>Signed, staged, with rollback.</td></tr>
+      <tr><td>Billing</td><td>Per channel (source) per month, on the same usage counters.</td></tr>
+      <tr><td>Self-hosted edition</td><td>Optional later: the same containers on the customer's server with a licence server. Not planned for the first release.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>12.3 Order of work</h3>
+  <ol class="phases">
+    <li class="phase"><div class="when">Now<small>MVP</small></div><div class="body"><h3>Source model and clean core</h3><p>ARCH items done as part of the MVP backend.</p></div></li>
+    <li class="phase"><div class="when">P1<small>after pilot</small></div><div class="body"><h3>Agent alpha</h3><p>One agent, one RTSP stream, crops to the cloud, status in the app.</p><p class="gate"><b>Exit:</b> one third-party camera produces events and alerts like a Solavis camera.</p></div></li>
+    <li class="phase"><div class="when">P2<small></small></div><div class="body"><h3>Many streams and ONVIF</h3><p>8 streams on a small PC. ONVIF discovery. A tested camera list.</p></div></li>
+    <li class="phase"><div class="when">P3<small></small></div><div class="body"><h3>Packaging, licences and billing</h3><p>Installers, signed updates, per-channel plans, automatic payment.</p></div></li>
+    <li class="phase"><div class="when">P4<small>optional</small></div><div class="body"><h3>Self-hosted edition</h3><p>Only if customers ask and will pay for it.</p></div></li>
+  </ol>
+  <p class="note">Compatibility is the main risk. Many consumer cloud cameras have no RTSP or ONVIF, or hide it behind a setting, so the tested list matters.</p>
+</section>
+
+<section>
+  <h2 id="repo">13. Mapping to the existing repository</h2>
+  <p>The current repository (<code>entry-guard-compact</code>) is a single-site demo: SQLite, a laptop or RTSP camera, and one web page. Reuse the ideas and the recognition code. The service itself is new.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Existing</th><th>Becomes</th></tr></thead>
+    <tbody>
+      <tr><td><code>app/faces.py</code> (detect, 128-number vector)</td><td><code>core/</code> detector and embedding, with a model version field</td></tr>
+      <tr><td><code>app/recognize.py</code> (register, check)</td><td><code>core/</code> match functions that take a tenant's vectors as input, plus worker code</td></tr>
+      <tr><td><code>app/db.py</code> (SQLite)</td><td>Postgres with the tables in section 7</td></tr>
+      <tr><td><code>app/server.py</code> (one web page)</td><td><code>api/</code> routes, customer app and admin console</td></tr>
+      <tr><td>Camera list with RTSP test</td><td>Idea reused in the agent, later</td></tr>
+      <tr><td><code>config/*.yaml</code> per customer</td><td>Tenant and plan settings in the database</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="plan">14. Delivery plan by epic</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Epic</th><th>Main SRS items</th><th>Weeks</th></tr></thead>
+    <tbody>
+      <tr><td>E1 Core library and source model</td><td>ARCH, REC</td><td>2–3</td></tr>
+      <tr><td>E2 Multi-tenant API, auth and entitlement</td><td>SUB, SEC, PRV</td><td>2–5</td></tr>
+      <tr><td>E3 Firmware: wake, capture, upload, queue, config, OTA</td><td>DEV</td><td>2–5</td></tr>
+      <tr><td>E4 Tamper: arming, sensors, lock, unlock, evaluator</td><td>TAM</td><td>4–7</td></tr>
+      <tr><td>E5 Customer app and alerts</td><td>APP, ALR</td><td>5–8</td></tr>
+      <tr><td>E6 Admin console and provisioning tools</td><td>ADM</td><td>5–8</td></tr>
+      <tr><td>E7 Test rigs and pilot support</td><td>All</td><td>7–10</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="open">15. Open decisions</h2>
+  <ul>
+    <li>Face detector on the camera: benchmark options, or send the best frame and detect on the server.</li>
+    <li>ESP-IDF or Arduino for the firmware, once the low-power needs of the real board are known.</li>
+    <li>Default match thresholds and tamper thresholds, set from pilot data.</li>
+    <li>Whether the Platform product is cloud only, or also self-hosted.</li>
+    <li>Working product name for the Platform product.</li>
+  </ul>
+</section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

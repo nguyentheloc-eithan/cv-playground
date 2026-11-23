@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solavis Hardware Spec</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: formal document. Cover block, contents list, numbered sections, appendices. Tables scroll inside their own wrapper. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#13202c; --muted:#586979; --line:#d9e0e6;
+  --brand:#0b3c5d; --accent:#e89b0c; --accent-soft:#fdf0d5; --accent-ink:#8a5600;
+  --good:#1f7a4d; --good-soft:#dff3e8; --warn:#b4531a; --warn-soft:#fde8da;
+  --code-bg:#e8edf1;
+  --font-display:"Space Grotesk",system-ui,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e151c; --surface:#16202a; --ink:#e6edf3; --muted:#97a7b5; --line:#293643;
+  --brand:#7cc0ea; --accent:#f0b24a; --accent-soft:#2b2312; --accent-ink:#f2c97c;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1e2a35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151c; --surface:#16202a; --ink:#e6edf3; --muted:#97a7b5; --line:#293643;
+  --brand:#7cc0ea; --accent:#f0b24a; --accent-soft:#2b2312; --accent-ink:#f2c97c;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1e2a35; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.65;
+  padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:44px;min-width:0}
+h1,h2,h3{font-family:var(--font-display);line-height:1.2;text-wrap:balance;margin:0;color:var(--ink)}
+h1{font-size:clamp(30px,5.5vw,44px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:23px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--brand);scroll-margin-top:16px}
+h3{font-size:16px;font-weight:600}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+a{color:var(--brand)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.note{font-size:13px;color:var(--muted)}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-ink);font-weight:600}
+.cover{display:flex;flex-direction:column;gap:20px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.brandrow{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:22px;color:var(--brand)}
+.lede{color:var(--muted);font-size:16px;max-width:66ch}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.meta div{background:var(--surface);padding:10px 14px;min-width:0}
+.meta small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.meta span{font-weight:600}
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 20px}
+.toc ol{columns:2 260px;column-gap:32px;gap:4px;padding-left:22px}
+.toc li{break-inside:avoid}
+.callout{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:6px;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
+.callout h3{color:var(--accent-ink)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.fact b{display:block;font-family:var(--font-display);font-size:22px;font-variant-numeric:tabular-nums;color:var(--brand)}
+.fact span{color:var(--muted);font-size:13px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+tfoot td{font-weight:600;background:var(--bg)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.phases{display:flex;flex-direction:column;gap:12px;padding:0;list-style:none}
+.phase{display:grid;grid-template-columns:100px 1fr;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.phase .when{font-family:var(--font-display);font-weight:700;color:var(--brand);font-size:14px}
+.phase .when small{display:block;font-family:var(--font-body);font-weight:400;color:var(--muted)}
+.phase .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.gate{font-size:13px;color:var(--muted)}
+.gate b{color:var(--good)}
+@media (max-width:520px){.phase{grid-template-columns:1fr;gap:6px}}
+.sig{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.sig div{border-top:1px solid var(--ink);padding-top:6px;font-size:13px;color:var(--muted)}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+<div class="wrap">
+<header class="cover">
+  <div class="brandrow"><svg width="34" height="34" viewBox="0 0 40 40" role="img" aria-label="Solavis mark">
+      <g stroke="var(--accent)" stroke-width="3" stroke-linecap="round">
+        <line x1="20" y1="2" x2="20" y2="7"/><line x1="20" y1="33" x2="20" y2="38"/>
+        <line x1="2" y1="20" x2="7" y2="20"/><line x1="33" y1="20" x2="38" y2="20"/>
+        <line x1="7.3" y1="7.3" x2="10.8" y2="10.8"/><line x1="29.2" y1="29.2" x2="32.7" y2="32.7"/>
+        <line x1="32.7" y1="7.3" x2="29.2" y2="10.8"/><line x1="10.8" y1="29.2" x2="7.3" y2="32.7"/>
+      </g>
+      <circle cx="20" cy="20" r="9.5" fill="var(--brand)"/>
+      <circle cx="20" cy="20" r="4.2" fill="var(--surface)"/>
+      <circle cx="22" cy="18" r="1.4" fill="var(--accent)"/>
+    </svg> Solavis</div>
+  <span class="eyebrow">Engineering · hardware</span>
+  <h1>Hardware engineering specification</h1>
+  <p class="lede">Parts, wiring, power, tamper sensors, enclosure, assembly and test for the Solavis Camera, built from ready-made parts.</p>
+  <div class="meta">
+    <div><small>Document ID</small><span>SOL-HW-001</span></div>
+    <div><small>Version</small><span>0.1 draft</span></div>
+    <div><small>Date</small><span>23 Nov 2026</span></div>
+    <div><small>Status</small><span>For review</span></div>
+    <div><small>Audience</small><span>Hardware, manufacturing, QA</span></div>
+    <div><small>Confidentiality</small><span>Internal</span></div>
+  </div>
+</header>
+<nav class="toc" aria-label="Contents"><h3 style="margin-bottom:8px">Contents</h3><ol>
+<li><a href="#scope">1. Scope and hardware requirements</a></li>
+<li><a href="#block">2. Block diagram</a></li>
+<li><a href="#parts">3. Component selection</a></li>
+<li><a href="#electrical">4. Electrical design</a></li>
+<li><a href="#mech">5. Mechanical design</a></li>
+<li><a href="#thermal">6. Thermal and environment</a></li>
+<li><a href="#assembly">7. Assembly procedure</a></li>
+<li><a href="#factory">8. Provisioning and labels</a></li>
+<li><a href="#eol">9. End-of-line test</a></li>
+<li><a href="#verify">10. Hardware verification plan</a></li>
+<li><a href="#reg">11. Regulatory and safety</a></li>
+<li><a href="#bom">12. Bill of materials, 4G version</a></li>
+<li><a href="#future">13. Custom board, later</a></li>
+<li><a href="#open">14. Open items</a></li>
+</ol></nav>
+<section>
+  <h2 id="scope">1. Scope and hardware requirements</h2>
+  <p>This document defines the Solavis Camera hardware for the MVP: parts, wiring, power, enclosure, assembly and test. It uses ready-made boards, with no custom circuit board. Requirements come from SOL-SRS-001. The Platform (bring-your-own camera) product has no Solavis hardware, so it is not covered here.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Hardware requirement</th><th>From SRS</th></tr></thead>
+    <tbody>
+      <tr><td>HW-001</td><td>Wake the board from deep sleep on PIR motion, accelerometer interrupt, reed switch change and a 15-minute timer, using wake-capable pins.</td><td>DEV-001, TAM-010, TAM-013, TAM-015</td></tr>
+      <tr><td>HW-002</td><td>Camera sensor with a fixed-focus lens, about 66° field of view, 2 megapixels or better, with a sun hood.</td><td>DEV-003</td></tr>
+      <tr><td>HW-003</td><td>White light that switches on by software, 250 mA or less, off in deep sleep.</td><td>DEV-006</td></tr>
+      <tr><td>HW-004</td><td>Charge one lithium-ion cell from a 6 V solar panel, stop charging outside 0 to 45 °C, and protect the cell from overcharge, over-discharge and short circuit.</td><td>ENV-001</td></tr>
+      <tr><td>HW-005</td><td>Battery voltage readable by software.</td><td>DEV-013, DEV-018</td></tr>
+      <tr><td>HW-006</td><td>4G modem that can be fully powered off between uses, with an antenna and a SIM slot.</td><td>DEV-008</td></tr>
+      <tr><td>HW-007</td><td>Motion sensing for tamper: a 3-axis accelerometer with interrupt, a compass (should have), and a reed switch with a magnet in the back plate.</td><td>TAM-010, TAM-011, TAM-013</td></tr>
+      <tr><td>HW-008</td><td>Average energy use of 1.5 Wh a day or less. Autonomy of 7 days with no sun.</td><td>PWR-001, PWR-002</td></tr>
+      <tr><td>HW-009</td><td>Enclosure stops rain from any direction (goal IPX4), is UV-stable, keeps the board at or below 60 °C, and hides the wall screws.</td><td>ENV-001 to ENV-003</td></tr>
+      <tr><td>HW-010</td><td>Size 125 × 90 × 79 mm or smaller including the panel.</td><td>Product definition</td></tr>
+      <tr><td>HW-011</td><td>A reset button reachable only with the cover off.</td><td>DEV-015, TAM-041</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="block">2. Block diagram</h2>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  PAN[Solar panel 6 V 1.5 W] --> CHG[Charger CN3791 + NTC]
+  CHG --> BAT[18650 cell with protection]
+  BAT --> MAIN[Main board: ESP32-S3 + 4G modem]
+  MAIN --> CAMM[Camera OV2640]
+  PIR[PIR AM312] --> MAIN
+  ACC[Accelerometer] --> MAIN
+  MAG[Compass] --> MAIN
+  REED[Reed switch] --> MAIN
+  MAIN --> LED[White LED via MOSFET]
+  BAT --> DIV[Voltage divider] --> MAIN
+  MAIN --> ANT[LTE antenna]
+</pre>
+  </div>
+</section>
+
+<section>
+  <h2 id="parts">3. Component selection</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>Choice</th><th>Why</th><th>Alternative</th></tr></thead>
+    <tbody>
+      <tr><td>Main board</td><td>ESP32-S3 with LTE Cat-1 modem, camera connector, SIM slot (LilyGO T-SIM7670G-S3 class)</td><td>One board for Wi-Fi, 4G and camera. Deep sleep. Wake-capable pins on GPIO 0 to 21.</td><td>ESP32-S3 camera board plus an A7670C modem board over serial</td></tr>
+      <tr><td>Camera</td><td>OV2640, 66° lens</td><td>Cheap, widely stocked, 2 MP, fits the board connector</td><td>OV5640 for autofocus and 5 MP</td></tr>
+      <tr><td>Motion</td><td>AM312 mini PIR</td><td>About 12 µA, 3.3 V output, small dome</td><td>HC-SR501 (larger, higher power)</td></tr>
+      <tr><td>Accelerometer</td><td>ADXL345 or LIS3DH module</td><td>Microamp operation with motion and inactivity interrupts that can wake the board. MPU6050 draws milliamps and is a poor fit.</td><td>ADXL362 (lowest power)</td></tr>
+      <tr><td>Compass</td><td>QMC5883L module</td><td>Sees a left-right turn that a tilt sensor cannot see. Optional.</td><td>ICM-20948 9-axis</td></tr>
+      <tr><td>Cover switch</td><td>Glass reed switch with a 6 × 3 mm neodymium magnet</td><td>Zero power, wakes the board, detects the cover leaving the back plate</td><td>Hall sensor, microswitch</td></tr>
+      <tr><td>Charger</td><td>CN3791 module, 6 V input</td><td>Panel-aware charger for one lithium cell, cheap</td><td>Board's own solar input, if it has one</td></tr>
+      <tr><td>Cell</td><td>18650 3000 mAh, protected</td><td>Common, about 11 Wh</td><td>LiFePO4 18650 (cooler, lower voltage, needs a different charger)</td></tr>
+      <tr><td>Panel</td><td>6 V 1.5 W, about 110 × 80 mm</td><td>Fits the sloped top</td><td>Larger panel if the box grows</td></tr>
+      <tr><td>Light</td><td>1 W white LED, resistor, logic-level N-MOSFET</td><td>Good face colour. Infrared hurts recognition.</td><td>Warm white LED</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="electrical">4. Electrical design</h2>
+  <h3>4.1 Power chain</h3>
+  <ol>
+    <li>Panel plus goes to the charger input through a Schottky diode. Panel minus to ground.</li>
+    <li>The charger output feeds the cell and the board's battery input. The cell has its own protection, or a protection board sits between cell and load.</li>
+    <li>A thermistor (NTC) taped to the cell goes to the charger's temperature pin so charging stops outside 0 to 45 °C.</li>
+    <li>The board runs from the cell through its own regulator. The modem takes peaks of about 2 A, so add a 470 µF or larger capacitor close to the modem supply.</li>
+  </ol>
+  <p class="note">Pin names and the regulator arrangement depend on the exact board. Fill in the pin map in section 4.3 once the board is in hand.</p>
+  <h3>4.2 Energy budget per day (estimate)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th>Basis</th><th class="n">Wi-Fi mode</th><th class="n">4G-only mode</th></tr></thead>
+    <tbody>
+      <tr><td>Deep sleep</td><td>1 mA at 3.7 V, 24 h (target for the ready-made board)</td><td class="n">0.09 Wh</td><td class="n">0.09 Wh</td></tr>
+      <tr><td>Armed check-ins</td><td>96 a day on Wi-Fi at 4 s and 1.5 W. 24 a day on 4G at about 25 J</td><td class="n">0.16 Wh</td><td class="n">0.17 Wh</td></tr>
+      <tr><td>50 events a day</td><td>Capture 2 s at 1.2 W, upload on Wi-Fi 4 s at 1.5 W. On 4G add about 25 J each</td><td class="n">0.12 Wh</td><td class="n">0.38 Wh</td></tr>
+      <tr><td>Light and sensors</td><td>Light on only while capturing in the dark</td><td class="n">0.04 Wh</td><td class="n">0.04 Wh</td></tr>
+      <tr><td>Conversion losses</td><td>About 15%</td><td class="n">0.06 Wh</td><td class="n">0.10 Wh</td></tr>
+      <tr><td><b>Total</b></td><td></td><td class="n"><b>≈ 0.5 Wh</b></td><td class="n"><b>≈ 0.8 Wh</b></td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>Target is 1.5 Wh a day or less, so there is margin. A board with 5 mA sleep current would add about 0.4 Wh a day. Measure this first on the real board.</li>
+    <li>Panel yield: about 3 Wh a day in good light, about 1.7 Wh in a Hà Nội winter. The 11 Wh cell gives about 14 days at 0.8 Wh a day with no sun, before reserve.</li>
+    <li>Every figure here is an estimate from typical datasheet values, not a measurement.</li>
+  </ul>
+  <h3>4.3 Signal map (logical)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Signal</th><th>Direction</th><th>Connection</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>PIR out</td><td>In</td><td>Wake-capable GPIO</td><td>3.3 V logic, rising edge wake</td></tr>
+      <tr><td>Accelerometer INT1</td><td>In</td><td>Wake-capable GPIO</td><td>Motion and inactivity interrupt</td></tr>
+      <tr><td>Reed switch</td><td>In</td><td>Wake-capable GPIO with pull-up</td><td>Closed with the cover on. Wake on open.</td></tr>
+      <tr><td>I2C SDA, SCL</td><td>Bus</td><td>Two GPIO with 4.7 kΩ pull-ups</td><td>Accelerometer and compass share the bus</td></tr>
+      <tr><td>Light control</td><td>Out</td><td>GPIO to MOSFET gate, 100 kΩ pull-down</td><td>LED current 250 mA or less, set by the series resistor. Check with a meter.</td></tr>
+      <tr><td>Battery sense</td><td>In</td><td>ADC pin through a divider (for example 100 kΩ and 100 kΩ)</td><td>Use a known-value divider, calibrate in test</td></tr>
+      <tr><td>Reset button</td><td>In</td><td>Board's reset or boot button</td><td>Inside the box only</td></tr>
+      <tr><td>Camera</td><td>Bus</td><td>Board camera connector</td><td>Parallel interface, board-defined pins</td></tr>
+      <tr><td>Modem</td><td>Bus</td><td>On board</td><td>Power switch or key line under software control</td></tr>
+    </tbody>
+  </table></div>
+  <h3>4.4 Tamper sensors</h3>
+  <ul>
+    <li><b>Accelerometer</b> is fixed rigidly to the board (double-sided tape is not enough, use screws or glue) and the board is fixed to the cover. It runs in a low-power mode and wakes the board on activity above a threshold. A tilt reading comes from the gravity direction.</li>
+    <li><b>Compass</b> reads heading. Metal gates and wires disturb it, so only a <i>change from the baseline</i> is used, never an absolute direction.</li>
+    <li><b>Reed switch</b> sits in the cover and the magnet in the back plate, 8 to 12 mm apart when the cover is on. A strong magnet held outside can defeat it, which is why it is one layer of several (SOL-SRS-001 section 3.7).</li>
+    <li><b>Image check</b> needs no extra part. The camera sends a small grayscale frame, and the server compares it with the one taken at arming.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="mech">5. Mechanical design</h2>
+  <p>A wedge-shaped box, <b>125 wide × 90 deep × 79 high</b> mm, 55 mm high at the front. The solar panel sits in a pocket on the 15° sloped top. Camera, motion sensor and light are on the front. The back plate screws to the post or wall, and the cover slides onto it, held by 3 screws from underneath. Source files are in <code>hardware/enclosure/</code> and <code>build_enclosure.py</code> rebuilds them. Status: <b>Rev B, not printed yet</b>.</p>
+  <div class="cols">
+    <div class="diagram">
+      <svg viewBox="0 0 560 270" width="100%" role="img" aria-label="Front view of the cover with the camera, motion sensor and light openings and their positions">
+        <rect x="30" y="20" width="500" height="220" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+        <g fill="none" stroke="var(--brand)" stroke-width="2">
+          <circle cx="280" cy="132" r="32"/><circle cx="280" cy="132" r="41" stroke-dasharray="4 3"/><circle cx="280" cy="132" r="56" stroke-dasharray="2 4"/>
+          <circle cx="120" cy="132" r="24"/><circle cx="440" cy="132" r="16.4"/>
+        </g>
+        <g fill="var(--muted)"><circle cx="180" cy="76" r="4"/><circle cx="380" cy="76" r="4"/><circle cx="180" cy="188" r="4"/><circle cx="380" cy="188" r="4"/></g>
+        <g font-size="12" fill="var(--ink)" text-anchor="middle">
+          <text x="280" y="128">camera</text><text x="280" y="144">Ø16</text>
+          <text x="120" y="128">PIR</text><text x="120" y="144">Ø12</text>
+          <text x="440" y="128">light</text><text x="440" y="144">Ø8.2</text>
+        </g>
+        <g font-size="11" fill="var(--muted)" text-anchor="middle">
+          <text x="280" y="12">125 mm</text>
+          <text x="280" y="258">board posts 50 × 28 (placeholder)</text>
+          <text x="14" y="130" transform="rotate(-90 14 130)">55 mm</text>
+        </g>
+        <line x1="30" y1="20" x2="530" y2="20" stroke="var(--muted)"/>
+      </svg>
+    </div>
+  </div>
+  <h3>5.1 Cover features</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Feature</th><th>Size</th><th>Position (mm)</th></tr></thead>
+    <tbody>
+      <tr><td>Walls</td><td>3.5 thick, top wall 6.5</td><td>Outer 125 × 90, 55 at front, 79.1 at back</td></tr>
+      <tr><td>Panel pocket</td><td>110 × 80, 3.2 deep</td><td>Centred on the 15° slope</td></tr>
+      <tr><td>Panel cable hole</td><td>Ø6.5, vertical</td><td>x 103, y 12 from the back</td></tr>
+      <tr><td>Camera opening</td><td>Ø16, window recess Ø20.4 × 1.6</td><td>x 62.5, z 27 on the front face</td></tr>
+      <tr><td>Lens hood</td><td>OD 28, ID 20.8, 12 long (separate part)</td><td>Glued around the window</td></tr>
+      <tr><td>PIR opening</td><td>Ø12</td><td>x 22.5, z 27</td></tr>
+      <tr><td>Light opening</td><td>Ø8.2</td><td>x 102.5, z 27</td></tr>
+      <tr><td>Board posts</td><td>4 × Ø7, 8 high, Ø2.2 pilot</td><td>50 × 28 pitch around the camera, <b>placeholder</b></td></tr>
+      <tr><td>Battery cradle</td><td>Wall 2, 6 high, inside 80 × 22</td><td>Centre x 62.5, y 42 on the floor</td></tr>
+      <tr><td>Floor screw holes</td><td>3 × Ø3.4</td><td>x 18, 62.5, 107 at y 8</td></tr>
+      <tr><td>Vent hole</td><td>Ø12.2 (optional vent plug)</td><td>x 62.5, y 72 on the floor</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.2 Back plate features</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Feature</th><th>Size</th><th>Position (mm)</th></tr></thead>
+    <tbody>
+      <tr><td>Plate</td><td>125 × 79.1 × 5</td><td>Matches the cover outline</td></tr>
+      <tr><td>Tongue ring</td><td>8 high, 3 wall, 0.4 clearance</td><td>Enters the cover opening</td></tr>
+      <tr><td>Screw shelves</td><td>3 × (14 × 16 × 10), Ø3.2 hole, Ø4.2 insert pocket</td><td>x 18, 62.5, 107 at y 0 to 16</td></tr>
+      <tr><td>Wall screw holes</td><td>4 × Ø5.5, counterbore Ø10.5 × 3</td><td>x 32 and 93, z 24 and 50, hidden under the cover</td></tr>
+    </tbody>
+  </table></div>
+  <h3>5.3 Rev C changes (not yet modelled)</h3>
+  <ul>
+    <li>Magnet pocket (Ø6.2 × 3.2) in a small boss on the back plate, and a reed switch holder in the cover that lines up with it. Needed for TAM-013.</li>
+    <li>A way to reach the reset button with the cover off, and a rule that using it while armed counts as tamper (TAM-041).</li>
+    <li>Board post pattern, panel pocket and battery cradle set to the real parts.</li>
+    <li>A tighter seal groove for a round cord or foam gasket on the cover rim.</li>
+  </ul>
+  <h3>5.4 Fasteners and materials</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th>Spec</th><th class="n">Qty</th></tr></thead>
+    <tbody>
+      <tr><td>Cover screws</td><td>M3 × 12, stainless</td><td class="n">3</td></tr>
+      <tr><td>Heat-set inserts</td><td>M3, 4.2 mm outside diameter</td><td class="n">3</td></tr>
+      <tr><td>Board screws</td><td>M2.5 self-tapping</td><td class="n">4</td></tr>
+      <tr><td>Wall screws and plugs</td><td>4 mm, stainless, length for the wall</td><td class="n">4</td></tr>
+      <tr><td>Window disc</td><td>20 mm clear acrylic or glass, 1.5 mm</td><td class="n">1</td></tr>
+      <tr><td>Seal</td><td>2 mm closed-cell foam tape or silicone bead on the cover rim</td><td class="n">1</td></tr>
+      <tr><td>Sealant</td><td>Neutral-cure silicone for window, PIR, panel and cable hole</td><td class="n">1</td></tr>
+      <tr><td>Printed parts</td><td>ASA, 0.2 mm layers, 4 perimeters, 30% infill, light grey or black</td><td class="n">3</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Print the cover front face down and the back plate back face down. The battery cradle needs small supports. PLA is not suitable.</p>
+</section>
+
+<section>
+  <h2 id="thermal">6. Thermal and environment</h2>
+  <ul>
+    <li>A closed box in the Vietnamese sun can pass 60 °C inside. Use a light colour, keep the box in shade where the site allows, and let the panel shade the top.</li>
+    <li>Fit a vent plug if tests show condensation. Add a silica gel pack.</li>
+    <li>Place the cell away from the board and out of direct sunlight. Charging stops above 45 °C by design.</li>
+    <li>Use stainless screws and coat exposed board edges with conformal spray.</li>
+    <li>Rain: no rating is claimed. The goal is splash-proof (IPX4), proven only by the test in section 10.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="assembly">7. Assembly procedure</h2>
+  <ol>
+    <li>Press the 3 inserts into the shelves of the back plate with a soldering iron. Let cool.</li>
+    <li>Glue the magnet into its pocket (Rev C) with the correct pole facing the reed holder. Mark the pole.</li>
+    <li>Glue the window disc into the cover recess with silicone. Glue the hood around it. Fit the PIR and the light and seal them.</li>
+    <li>Fit the solar panel into its pocket with silicone. Pass its cable through the hole and seal the hole.</li>
+    <li>Mount the main board on its posts. Connect the camera, accelerometer, compass, reed, light and battery sense.</li>
+    <li>Fit the cell in its holder inside the cradle, with the NTC taped to the cell.</li>
+    <li>Run the provisioning and end-of-line test (sections 8 and 9) before closing.</li>
+    <li>Fit the foam tape on the cover rim, slide the cover onto the plate, fit 3 screws from underneath.</li>
+    <li>Apply the serial and QR label inside the cover, and a second copy in the packing.</li>
+  </ol>
+</section>
+
+<section>
+  <h2 id="factory">8. Provisioning and labels</h2>
+  <ul>
+    <li>A provisioning script flashes the firmware, creates the device ID and key, writes them to protected storage, registers the camera in the server inventory with a claim code, and prints the QR label.</li>
+    <li>The label shows the serial, the QR claim code, the model (Lite or 4G) and the firmware version.</li>
+    <li>The claim code is shown only on the label and in the box. It is not stored on the camera.</li>
+    <li>Target: 3 minutes of machine time per camera, under 30 minutes per assembled unit.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="eol">9. End-of-line test</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Step</th><th>Check</th><th>Pass</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Battery voltage reads correctly against a meter</td><td>Within 50 mV</td></tr>
+      <tr><td>2</td><td>Sleep current</td><td>Within the target in SRS PWR-003</td></tr>
+      <tr><td>3</td><td>Wave a hand in front of the PIR</td><td>Board wakes</td></tr>
+      <tr><td>4</td><td>Tilt the board by hand</td><td>Accelerometer wakes the board</td></tr>
+      <tr><td>5</td><td>Remove and refit the cover</td><td>Reed wakes the board, state reads closed when refitted</td></tr>
+      <tr><td>6</td><td>Capture a test frame</td><td>Image is sharp at 1.5 m, no stray light</td></tr>
+      <tr><td>7</td><td>Light on and off</td><td>LED lights, current 250 mA or less</td></tr>
+      <tr><td>8</td><td>Upload over Wi-Fi, then over 4G</td><td>Both reach the server</td></tr>
+      <tr><td>9</td><td>Charge from a lamp or sun</td><td>Charger status shows charging</td></tr>
+      <tr><td>10</td><td>Claim from the app with the QR</td><td>Camera appears in the owner's account</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="verify">10. Hardware verification plan</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Test</th><th>Method</th><th>Pass</th></tr></thead>
+    <tbody>
+      <tr><td>Power</td><td>USB power meter, then 7 days outdoors</td><td>1.5 Wh a day or less. Battery never under 30%.</td></tr>
+      <tr><td>Autonomy</td><td>Cover the panel for 7 days from a full cell</td><td>Camera still reporting on day 7</td></tr>
+      <tr><td>Heat</td><td>Temperature log in sun, closed box</td><td>Board 60 °C or less at midday</td></tr>
+      <tr><td>Charge limits</td><td>Warm the cell above 45 °C and cool it below 0 °C</td><td>Charging stops</td></tr>
+      <tr><td>Water</td><td>Hose from above and from each side for 10 minutes</td><td>No water inside</td></tr>
+      <tr><td>Tilt</td><td>Tilt by 5°, 8°, 15°, 30°</td><td>Detected at the set threshold</td></tr>
+      <tr><td>Turn</td><td>Rotate by 10°, 15°, 30° with the compass</td><td>Detected at the set threshold</td></tr>
+      <tr><td>Lift and carry</td><td>Lift the whole unit off the post and walk away</td><td>Alert and lock</td></tr>
+      <tr><td>Cover removal</td><td>Remove the cover slowly and quickly</td><td>Alert and lock before the board is out</td></tr>
+      <tr><td>Covered lens</td><td>Cover the lens with cloth and paper</td><td>Detected within 5 minutes</td></tr>
+      <tr><td>False alarms</td><td>Wind, a bird landing, door slam, heavy truck, 2 weeks outdoors</td><td>No lock. Count knocks and tune.</td></tr>
+      <tr><td>Magnet bypass</td><td>Hold a strong magnet beside the reed while removing the cover</td><td>Other layers still catch it</td></tr>
+      <tr><td>Failover</td><td>Switch Wi-Fi off during an event</td><td>Delivered over 4G</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2 id="reg">11. Regulatory and safety</h2>
+  <ul>
+    <li>Wi-Fi and 4G radios need Vietnamese type approval for the finished product before public sale. Pilot with known users only.</li>
+    <li>Use protected cells from a known supplier, and ship by ground. Lithium cells have air freight limits.</li>
+    <li>Fuse the battery lead. Keep the cell out of direct sun and away from the board.</li>
+    <li>The label shall carry the model, serial, and the contact details of the seller.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 id="bom">12. Bill of materials, 4G version</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>Spec</th><th class="n">Qty</th><th class="n">≈ VND</th></tr></thead>
+    <tbody>
+      <tr><td>Main board</td><td>ESP32-S3 + LTE Cat-1, camera connector</td><td class="n">1</td><td class="n">1,100,000</td></tr>
+      <tr><td>Camera</td><td>OV2640 66°</td><td class="n">1</td><td class="n">80,000</td></tr>
+      <tr><td>PIR</td><td>AM312</td><td class="n">1</td><td class="n">15,000</td></tr>
+      <tr><td>Accelerometer</td><td>ADXL345 or LIS3DH module</td><td class="n">1</td><td class="n">50,000</td></tr>
+      <tr><td>Compass</td><td>QMC5883L module</td><td class="n">1</td><td class="n">30,000</td></tr>
+      <tr><td>Reed switch and magnet</td><td>Glass reed, 6 × 3 mm magnet</td><td class="n">1 set</td><td class="n">15,000</td></tr>
+      <tr><td>Light</td><td>1 W LED, MOSFET, resistors</td><td class="n">1</td><td class="n">15,000</td></tr>
+      <tr><td>Charger</td><td>CN3791 module with NTC</td><td class="n">1</td><td class="n">40,000</td></tr>
+      <tr><td>Cell and holder</td><td>Protected 18650 3000 mAh</td><td class="n">1</td><td class="n">70,000</td></tr>
+      <tr><td>Panel</td><td>6 V 1.5 W</td><td class="n">1</td><td class="n">70,000</td></tr>
+      <tr><td>Small parts</td><td>Screws, inserts, window, silicone, foam, capacitor, diode</td><td class="n">set</td><td class="n">70,000</td></tr>
+      <tr><td>Wiring</td><td>Wire, connectors</td><td class="n">set</td><td class="n">20,000</td></tr>
+      <tr><td>Enclosure</td><td>3 printed parts, about 140 g ASA</td><td class="n">1 set</td><td class="n">420,000</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="3">Total</td><td class="n">≈ 1,995,000</td></tr></tfoot>
+  </table></div>
+  <p class="note">The Lite version drops the modem board (about 1.1 M ₫) for a plain ESP32-S3 camera board (about 350 k ₫). Prices are estimates for about 10 units.</p>
+</section>
+
+<section>
+  <h2 id="future">13. Custom board, later</h2>
+  <p>After the pilot, one custom board can replace the boards and modules. Its goals: 200 µA sleep, one board with modem, camera connector, sensors and charger, the same enclosure footprint, and a smaller, cheaper box. It also allows a hardware cell-removal alarm with a small backup capacitor to send a last alert. It is outside this document.</p>
+</section>
+
+<section>
+  <h2 id="open">14. Open items</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th>Needed for</th></tr></thead>
+    <tbody>
+      <tr><td>Confirm board model, price, stock, camera connector, sleep current, solar input</td><td>Everything</td></tr>
+      <tr><td>Real sizes of panel, battery holder and board</td><td>Enclosure fit</td></tr>
+      <tr><td>Rev C enclosure: magnet and reed, reset access, seal groove</td><td>Tamper layer 3</td></tr>
+      <tr><td>Tamper thresholds from outdoor tests</td><td>Fewer false alarms</td></tr>
+      <tr><td>Print service and quote</td><td>Cost</td></tr>
+      <tr><td>Radio type approval plan</td><td>Public sale</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

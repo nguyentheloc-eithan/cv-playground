@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solavis</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: marketing site. Sticky top bar, split hero with product drawing, feature strip, steps, specs, plans, FAQ, contact. */
+:root{
+  --bg:#f7f8fa; --surface:#ffffff; --ink:#10202d; --muted:#556675; --line:#dbe2e8;
+  --brand:#0b3c5d; --brand-ink:#ffffff; --sun:#f2a516; --sun-soft:#fff3d6; --sun-ink:#7a4a00;
+  --hero-a:#eaf3f9; --hero-b:#fff6e0;
+  --good:#1f7a4d; --code-bg:#e8edf1;
+  --font-display:"Space Grotesk",system-ui,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c141b; --surface:#15202a; --ink:#e8eef3; --muted:#9aaab8; --line:#27343f;
+  --brand:#7cc0ea; --brand-ink:#08202f; --sun:#f5b33a; --sun-soft:#2a2210; --sun-ink:#f4cc82;
+  --hero-a:#112230; --hero-b:#231d10;
+  --good:#5fd09a; --code-bg:#1e2a35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c141b; --surface:#15202a; --ink:#e8eef3; --muted:#9aaab8; --line:#27343f;
+  --brand:#7cc0ea; --brand-ink:#08202f; --sun:#f5b33a; --sun-soft:#2a2210; --sun-ink:#f4cc82;
+  --hero-a:#112230; --hero-b:#231d10;
+  --good:#5fd09a; --code-bg:#1e2a35; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+h1,h2,h3{font-family:var(--font-display);line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(34px,6vw,56px);font-weight:700;letter-spacing:-.02em}
+h2{font-size:clamp(26px,4vw,36px);font-weight:700;letter-spacing:-.01em}
+h3{font-size:18px;font-weight:600}
+p{margin:0}
+a{color:var(--brand)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--sun);outline-offset:3px}
+.inner{max-width:1040px;margin:0 auto;min-width:0}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);margin-left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:12px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:22px;color:var(--brand);text-decoration:none}
+nav{display:flex;gap:20px;flex-wrap:wrap;font-size:14px;font-weight:500}
+nav a{color:var(--ink);text-decoration:none}
+nav a:hover{color:var(--brand);text-decoration:underline}
+.btn{display:inline-block;background:var(--brand);color:var(--brand-ink);font-weight:600;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent;color:var(--brand);border:1.5px solid var(--brand)}
+
+/* hero */
+.hero{margin-left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:linear-gradient(135deg,var(--hero-a),var(--hero-b))}
+.hero .inner{display:grid;grid-template-columns:1.05fr .95fr;gap:32px;align-items:center;padding-block:56px}
+.hero-copy{display:flex;flex-direction:column;gap:20px;min-width:0}
+.hero-copy p{font-size:18px;color:var(--muted);max-width:50ch}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.tag{font-size:12px;text-transform:uppercase;letter-spacing:.09em;font-weight:600;color:var(--sun-ink)}
+.hero svg{width:100%;height:auto;max-width:460px;justify-self:center}
+@media (max-width:760px){.hero .inner{grid-template-columns:1fr;padding-block:36px}}
+
+/* sections */
+main section{padding-block:64px;display:flex;flex-direction:column;gap:28px}
+.head{display:flex;flex-direction:column;gap:10px;max-width:60ch}
+.head p{color:var(--muted)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card p{color:var(--muted);font-size:15px}
+.ico{width:44px;height:44px;border-radius:10px;background:var(--sun-soft);display:grid;place-items:center}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:20px;padding:0;margin:0;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px}
+.steps li::before{content:counter(s);font-family:var(--font-display);font-weight:700;color:var(--brand);font-size:15px;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--brand);display:grid;place-items:center}
+.steps p{color:var(--muted);font-size:15px}
+.band{margin-left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--surface);border-block:1px solid var(--line)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:15px}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;width:34%}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.checks li{display:grid;grid-template-columns:22px 1fr;gap:10px}
+.checks svg{margin-top:4px}
+.plan-feature{color:var(--good);font-weight:600}
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px}
+details+details{margin-top:12px}
+summary{cursor:pointer;font-weight:600;font-family:var(--font-display);font-size:17px}
+details p{color:var(--muted);margin-top:10px}
+.contact{background:var(--sun-soft);border:1px solid var(--sun);border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:14px}
+.contact h2{color:var(--sun-ink)}
+.ph{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--code-bg);padding:2px 8px;border-radius:4px;font-size:14px}
+footer{border-top:1px solid var(--line);padding-block:32px 48px;font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+.note{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+
+<header class="bar">
+  <div class="inner">
+    <a class="logo" href="#top" aria-label="Solavis home">
+      <svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true">
+        <g stroke="var(--sun)" stroke-width="3" stroke-linecap="round">
+          <line x1="20" y1="2" x2="20" y2="7"/><line x1="20" y1="33" x2="20" y2="38"/>
+          <line x1="2" y1="20" x2="7" y2="20"/><line x1="33" y1="20" x2="38" y2="20"/>
+          <line x1="7.3" y1="7.3" x2="10.8" y2="10.8"/><line x1="29.2" y1="29.2" x2="32.7" y2="32.7"/>
+          <line x1="32.7" y1="7.3" x2="29.2" y2="10.8"/><line x1="10.8" y1="29.2" x2="7.3" y2="32.7"/>
+        </g>
+        <circle cx="20" cy="20" r="9.5" fill="var(--brand)"/>
+        <circle cx="20" cy="20" r="4.2" fill="var(--surface)"/>
+        <circle cx="22" cy="18" r="1.4" fill="var(--sun)"/>
+      </svg>
+      Solavis
+    </a>
+    <nav aria-label="Main">
+      <a href="#why">Why Solavis</a>
+      <a href="#how">How it works</a>
+      <a href="#specs">Specifications</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#plans">Plans</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn" href="#contact">Join the pilot</a>
+  </div>
+</header>
+
+<div id="top"></div>
+<section class="hero" style="display:block;padding:0">
+  <div class="inner" style="padding-inline:0">
+    <div class="hero-copy">
+      <span class="tag">Solar AI security camera</span>
+      <h1>The gate camera that runs on sunlight</h1>
+      <p>Solavis recognises who is at your gate, alerts your phone, and keeps working when the Wi-Fi drops. No cables and no electrician needed.</p>
+      <div class="cta">
+        <a class="btn" href="#contact">Join the pilot</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+    </div>
+    <svg viewBox="0 0 460 360" role="img" aria-label="Drawing of the Solavis camera: a compact box with a solar panel on top and a camera lens on the front">
+      <ellipse cx="230" cy="326" rx="170" ry="14" fill="var(--ink)" opacity=".08"/>
+      <!-- body -->
+      <polygon points="110,150 350,150 350,300 110,300" fill="var(--surface)" stroke="var(--brand)" stroke-width="3" stroke-linejoin="round"/>
+      <!-- panel (top, sloped) -->
+      <polygon points="96,150 364,150 392,92 124,92" fill="var(--brand)" stroke="var(--brand)" stroke-width="3" stroke-linejoin="round"/>
+      <g stroke="var(--brand-ink)" stroke-opacity=".5" stroke-width="1.5">
+        <line x1="163" y1="150" x2="189" y2="92"/><line x1="230" y1="150" x2="256" y2="92"/><line x1="297" y1="150" x2="323" y2="92"/>
+        <line x1="110" y1="121" x2="378" y2="121"/>
+      </g>
+      <!-- sun hood + lens -->
+      <circle cx="230" cy="222" r="44" fill="var(--bg)" stroke="var(--brand)" stroke-width="3"/>
+      <circle cx="230" cy="222" r="30" fill="var(--brand)"/>
+      <circle cx="230" cy="222" r="15" fill="var(--ink)"/>
+      <circle cx="238" cy="214" r="5" fill="var(--sun)"/>
+      <!-- PIR and light -->
+      <circle cx="150" cy="222" r="14" fill="var(--sun-soft)" stroke="var(--sun)" stroke-width="3"/>
+      <circle cx="310" cy="222" r="9" fill="var(--sun)"/>
+      <!-- rays -->
+      <g stroke="var(--sun)" stroke-width="5" stroke-linecap="round">
+        <line x1="60" y1="40" x2="82" y2="62"/><line x1="40" y1="95" x2="68" y2="100"/><line x1="105" y1="14" x2="112" y2="42"/>
+      </g>
+      <circle cx="44" cy="44" r="0" fill="none"/>
+      <!-- mount -->
+      <rect x="196" y="300" width="68" height="14" rx="3" fill="var(--line)"/>
+    </svg>
+  </div>
+</section>
+
+<main>
+<div class="inner">
+
+<section id="why">
+  <div class="head">
+    <h2>Built for gates, powered by the sun</h2>
+    <p>Most cameras need a plug and a cable. Solavis needs a place in the sun.</p>
+  </div>
+  <div class="grid3">
+    <div class="card">
+      <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--sun-ink)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></div>
+      <h3>Solar powered</h3>
+      <p>A small panel and a battery keep it running. The camera sleeps until someone arrives, so a day of light covers many days of use.</p>
+    </div>
+    <div class="card">
+      <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--sun-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg></div>
+      <h3>Knows who is there</h3>
+      <p>AI face recognition tells family, staff and regular visitors from strangers, and flags people on your own watch list for you to check.</p>
+    </div>
+    <div class="card">
+      <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--sun-ink)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0M5 13a10 10 0 0 1 14 0M8.5 16.5a5 5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="var(--sun-ink)"/></svg></div>
+      <h3>Always connected</h3>
+      <p>Wi-Fi first. If Wi-Fi goes down, the 4G model switches to a mobile SIM on its own, so alerts keep coming.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div class="band">
+<div class="inner">
+<section id="how">
+  <div class="head">
+    <h2>How Solavis works</h2>
+    <p>From someone walking up to an alert on your phone, in a few seconds.</p>
+  </div>
+  <ol class="steps">
+    <li><h3>It wakes</h3><p>A motion sensor wakes the camera. The rest of the time it sleeps to save power.</p></li>
+    <li><h3>It looks</h3><p>The camera takes a photo and finds the face. A white light turns on at night.</p></li>
+    <li><h3>It checks</h3><p>A small face image is sent over an encrypted connection to your Solavis account and compared with the people you registered.</p></li>
+    <li><h3>It tells you</h3><p>You get the photo and a result on your phone: known, unknown, or a possible match to your watch list.</p></li>
+  </ol>
+</section>
+</div>
+</div>
+
+<div class="inner">
+<section id="features">
+  <div class="head">
+    <h2>What you can do</h2>
+  </div>
+  <div class="two">
+    <ul class="checks">
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Register your people</b> with their consent, in the app, in under a minute each.</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Keep a watch list</b> of people you do not want at your gate. Every match is shown as "possible match" for you to review.</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Get alerts</b> in the Solavis app or on Telegram.</span></li>
+    </ul>
+    <ul class="checks">
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Review the history</b> with photos, times and results, for as many days as your plan includes.</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Stay up to date.</b> The camera receives signed software updates over the air.</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--good)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><span><b>Stay in control.</b> If a camera is lost or stolen, you can switch it off from your account.</span></li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<div class="band">
+<div class="inner">
+<section id="specs">
+  <div class="head">
+    <h2>Specifications</h2>
+    <p>Design targets for the pilot units. Final figures will be published after testing.</p>
+  </div>
+  <div class="tablewrap"><table>
+    <tbody>
+      <tr><td>Size</td><td>125 × 90 × 79 mm, including the solar panel</td></tr>
+      <tr><td>Power</td><td>6 V solar panel and one rechargeable lithium battery</td></tr>
+      <tr><td>Camera</td><td>2-megapixel colour camera with white night light</td></tr>
+      <tr><td>Detection</td><td>Motion sensor wake-up, face detection on the camera, recognition in the cloud</td></tr>
+      <tr><td>Connectivity</td><td>Wi-Fi. The 4G model adds a 4G LTE SIM slot for automatic backup.</td></tr>
+      <tr><td>Alerts</td><td>Solavis app and Telegram</td></tr>
+      <tr><td>Mounting</td><td>Back plate on a gate post or wall, with hidden screws</td></tr>
+      <tr><td>Housing</td><td>UV-resistant ASA plastic, with a sun hood over the lens</td></tr>
+      <tr><td>Updates</td><td>Signed software updates over the air</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</div>
+</div>
+
+<div class="inner">
+<section id="privacy">
+  <div class="head">
+    <h2>Your data stays under control</h2>
+    <p>A security camera should not create a new risk. Solavis is designed so that the camera holds nothing worth stealing.</p>
+  </div>
+  <div class="grid3">
+    <div class="card"><h3>Nothing stored on the camera</h3><p>The camera keeps no face data and no storage passwords. A stolen camera can be blocked from your account.</p></div>
+    <div class="card"><h3>Separate and encrypted</h3><p>Each account is kept apart from every other. Data travels over encrypted connections and is encrypted when stored.</p></div>
+    <div class="card"><h3>You decide what is kept</h3><p>Photos are removed after the number of days in your plan. You can ask for an export or a full deletion of your data.</p></div>
+  </div>
+  <div class="card">
+    <h3>Used responsibly</h3>
+    <p>You decide who is on your lists and you are asked to confirm that the people you register agree. We provide a sign for your gate that tells visitors a face recognition camera is in use. A match is always a "possible match" for you to review, never proof. Solavis is not a door lock and must not be used to open a door by itself.</p>
+  </div>
+</section>
+</div>
+
+<div class="band">
+<div class="inner">
+<section id="plans">
+  <div class="head">
+    <h2>Plans</h2>
+    <p>You buy the camera once and choose a monthly plan. Pilot pricing is available on request. Plan details may change before launch.</p>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>Basic</th><th>Plus</th><th>Pro</th></tr></thead>
+    <tbody>
+      <tr><td>Cameras</td><td>1</td><td>2</td><td>5</td></tr>
+      <tr><td>Registered people</td><td>20</td><td>100</td><td>500</td></tr>
+      <tr><td>History</td><td>7 days</td><td>30 days</td><td>90 days</td></tr>
+      <tr><td>Watch list and instant alert</td><td>-</td><td class="plan-feature">Included</td><td class="plan-feature">Included</td></tr>
+      <tr><td>4G backup</td><td>-</td><td class="plan-feature">Included</td><td class="plan-feature">Included</td></tr>
+      <tr><td>Alerts</td><td>App, Telegram</td><td>App, Telegram</td><td>App, Telegram, webhook</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Every new camera starts with a 14-day trial.</p>
+</section>
+</div>
+</div>
+
+<div class="inner">
+<section id="faq">
+  <div class="head"><h2>Questions</h2></div>
+  <div>
+    <details><summary>What happens when the Wi-Fi goes down?</summary><p>The 4G model switches to its mobile SIM automatically and returns to Wi-Fi when it is back. If neither is available, the camera keeps recent events and sends them as soon as it reconnects.</p></details>
+    <details><summary>Does it work at night?</summary><p>A white light turns on when someone approaches in the dark, which gives the camera a clear face to look at. We test accuracy in daylight, dusk and backlight during the pilot.</p></details>
+    <details><summary>What about cloudy weeks and the rainy season?</summary><p>The camera sleeps most of the time, so it uses very little power. Its battery is designed to last about ten days without sun. We are measuring this in real conditions during the pilot.</p></details>
+    <details><summary>Do I need a SIM card?</summary><p>No, the Lite model uses Wi-Fi only. The 4G model has a SIM slot for backup. Whether the SIM is included or supplied by you will be confirmed at launch.</p></details>
+    <details><summary>Can it unlock my gate?</summary><p>No. Solavis tells you who is there. It does not open doors, because face recognition from a camera is not secure enough to be a lock.</p></details>
+    <details><summary>Where is my data stored?</summary><p>On Solavis servers, in your own separated account. The camera itself holds no photos or faces after it sends them.</p></details>
+    <details><summary>What if my camera is stolen?</summary><p>Switch the camera off in your account. It stops sending and cannot be used on another account.</p></details>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="contact">
+    <h2>Join the Solavis pilot</h2>
+    <p>We are installing the first cameras with a small group of users. Tell us about your gate and we will contact you.</p>
+    <p><b>Email:</b> <span class="ph">[add your email address]</span></p>
+    <p><b>Phone or Zalo:</b> <span class="ph">[add your number]</span></p>
+    <p><b>Address:</b> <span class="ph">[add your company address]</span></p>
+  </div>
+</section>
+</div>
+</main>
+
+<footer class="inner">
+  <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <b style="font-family:var(--font-display);color:var(--ink)">Solavis</b>
+    <span>Solar AI security camera</span>
+  </div>
+  <p>Specifications and plans describe pilot units and may change. Solavis is not a door lock or an alarm monitoring service.</p>
+  <p>© 2026 Solavis. <span class="ph">[add company legal name and registration number]</span></p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default", securityLevel: "loose" });
+</script>
+</body>
+</html>

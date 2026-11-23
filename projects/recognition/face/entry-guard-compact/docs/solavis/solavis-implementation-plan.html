@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solavis Implementation Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: formal document. Cover block, contents list, numbered sections, appendices. Tables scroll inside their own wrapper. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#13202c; --muted:#586979; --line:#d9e0e6;
+  --brand:#0b3c5d; --accent:#e89b0c; --accent-soft:#fdf0d5; --accent-ink:#8a5600;
+  --good:#1f7a4d; --good-soft:#dff3e8; --warn:#b4531a; --warn-soft:#fde8da;
+  --code-bg:#e8edf1;
+  --font-display:"Space Grotesk",system-ui,sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e151c; --surface:#16202a; --ink:#e6edf3; --muted:#97a7b5; --line:#293643;
+  --brand:#7cc0ea; --accent:#f0b24a; --accent-soft:#2b2312; --accent-ink:#f2c97c;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1e2a35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151c; --surface:#16202a; --ink:#e6edf3; --muted:#97a7b5; --line:#293643;
+  --brand:#7cc0ea; --accent:#f0b24a; --accent-soft:#2b2312; --accent-ink:#f2c97c;
+  --good:#5fd09a; --good-soft:#12301f; --warn:#f0925a; --warn-soft:#331d10;
+  --code-bg:#1e2a35; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.65;
+  padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:44px;min-width:0}
+h1,h2,h3{font-family:var(--font-display);line-height:1.2;text-wrap:balance;margin:0;color:var(--ink)}
+h1{font-size:clamp(30px,5.5vw,44px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:23px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--brand);scroll-margin-top:16px}
+h3{font-size:16px;font-weight:600}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+a{color:var(--brand)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.note{font-size:13px;color:var(--muted)}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-ink);font-weight:600}
+.cover{display:flex;flex-direction:column;gap:20px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.brandrow{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:22px;color:var(--brand)}
+.lede{color:var(--muted);font-size:16px;max-width:66ch}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.meta div{background:var(--surface);padding:10px 14px;min-width:0}
+.meta small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.meta span{font-weight:600}
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 20px}
+.toc ol{columns:2 260px;column-gap:32px;gap:4px;padding-left:22px}
+.toc li{break-inside:avoid}
+.callout{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:6px;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
+.callout h3{color:var(--accent-ink)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+.fact b{display:block;font-family:var(--font-display);font-size:22px;font-variant-numeric:tabular-nums;color:var(--brand)}
+.fact span{color:var(--muted);font-size:13px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+tfoot td{font-weight:600;background:var(--bg)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.phases{display:flex;flex-direction:column;gap:12px;padding:0;list-style:none}
+.phase{display:grid;grid-template-columns:100px 1fr;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.phase .when{font-family:var(--font-display);font-weight:700;color:var(--brand);font-size:14px}
+.phase .when small{display:block;font-family:var(--font-body);font-weight:400;color:var(--muted)}
+.phase .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.gate{font-size:13px;color:var(--muted)}
+.gate b{color:var(--good)}
+@media (max-width:520px){.phase{grid-template-columns:1fr;gap:6px}}
+.sig{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.sig div{border-top:1px solid var(--ink);padding-top:6px;font-size:13px;color:var(--muted)}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+<header class="cover">
+  <div class="brandrow">
+    <svg width="34" height="34" viewBox="0 0 40 40" role="img" aria-label="Solavis mark">
+      <g stroke="var(--accent)" stroke-width="3" stroke-linecap="round">
+        <line x1="20" y1="2" x2="20" y2="7"/><line x1="20" y1="33" x2="20" y2="38"/>
+        <line x1="2" y1="20" x2="7" y2="20"/><line x1="33" y1="20" x2="38" y2="20"/>
+        <line x1="7.3" y1="7.3" x2="10.8" y2="10.8"/><line x1="29.2" y1="29.2" x2="32.7" y2="32.7"/>
+        <line x1="32.7" y1="7.3" x2="29.2" y2="10.8"/><line x1="10.8" y1="29.2" x2="7.3" y2="32.7"/>
+      </g>
+      <circle cx="20" cy="20" r="9.5" fill="var(--brand)"/>
+      <circle cx="20" cy="20" r="4.2" fill="var(--surface)"/>
+      <circle cx="22" cy="18" r="1.4" fill="var(--accent)"/>
+    </svg>
+    Solavis
+  </div>
+  <span class="eyebrow">Implementation plan · business and technical</span>
+  <h1>Solavis solar AI gate camera</h1>
+  <p class="lede">How we build, launch and run Solavis: a compact solar-powered camera that recognises who is at a gate, alerts the owner, and is managed as a subscription service from our own cloud.</p>
+  <div class="meta">
+    <div><small>Document</small><span>Implementation plan</span></div>
+    <div><small>Version</small><span>1.0 draft</span></div>
+    <div><small>Date</small><span>23 Nov 2026</span></div>
+    <div><small>Status</small><span>For review</span></div>
+    <div><small>Audience</small><span>Founders, partners, contractors</span></div>
+    <div><small>Confidentiality</small><span>Internal</span></div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <h3 style="margin-bottom:8px">Contents</h3>
+  <ol>
+    <li><a href="#summary">Executive summary</a></li>
+    <li><a href="#product">Product definition</a></li>
+    <li><a href="#market">Customers and use cases</a></li>
+    <li><a href="#model">Business model</a></li>
+    <li><a href="#arch">System architecture</a></li>
+    <li><a href="#hardware">Hardware specification</a></li>
+    <li><a href="#firmware">Firmware specification</a></li>
+    <li><a href="#backend">Backend and API</a></li>
+    <li><a href="#apps">Customer app and alerts</a></li>
+    <li><a href="#data">Data governance and security</a></li>
+    <li><a href="#subs">Subscriptions and entitlements</a></li>
+    <li><a href="#ops">Operations</a></li>
+    <li><a href="#test">Test and acceptance plan</a></li>
+    <li><a href="#roadmap">Roadmap and milestones</a></li>
+    <li><a href="#finance">Budget and unit economics</a></li>
+    <li><a href="#risks">Risks and compliance</a></li>
+    <li><a href="#kpi">Success measures</a></li>
+    <li><a href="#decisions">Open decisions</a></li>
+    <li><a href="#appendix">Appendices</a></li>
+  </ol>
+</nav>
+
+<section id="summary">
+  <h2>1. Executive summary</h2>
+  <p>Solavis is a small camera that needs no mains power and no cable. A solar panel and one battery keep it running at a gate. When someone approaches, it takes a photo, finds the face and sends a small crop to our cloud. Our server recognises the person, records the event, and alerts the owner on a phone. If Wi-Fi fails, the camera switches to a 4G SIM.</p>
+  <p>The first product is built entirely from ready-made parts, with no custom circuit board, so we can reach paying pilot users in about 10 weeks. Customers buy the camera and pay a monthly subscription. Everything that matters stays in our cloud: faces, photos, plans and device keys. That gives us control over each customer's data and service, and lets us change plan limits without touching the hardware.</p>
+  <div class="facts">
+    <div class="fact"><b>≈ 1.9 M ₫</b><span>build cost, 4G camera (estimate)</span></div>
+    <div class="fact"><b>10 weeks</b><span>to the first paying pilot users</span></div>
+    <div class="fact"><b>≈ 20 M ₫</b><span>to a 5-camera pilot, excluding our time</span></div>
+    <div class="fact"><b>125×90×79 mm</b><span>enclosure with panel</span></div>
+  </div>
+  <div class="callout">
+    <h3>What we ask the reader to decide</h3>
+    <p>Approve the MVP scope (section 2), the pilot budget (section 15), and the open decisions in section 18. Figures in this document are estimates unless marked as measured. Section 13 lists the tests that turn estimates into facts.</p>
+  </div>
+</section>
+
+<section id="product">
+  <h2>2. Product definition</h2>
+  <div class="cols">
+    <div class="panel"><h3>Name and promise</h3><p><b>Solavis</b>, from <i>sol</i> (sun) and <i>vis</i> (vision). Promise: an AI camera for your gate that runs on sunlight.</p></div>
+    <div class="panel"><h3>What we sell</h3><p>The camera, plus the Solavis service: app, alerts, history and account management.</p></div>
+    <div class="panel"><h3>What we keep</h3><p>All data, accounts, plans, keys and the recognition engine. Customers never receive these.</p></div>
+  </div>
+  <h3>MVP scope</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>In the MVP</th><th>Not in the MVP</th></tr></thead>
+    <tbody>
+      <tr><td>Wake on motion, capture, detect face, upload crop</td><td>Live video streaming</td></tr>
+      <tr><td>Recognition of registered people, "unknown" and "possible banned match"</td><td>Door locks or access control actions</td></tr>
+      <tr><td>Wi-Fi first, 4G backup (4G version)</td><td>Several users per account with roles (Pro, later)</td></tr>
+      <tr><td>Solar and battery operation</td><td>Custom circuit board</td></tr>
+      <tr><td>Customer web app, Telegram alerts</td><td>Native phone app, Zalo alerts</td></tr>
+      <tr><td>Plans, limits, suspend and reactivate</td><td>Automatic card payment</td></tr>
+      <tr><td>Signed over-the-air updates</td><td>Secure boot and flash encryption (before volume)</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Two product lines</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Product</th><th>What the customer buys</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td>Solavis Camera</td><td>Our solar camera plus a subscription</td><td>MVP, first</td></tr>
+      <tr><td>Solavis Platform (working name)</td><td>Our software alone. They connect cameras they already own through an on-site agent and use our recognition, alerts, plans and apps.</td><td>After the pilot</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Both products share one cloud. The MVP is built so that a Solavis camera is one kind of "source", which keeps the Platform product from needing a rewrite. See the SRS and the software design.</p>
+  <h3>Security activation and tamper protection</h3>
+  <p>A new camera is unarmed. The owner claims it, mounts it, and presses Arm. From then on, if the camera is moved, turned, covered, opened or removed, it takes a photo, alerts the owner, and locks itself until the owner unlocks it with a second check. The owner can also open a timed service window, mark a camera stolen, or release it to a new owner. This adds about 0.1 M ₫ of sensors to each camera.</p>
+  <h3>Versions</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Version</th><th>Network</th><th>Main board</th><th class="n">≈ build cost</th></tr></thead>
+    <tbody>
+      <tr><td>Solavis Lite</td><td>Wi-Fi only</td><td>ESP32-S3 camera board</td><td class="n">1.15 M ₫</td></tr>
+      <tr><td>Solavis 4G</td><td>Wi-Fi first, 4G backup</td><td>ESP32-S3 + LTE Cat-1 board with camera connector (LilyGO T-SIM7670G-S3 class, model to be confirmed)</td><td class="n">1.9 M ₫</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="market">
+  <h2>3. Customers and use cases</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Customer</th><th>Need</th><th>Why Solavis fits</th></tr></thead>
+    <tbody>
+      <tr><td>Homeowners with a gate or alley entrance</td><td>Know who comes and goes, get alerts for strangers</td><td>No wiring, no electrician, works on a gate post</td></tr>
+      <tr><td>Small shops, workshops, warehouses</td><td>Record visitors and flag unwanted people</td><td>Low price, no server to run, remote control</td></tr>
+      <tr><td>Rental houses and small apartment blocks</td><td>Entrance record for residents and guests</td><td>Several cameras under one account (Plus and Pro)</td></tr>
+      <tr><td>Farms, construction sites, remote plots</td><td>Watch a place with no power or internet</td><td>Solar and 4G</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">These segments are our hypotheses. The pilot in section 14 is designed to find out which one pays and stays.</p>
+</section>
+
+<section id="model">
+  <h2>4. Business model</h2>
+  <p>Revenue comes from two sources: the camera sale and the monthly subscription. The camera is sold close to cost plus a margin. The subscription pays for the service and funds growth.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Limit</th><th>Basic</th><th>Plus</th><th>Pro</th></tr></thead>
+    <tbody>
+      <tr><td>Cameras</td><td>1</td><td>2</td><td>5</td></tr>
+      <tr><td>Registered people</td><td>20</td><td>100</td><td>500</td></tr>
+      <tr><td>History kept</td><td>7 days</td><td>30 days</td><td>90 days</td></tr>
+      <tr><td>Banned list with instant alert</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>4G backup</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Alert channels</td><td>App, Telegram</td><td>App, Telegram</td><td>App, Telegram, webhook</td></tr>
+      <tr><td>Example monthly price</td><td class="n">79 k ₫</td><td class="n">149 k ₫</td><td class="n">299 k ₫</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Tiers and prices are examples to test with pilot users. They are stored as plan data and can change at any time.</p>
+</section>
+
+<section id="arch">
+  <h2>5. System architecture</h2>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  CAM[Solavis camera] -->|HTTPS, device key| API[API: auth + plan check]
+  API --> Q[Queue]
+  Q --> REC[Recognition worker]
+  REC --> DB[(Postgres + pgvector)]
+  REC --> OBJ[(Object storage: photos)]
+  REC --> NOTE[Alerts: app push, Telegram]
+  APP[Customer web app] <--> API
+  ADM[Admin console] <--> API
+  API -->|config + plan status| CAM
+</pre>
+  </div>
+  <h3>Design principles</h3>
+  <ul>
+    <li><b>The camera is untrusted.</b> It holds an ID and a key, nothing else of value. The server checks every request.</li>
+    <li><b>The server decides.</b> Plans, thresholds and features come from the server on each wake-up.</li>
+    <li><b>Sleep first.</b> Every design choice protects battery life.</li>
+    <li><b>Reuse what exists.</b> The recognition code in this repository (<code>faces.py</code>, <code>recognize.py</code>, <code>db.py</code>) becomes the worker, changed to search one customer's people only.</li>
+  </ul>
+</section>
+
+<section id="hardware">
+  <h2>6. Hardware specification</h2>
+  <h3>6.1 Bill of materials, 4G version</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>Specification</th><th class="n">≈ VND</th></tr></thead>
+    <tbody>
+      <tr><td>Main board</td><td>ESP32-S3 with LTE Cat-1 modem, camera connector, SIM slot</td><td class="n">1,100,000</td></tr>
+      <tr><td>Camera</td><td>OV2640, about 66° lens (OV5640 optional for autofocus)</td><td class="n">80,000</td></tr>
+      <tr><td>Motion sensor</td><td>AM312 mini PIR</td><td class="n">15,000</td></tr>
+      <tr><td>Night light</td><td>1 W white LED, resistor, small transistor</td><td class="n">15,000</td></tr>
+      <tr><td>Solar charger</td><td>CN3791 module for 6 V panel (omit if the board charges from solar)</td><td class="n">40,000</td></tr>
+      <tr><td>Battery</td><td>1 × protected 18650, 3000 mAh, holder</td><td class="n">70,000</td></tr>
+      <tr><td>Solar panel</td><td>6 V 1.5 W, about 110 × 80 mm</td><td class="n">70,000</td></tr>
+      <tr><td>Small parts</td><td>Window disc, silicone, screws, inserts, foam tape</td><td class="n">60,000</td></tr>
+      <tr><td>Wiring</td><td>Wires, connectors</td><td class="n">20,000</td></tr>
+      <tr><td>Enclosure</td><td>3D printed ASA, about 140 g</td><td class="n">420,000</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="2">Total</td><td class="n">≈ 1,890,000</td></tr></tfoot>
+  </table></div>
+  <p class="note">Prices are estimates for about 10 units. Verify each part and supplier before ordering.</p>
+  <h3>6.2 Power budget (estimate, to be measured)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th class="n">Value</th><th>Basis</th></tr></thead>
+    <tbody>
+      <tr><td>Average use</td><td class="n">≈ 1 Wh/day</td><td>Deep sleep, about 50 events a day, 4G used in bursts</td></tr>
+      <tr><td>Panel yield, good light</td><td class="n">≈ 3 Wh/day</td><td>1.5 W × 3 h × 0.7</td></tr>
+      <tr><td>Panel yield, Hà Nội winter</td><td class="n">≈ 1.7 Wh/day</td><td>About 2 sun hours</td></tr>
+      <tr><td>Battery capacity</td><td class="n">≈ 11 Wh</td><td>About 10 days with no sun</td></tr>
+    </tbody>
+  </table></div>
+  <h3>6.3 Enclosure (Rev B)</h3>
+  <p>A wedge-shaped box, <b>125 wide × 90 deep × 79 high</b> mm (55 mm at the front). The solar panel sits in a pocket on the 15° sloped top. The camera, motion sensor and light are on the front, with a glued sun hood over the lens. The back plate screws to the post or wall, and the cover is held by 3 screws from underneath. The wall screws sit under the cover.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>File</th><th>Print as</th></tr></thead>
+    <tbody>
+      <tr><td>Cover</td><td><code>cover.stl</code></td><td>Front face down, 125 × 79 × 90 mm</td></tr>
+      <tr><td>Back plate</td><td><code>backplate.stl</code></td><td>Back face down, 125 × 79 × 21 mm</td></tr>
+      <tr><td>Lens hood</td><td><code>lens_hood.stl</code></td><td>Upright, 28 × 28 × 12 mm, print 2</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>Material: ASA, light grey or black. PETG as a fallback. Not PLA.</li>
+    <li>Source: <code>hardware/enclosure/build_enclosure.py</code> rebuilds all three files.</li>
+    <li>Status: not yet printed. The panel pocket, battery cradle and board posts use placeholder sizes until the real parts arrive. Print the cover alone in PETG first to test the fit.</li>
+    <li>Weather rating: no rating is claimed. Test with the water and heat checks in section 13.</li>
+  </ul>
+</section>
+
+<section id="firmware">
+  <h2>7. Firmware specification</h2>
+  <p>Language: C++ with the Arduino or ESP-IDF framework, built with PlatformIO. Updates over the air, signed, with rollback.</p>
+  <h3>7.1 Behaviour of one wake-up</h3>
+  <ol>
+    <li><b>Wake</b> from deep sleep on the PIR signal or the 6-hour timer.</li>
+    <li><b>Capture</b> 3 to 5 frames and keep the sharpest. Turn on the white light if it is dark.</li>
+    <li><b>Detect</b> a face on the device. If none, return to sleep after a cooldown.</li>
+    <li><b>Connect</b> to Wi-Fi for up to 5 seconds. If it fails and the plan allows 4G, power the modem and connect.</li>
+    <li><b>Config:</b> ask the API for the plan state and settings. Use the cached copy if less than 6 hours old.</li>
+    <li><b>Upload:</b> request a short-lived upload link, send the crop (10 to 20 KB) and the event details.</li>
+    <li><b>Sleep.</b> Power off the modem first.</li>
+  </ol>
+  <h3>7.2 Rules</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Situation</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>Plan suspended</td><td>Upload nothing. Sleep 6 hours, then ask again.</td></tr>
+      <tr><td>No network</td><td>Keep up to 20 crops in flash. Send when a link returns. Drop the oldest first.</td></tr>
+      <tr><td>Battery under 3.4 V</td><td>Reduce events, no night light.</td></tr>
+      <tr><td>Battery under 3.2 V</td><td>Sleep only, one heartbeat a day.</td></tr>
+      <tr><td>Heartbeat, every 6 hours</td><td>Send battery voltage, board temperature, signal strength, firmware version.</td></tr>
+      <tr><td>New firmware fails to start</td><td>Roll back to the previous version automatically.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>7.3 Set-up</h3>
+  <p>A new camera opens a hotspot named <code>Solavis-XXXX</code>. The customer joins it on a phone, picks their Wi-Fi, and scans the QR sticker to claim the camera.</p>
+</section>
+
+<section id="backend">
+  <h2>8. Backend and API</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Piece</th><th>Choice</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>API</td><td>FastAPI (Python)</td><td>Same stack as the repository</td></tr>
+      <tr><td>Recognition worker</td><td>Existing <code>faces.py</code> and <code>recognize.py</code></td><td>Per-customer gallery, queue driven</td></tr>
+      <tr><td>Database</td><td>Postgres with pgvector</td><td>Row-level security on <code>tenant_id</code></td></tr>
+      <tr><td>Photos</td><td>Cloudflare R2 or Backblaze B2</td><td>S3 compatible, no direct device access</td></tr>
+      <tr><td>Customer app</td><td>Web app, installable on a phone</td><td>See section 9</td></tr>
+      <tr><td>Hosting</td><td>One VPS, 2 vCPU, 4 GB</td><td>About 300 k ₫ a month. Caddy for HTTPS.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Each event costs about 50 to 100 ms of server time, so 1,000 cameras at 100 events a day is about one event per second. This has not been load-tested.</p>
+  <p>The endpoint list and data model are in Appendix A and B.</p>
+</section>
+
+<section id="apps">
+  <h2>9. Customer app and alerts</h2>
+  <div class="cols">
+    <div class="panel"><h3>Solavis app (web, MVP)</h3><p>Installs on a phone from the browser. Claim a camera, register people with consent, set the banned list, view events, review "possible match" alerts, see plan and usage. Push notifications.</p></div>
+    <div class="panel"><h3>Telegram</h3><p>A bot that sends the photo and verdict. The customer links it once with a code from the app. Free and instant.</p></div>
+    <div class="panel"><h3>Later</h3><p>Zalo notifications (per-message cost), a native phone app if iPhone push proves unreliable, webhooks for Pro.</p></div>
+  </div>
+  <h3>Verdicts shown to the customer</h3>
+  <ul>
+    <li><span class="pill good">Known</span> Logged. Optional quiet notice.</li>
+    <li><span class="pill acc">Unknown</span> Photo and a normal alert.</li>
+    <li><span class="pill warn">Possible banned match</span> Immediate alert with the photo, the stored photo and the score. It needs two matches above a high threshold, and the owner reviews it. The wording is always "possible match".</li>
+  </ul>
+</section>
+
+<section id="data">
+  <h2>10. Data governance and security</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Control</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td>Nothing sensitive on the camera</td><td>Only its ID, key and Wi-Fi password. No faces, no storage keys.</td></tr>
+      <tr><td>Customer separation</td><td><code>tenant_id</code> on every row with Postgres row-level security. Photo paths start with <code>t/{tenant}/d/{device}/</code>.</td></tr>
+      <tr><td>Encryption</td><td>TLS in transit. Disk encryption at rest. Face vectors encrypted with a per-customer key.</td></tr>
+      <tr><td>Access to photos</td><td>Our staff must give a reason. Every view is written to an audit log.</td></tr>
+      <tr><td>Retention</td><td>A nightly job removes photos older than the plan allows.</td></tr>
+      <tr><td>Customer rights</td><td>Export and delete on request, from the app and the admin console.</td></tr>
+      <tr><td>Backups</td><td>Daily, encrypted, to a second bucket. Deleted data leaves backups after 35 days.</td></tr>
+      <tr><td>Camera identity</td><td>A unique key per camera. A stolen or resold camera is blocked by revoking the key. Uploads go through short-lived links.</td></tr>
+      <tr><td>Firmware</td><td>Signed updates. Secure boot and flash encryption are enabled before volume, after testing on spare boards because they cannot be undone.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="subs">
+  <h2>11. Subscriptions and entitlements</h2>
+  <p>Limits are rows in a <code>plans</code> table. The camera never contains them.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>State</th><th>Camera behaviour</th><th>Customer sees</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill acc">Trial</span> 14 days</td><td>Works with Basic limits</td><td>Days left, upgrade prompt</td></tr>
+      <tr><td><span class="pill good">Active</span></td><td>Works with plan limits</td><td>Usage against limits</td></tr>
+      <tr><td><span class="pill warn">Past due</span> 7 days</td><td>Works, no new people</td><td>Payment reminder</td></tr>
+      <tr><td><span class="pill warn">Suspended</span></td><td>Uploads nothing, sleeps 6 h between checks</td><td>History read-only, reactivate button</td></tr>
+      <tr><td>Closed after 30 days</td><td>Key revoked</td><td>Data deleted, with a final export offered first</td></tr>
+    </tbody>
+  </table></div>
+  <ol>
+    <li>We register each camera in inventory with its ID, key, version and a claim code printed as a QR.</li>
+    <li>The customer scans the QR, creates an account and claims the camera. The trial starts.</li>
+    <li>On every wake-up the camera receives the plan state. The server also checks every upload against the limits, so modified firmware gains nothing.</li>
+  </ol>
+  <p><b>Payment, MVP:</b> prepaid periods (1, 6, 12 months) by bank transfer with a VietQR code. We activate the account by hand. <b>Next:</b> PayOS, VNPay or MoMo for automatic renewal, and Stripe for overseas customers.</p>
+</section>
+
+<section id="ops">
+  <h2>12. Operations</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Area</th><th>Plan</th></tr></thead>
+    <tbody>
+      <tr><td>Build and provisioning</td><td>A script flashes the firmware, creates the ID and key, stores them on the board, adds the camera to inventory and prints the QR label. Target: 3 minutes of machine time, under 30 minutes per assembled unit.</td></tr>
+      <tr><td>Quality check</td><td>Each unit passes the end-of-line test in section 13 and gets a pass sticker before it ships.</td></tr>
+      <tr><td>Installation</td><td>Customer installs with a printed one-page guide. For the pilot we visit each site.</td></tr>
+      <tr><td>Support</td><td>A shared inbox and a Telegram group for pilot users. Heartbeat data tells us when a camera is offline, low on battery or too hot, so we can call before they do.</td></tr>
+      <tr><td>Warranty and returns</td><td>12 months on the camera. Defined return steps. Remote disable on a returned or stolen unit.</td></tr>
+      <tr><td>Shipping</td><td>Ground transport only for lithium cells. Protected cells with proper packaging.</td></tr>
+      <tr><td>Monitoring</td><td>Server health, queue length, failed uploads, cameras silent for more than 12 hours.</td></tr>
+      <tr><td>Releases</td><td>Firmware and backend are rolled out to 10% of cameras first, then all, with rollback.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="test">
+  <h2>13. Test and acceptance plan</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Test</th><th>Method</th><th>Pass</th></tr></thead>
+    <tbody>
+      <tr><td>Recognition</td><td>20 registered people and 5 test "banned" faces, at 2 m, day, dusk, backlight</td><td>At least 90% correct, no missed banned match in day tests</td></tr>
+      <tr><td>Latency</td><td>Motion to alert on Wi-Fi and on 4G, 50 runs</td><td>Median under 8 s on 4G</td></tr>
+      <tr><td>Power</td><td>USB power meter on the bench, then 7 days outdoors</td><td>Under 1.5 Wh/day, battery never under 30%</td></tr>
+      <tr><td>Failover</td><td>Switch off Wi-Fi during a run</td><td>Event delivered over 4G, returns to Wi-Fi on its own</td></tr>
+      <tr><td>Heat</td><td>Temperature log in the sun in a closed box</td><td>Board under 60 °C at midday, or the design is changed</td></tr>
+      <tr><td>Water</td><td>Hose test from above and the side for 10 minutes</td><td>No water inside</td></tr>
+      <tr><td>Tenant isolation</td><td>Two accounts try to read each other's people, events and photos</td><td>All attempts refused</td></tr>
+      <tr><td>Plan enforcement</td><td>Suspend a customer, send uploads with a modified client</td><td>Uploads refused, camera idle within one wake-up</td></tr>
+      <tr><td>Update safety</td><td>Push a deliberately broken firmware</td><td>Camera rolls back and still reports</td></tr>
+      <tr><td>End-of-line</td><td>Per unit: wake, capture, upload, claim, battery reading</td><td>All steps pass in under 5 minutes</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="roadmap">
+  <h2>14. Roadmap and milestones</h2>
+  <ol class="phases">
+    <li class="phase"><div class="when">Week 1<small>bench</small></div><div class="body"><h3>M1. Hardware proof</h3><p>Buy two kits. Test wake, crop quality, 4G upload and real power draw.</p><p class="gate"><b>Exit:</b> wake to upload under 8 s on 4G, under 1.5 Wh/day, 9 of 10 test people recognised.</p></div></li>
+    <li class="phase"><div class="when">Weeks 2–5<small>software</small></div><div class="body"><h3>M2. Firmware and backend</h3><p>Firmware for the wake-up flow, hotspot set-up and updates. Multi-tenant API, recognition worker, admin console.</p><p class="gate"><b>Exit:</b> tenant isolation and plan enforcement tests pass.</p></div></li>
+    <li class="phase"><div class="when">Weeks 5–7<small>app</small></div><div class="body"><h3>M3. Customer app and alerts</h3><p>Claim by QR, people with consent, banned list, events, Telegram, plan page.</p></div></li>
+    <li class="phase"><div class="when">Weeks 7–8<small>build</small></div><div class="body"><h3>M4. Five units</h3><p>Provisioning script, labels, final enclosure print, assembly and end-of-line test.</p><p class="gate"><b>Exit:</b> under 30 minutes per unit, all five pass.</p></div></li>
+    <li class="phase"><div class="when">Weeks 9–10<small>pilot</small></div><div class="body"><h3>M5. Pilot with five users</h3><p>Install at their gates, bill by bank transfer, review every alert.</p><p class="gate"><b>Exit:</b> no dead battery, at most 1 false banned alert per camera per week, 3 of 5 users agree to keep paying.</p></div></li>
+    <li class="phase"><div class="when">After<small>growth</small></div><div class="body"><h3>M6. Scale preparation</h3><p>Automatic payments, plan editor, legal filings and radio type approval, secure boot, then a first custom circuit board to cut cost and size.</p></div></li>
+  </ol>
+</section>
+
+<section id="finance">
+  <h2>15. Budget and unit economics</h2>
+  <h3>Pilot budget</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Item</th><th>Detail</th><th class="n">≈ VND</th></tr></thead>
+    <tbody>
+      <tr><td>Cameras</td><td>7 units (2 bench, 5 pilot) at 1.9 M ₫</td><td class="n">13,300,000</td></tr>
+      <tr><td>Test tools</td><td>USB power meter, USB-serial adapter, sticker paper</td><td class="n">500,000</td></tr>
+      <tr><td>Server</td><td>VPS for 3 months</td><td class="n">900,000</td></tr>
+      <tr><td>Domain and email</td><td>One year</td><td class="n">400,000</td></tr>
+      <tr><td>4G SIMs</td><td>5 data SIMs for 3 months</td><td class="n">1,500,000</td></tr>
+      <tr><td>Contingency</td><td>20%</td><td class="n">3,300,000</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="2">Total</td><td class="n">≈ 19,900,000</td></tr></tfoot>
+  </table></div>
+  <p class="note">Not included: our own time, legal review, brand and trademark registration, radio type approval.</p>
+  <h3>Unit economics, illustrative</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Line</th><th class="n">Per camera</th><th>Assumption</th></tr></thead>
+    <tbody>
+      <tr><td>Camera sale price</td><td class="n">2.9 M ₫</td><td>Example price</td></tr>
+      <tr><td>Build cost</td><td class="n">1.9 M ₫</td><td>Section 6</td></tr>
+      <tr><td>Warranty reserve</td><td class="n">0.1 M ₫</td><td>About 5% returns</td></tr>
+      <tr><td><b>Hardware margin</b></td><td class="n"><b>≈ 0.9 M ₫</b></td><td></td></tr>
+      <tr><td>Plus plan per month</td><td class="n">149 k ₫</td><td>Example price</td></tr>
+      <tr><td>SIM, server share, payment and support costs</td><td class="n">≈ 85 k ₫</td><td>SIM at about 60 k ₫, to be confirmed</td></tr>
+      <tr><td><b>Service margin per month</b></td><td class="n"><b>≈ 64 k ₫</b></td><td></td></tr>
+    </tbody>
+  </table></div>
+  <p>At these numbers about 22 paid cameras repay the pilot spend from hardware margin alone. The SIM cost is the biggest lever: if the SIM is not included, service margin rises sharply. All of this is a model, not a forecast.</p>
+</section>
+
+<section id="risks">
+  <h2>16. Risks and compliance</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Risk</th><th>Level</th><th>Response</th></tr></thead>
+    <tbody>
+      <tr><td>Personal data law. Face data is sensitive. We process the faces of our customers' visitors.</td><td><span class="pill warn">High</span></td><td>Lawyer reviews terms and privacy policy. Check Decree 13/2023 and the newer personal data law for consent, notice and impact assessment filing, before public sale.</td></tr>
+      <tr><td>Banned lists and false matches</td><td><span class="pill warn">High</span></td><td>Customers own their lists. Terms forbid police or third-party criminal data. Alerts say "possible match" and need review. Gate notice sign provided.</td></tr>
+      <tr><td>Radio type approval for 4G and Wi-Fi</td><td><span class="pill warn">High</span></td><td>Pilot with known users only. Begin approval before public sale.</td></tr>
+      <tr><td>Recognition accuracy of a cheap camera in backlight and night</td><td><span class="pill acc">Medium</span></td><td>Tune with pilot data, white light on trigger, never used to open a door.</td></tr>
+      <tr><td>Heat and water in a small sealed box</td><td><span class="pill acc">Medium</span></td><td>ASA, light colour, sun hood, vent plug, heat and hose tests.</td></tr>
+      <tr><td>Name conflict. "Solavis" is not yet checked.</td><td><span class="pill acc">Medium</span></td><td>Search NOIP and WIPO, check domains, before printing the name on products.</td></tr>
+      <tr><td>Battery transport and safety</td><td><span class="pill acc">Medium</span></td><td>Protected cells, temperature cut-off on charging, ground shipping.</td></tr>
+      <tr><td>One server is a single point of failure</td><td><span class="pill acc">Medium</span></td><td>Cameras queue events locally. Daily backups. Add a standby when paying customers exceed 100.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="kpi">
+  <h2>17. Success measures</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Measure</th><th>Pilot target</th></tr></thead>
+    <tbody>
+      <tr><td>Median time from motion to alert</td><td>Under 8 s</td></tr>
+      <tr><td>Missed arrivals (person seen by the owner but no event)</td><td>Under 5%</td></tr>
+      <tr><td>False "possible banned match" alerts</td><td>At most 1 per camera per week</td></tr>
+      <tr><td>Cameras reporting a heartbeat in the last 12 hours</td><td>At least 98%</td></tr>
+      <tr><td>Battery below 30% at any time</td><td>Never</td></tr>
+      <tr><td>Pilot users who agree to pay</td><td>At least 3 of 5</td></tr>
+      <tr><td>Support contacts per camera per month</td><td>Under 1</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="decisions">
+  <h2>18. Open decisions</h2>
+  <ol>
+    <li><b>SIM policy:</b> included in the plan, paid by the customer, or Wi-Fi only at launch.</li>
+    <li><b>Market:</b> Vietnam only at first, or overseas as well.</li>
+    <li><b>App name:</b> "Solavis" for everything, or keep "SolarEye" as the app name.</li>
+    <li><b>Board:</b> confirm the exact 4G board, its price and stock in Vietnam.</li>
+    <li><b>Legal and name:</b> choose the lawyer, and run the name and trademark search.</li>
+    <li><b>Print:</b> choose the print service or buy a printer if more than about 30 units.</li>
+  </ol>
+  <div class="sig">
+    <div>Prepared by</div><div>Reviewed by</div><div>Approved by</div>
+  </div>
+</section>
+
+<section id="appendix">
+  <h2>Appendices</h2>
+  <h3>Appendix A. API sketch (version 1)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Caller</th><th>Endpoint</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>Camera</td><td><code>GET /v1/device/config</code></td><td>Plan state, thresholds, cooldown, upload size, firmware target</td></tr>
+      <tr><td>Camera</td><td><code>POST /v1/device/upload-url</code></td><td>Short-lived upload link, refused if plan is off or over limit</td></tr>
+      <tr><td>Camera</td><td><code>POST /v1/device/events</code></td><td>Event details with the uploaded crop key</td></tr>
+      <tr><td>Camera</td><td><code>POST /v1/device/heartbeat</code></td><td>Battery, temperature, signal, firmware version</td></tr>
+      <tr><td>Camera</td><td><code>GET /v1/device/firmware</code></td><td>Signed update, when one is due</td></tr>
+      <tr><td>Customer</td><td><code>POST /v1/devices/claim</code></td><td>Bind a camera to the account using its claim code</td></tr>
+      <tr><td>Customer</td><td><code>GET, POST /v1/people</code></td><td>List and register people, with consent record</td></tr>
+      <tr><td>Customer</td><td><code>GET /v1/events</code></td><td>Event history with filters</td></tr>
+      <tr><td>Customer</td><td><code>PATCH /v1/events/{id}</code></td><td>Review a possible match: confirm or dismiss</td></tr>
+      <tr><td>Customer</td><td><code>GET /v1/plan</code></td><td>Plan, state and usage</td></tr>
+      <tr><td>Admin</td><td><code>POST /admin/tenants/{id}/suspend</code></td><td>Suspend or reactivate</td></tr>
+      <tr><td>Admin</td><td><code>POST /admin/tenants/{id}/export</code>, <code>DELETE /admin/tenants/{id}</code></td><td>Export all data, delete all data</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Appendix B. Data model</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Table</th><th>Main fields</th></tr></thead>
+    <tbody>
+      <tr><td><code>tenants</code></td><td>id, name, plan_id, state, trial_ends, period_ends, created_at</td></tr>
+      <tr><td><code>users</code></td><td>id, tenant_id, contact, role, telegram_chat_id</td></tr>
+      <tr><td><code>plans</code></td><td>id, name, max_cameras, max_people, retention_days, banned_list, lte_allowed, channels</td></tr>
+      <tr><td><code>devices</code></td><td>id, tenant_id, serial, key_hash, claim_code, firmware, last_seen, battery_v, state</td></tr>
+      <tr><td><code>people</code></td><td>id, tenant_id, name, kind (allowed or banned), consent_at, note</td></tr>
+      <tr><td><code>face_vectors</code></td><td>id, person_id, tenant_id, vector (encrypted), created_at</td></tr>
+      <tr><td><code>events</code></td><td>id, tenant_id, device_id, at, verdict, person_id, score, photo_key, reviewed_by, review</td></tr>
+      <tr><td><code>usage_counters</code></td><td>tenant_id, month, events, uploads_bytes</td></tr>
+      <tr><td><code>audit_log</code></td><td>id, actor, action, tenant_id, target, reason, at</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Appendix C. Supplier checklist</h3>
+  <ul>
+    <li>Main board and camera: Shopee, Lazada or an importer. Confirm the camera connector and 4G band support for Viettel, VinaPhone and MobiFone.</li>
+    <li>Parts and wire: Hshop, Thế Giới IC, Nshop, Linh kiện 3M, or the electronics streets in Hà Nội and TP.HCM.</li>
+    <li>Print service: get two or three quotes for 3 parts in ASA, with the sizes and print orientation from section 6.</li>
+    <li>IoT data SIM: ask Viettel, VinaPhone and MobiFone for bulk IoT data plans.</li>
+  </ul>
+</section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default", securityLevel: "loose" });
+</script>
+</body>
+</html>
