@@ -1,0 +1,15 @@
+secret_key: ${SOLAVIS_SECRET:-dev-only-change-me}   # REQUIRED in production (32+ random characters)
+session:
+  hours: 8
+  cookie_name: solavis_session
+  cookie_secure: false           # true when served over HTTPS
+  cookie_samesite: strict
+password:
+  min_length: 8
+  must_change_on_first_login: true
+login_protection:
+  max_failures: 5                # per email + IP
+  lock_minutes: 5
+device:
+  key_bytes: 24
+  clock_skew_seconds: 0          # 0 = do not check device clock. Set e.g. 300 once firmware sends timestamps.

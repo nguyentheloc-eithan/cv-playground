@@ -1,0 +1,16 @@
+# Server settings. Any value can use ${ENV_NAME} or ${ENV_NAME:-default}.
+host: 127.0.0.1                 # use 0.0.0.0 inside Docker
+port: 8100
+workers: 1                      # production: 2-4 (background jobs are safe with several workers)
+base_url: http://127.0.0.1:8100 # public URL customers use (links, cookies)
+environment: development        # development | production
+log_level: info                 # debug | info | warning | error
+log_format: text                # text | json
+cors_origins: []                # e.g. ["https://app.solavis.vn"]; empty = same-origin only
+api_docs: true                  # serve /docs (set false in production)
+max_upload_mb: 8                # largest accepted image
+serve_ui: true                  # serve the customer app (/) and admin console (/admin)
+jobs:                           # background jobs
+  quiet_check_seconds: 5        # look for cameras that stopped checking in
+  retention_seconds: 3600       # delete expired events and snapshots
+  session_cleanup_seconds: 3600

@@ -1,0 +1,3 @@
+secret_key: ${SOLAVIS_SECRET}
+session:
+  cookie_secure: true       # you serve HTTPS in production

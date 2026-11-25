@@ -1,0 +1,12 @@
+# Server-side tamper rules. Changing them needs no firmware update.
+tilt_limit_degrees: 8
+heading_limit_degrees: 15
+view_similarity_min: 0.55        # histogram correlation of the reference view; lower = view changed or covered
+lock_on:
+  moved: true
+  turned: true
+  cover_opened: true
+  view_changed: true
+checkin_seconds: 30              # camera check-in period sent to cameras (production: 300)
+quiet_after_missed: 3            # alert after this many missed check-ins
+service_window_minutes: 15       # how long an owner-unlocked camera may be handled before it re-arms

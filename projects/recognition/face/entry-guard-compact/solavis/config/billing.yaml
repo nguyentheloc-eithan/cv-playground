@@ -1,0 +1,15 @@
+# Invoicing and bank-transfer details shown to customers. Replace the sample values with your company's.
+currency: VND
+invoice_prefix: INV
+due_days: 7                  # days from issue to due date
+tax_rate_percent: 0          # set 8 or 10 if you are VAT-registered
+company:
+  name: Solavis Co., Ltd (sample)
+  address: "[address]"
+  tax_code: "[tax code]"
+bank:                        # customers pay by bank transfer and put the invoice number in the transfer note
+  name: "[Bank name]"
+  bank_code: ""              # VietQR bank code, e.g. VCB (only needed for the QR image)
+  account_no: "[account number]"
+  account_name: "[account holder]"
+qr_enabled: false            # true = customer app shows a VietQR image loaded from img.vietqr.io

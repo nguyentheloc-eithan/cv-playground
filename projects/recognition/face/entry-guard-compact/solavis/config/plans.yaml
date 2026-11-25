@@ -1,0 +1,5 @@
+# price_vnd is per month and is a SAMPLE value: set your own. Plans are data. They are copied into the database when missing; after that, admins edit them in the console.
+plans:
+  - { id: lite, name: Lite, max_cameras: 1, max_people: 10,  events_per_day: 50,   watchlist: false, price_vnd: 99000 }
+  - { id: home, name: Home, max_cameras: 2, max_people: 30,  events_per_day: 200,  watchlist: true, price_vnd: 199000 }
+  - { id: pro,  name: Pro,  max_cameras: 6, max_people: 200, events_per_day: 1000, watchlist: true, price_vnd: 599000 }

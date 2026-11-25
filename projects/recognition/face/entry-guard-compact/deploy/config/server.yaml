@@ -1,0 +1,7 @@
+host: 0.0.0.0
+port: 8100
+workers: 2
+base_url: https://app.example.com        # your public HTTPS address
+environment: production
+log_format: json
+api_docs: false

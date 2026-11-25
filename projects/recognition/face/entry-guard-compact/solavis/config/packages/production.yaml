@@ -1,0 +1,6 @@
+# PRODUCTION BOOTSTRAP. Creates no demo data; only the first staff admin.
+# python -m solavis.manage seed --package production      (reads SOLAVIS_ADMIN_EMAIL / SOLAVIS_ADMIN_PASSWORD)
+name: production
+staff:
+  - { email: "${SOLAVIS_ADMIN_EMAIL}", password: "${SOLAVIS_ADMIN_PASSWORD}", name: Administrator, must_change: true }
+tenants: []

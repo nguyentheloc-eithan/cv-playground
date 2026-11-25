@@ -1,0 +1,12 @@
+models:
+  detector_file: models/yunet.onnx
+  recognizer_file: models/sface.onnx
+  detect_score_threshold: 0.8
+thresholds:
+  accept: 0.363                  # at or above = known person
+  reject: 0.30                   # below = unknown; between = uncertain
+  watchlist_confirm: 0.45        # watch-list score needed to call it "likely" (still needs human review)
+min_face_px: 40
+registration:
+  max_photos: 10
+  require_consent_note: true

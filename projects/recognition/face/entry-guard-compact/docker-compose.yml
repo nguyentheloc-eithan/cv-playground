@@ -1,0 +1,31 @@
+# Production-style stack: Solavis + PostgreSQL. Copy .env.example to .env and fill it in first.
+#   docker compose up -d
+#   docker compose exec solavis python -m solavis.manage seed --package production
+services:
+  solavis:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SOLAVIS_CONFIG_DIR: /srv/config          # your own YAML files override the shipped defaults
+    volumes:
+      - ./deploy/config:/srv/config:ro
+      - solavis-data:/srv/data
+    ports: ["127.0.0.1:8100:8100"]             # put Caddy / nginx with HTTPS in front
+    depends_on:
+      db: { condition: service_healthy }
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-solavis}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: ${DB_NAME:-solavis}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-solavis}"]
+      interval: 5s
+      retries: 10
+volumes:
+  pgdata:
+  solavis-data:

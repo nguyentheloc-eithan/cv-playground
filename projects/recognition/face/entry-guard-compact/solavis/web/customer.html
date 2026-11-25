@@ -1,0 +1,108 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solavis</title><meta name="theme-color" content="#101820"><link rel="stylesheet" href="/assets/app.css"></head><body class="app">
+<div id="root"></div>
+<script src="/assets/common.js"></script>
+<script>
+let ME=null,O=null,timer=null,STATE={alerts:'open',visitors:'all',days:14,ticket:null};
+const NAV=[['dashboard','Dashboard','home'],['devices','Devices','device'],['alerts','Alerts','bell'],['visitors','Visitors','users'],['people','People','person'],['reports','Reports','chart'],
+  ['activity','Activity log','list'],['support','Support','help'],['billing','Billing','card','owner'],['team','Team','building','owner'],['settings','Settings','gear','owner']];
+const isOwner=()=>ME.role==='owner';
+mountAuth($('root'),{title:'Sign in to your gate camera',role:'customer',onReady:u=>{ME=u;shell()}});
+function shell(){
+  $('root').innerHTML=`<div class="mobilebar"><div class="brand" style="font-size:19px">Sol<span>avis</span></div><div class="sp"></div><button class="sm" onclick="logout()">Log out</button></div>
+  <div class="shell2"><nav class="sidebar"><div class="brand">Sol<span>avis</span><small id="tn"></small></div><div id="nav"></div>
+  <div class="me"><div id="who"></div><button onclick="logout()">Log out</button></div></nav><main class="content" id="pg"></main></div>`;
+  $('who').textContent=ME.email;window.onhashchange=()=>render();if(!location.hash)nav('dashboard');
+  clearInterval(timer);timer=setInterval(()=>{if(!document.querySelector('.modal')&&!document.activeElement?.matches('input,textarea,select'))render(true)},3500);render()}
+async function render(quiet){
+  const r=route();let page=r.page||'dashboard';if(!VIEWS[page])page='dashboard';
+  try{O=await api('/api/overview')}catch(e){if(e.status===401)location.reload();return}
+  $('tn').textContent=O.tenant.name;
+  $('nav').innerHTML=NAV.filter(n=>!n[3]||isOwner()).map(([k,l,i])=>`<a class="${k===page?'on':''}" onclick="nav('${k}')">${ico(i)}<span>${l}</span>${k==='alerts'&&O.open_alerts?`<span class="badge">${O.open_alerts}</span>`:''}</a>`).join('');
+  if(quiet&&VIEWS[page].live===false)return;
+  try{const html=await VIEWS[page](r);const y=scrollY;$('pg').innerHTML=html;if(quiet)scrollTo(0,y)}catch(e){$('pg').innerHTML=`<div class="banner bad">${esc(e.message)}</div>`}}
+const banner=()=>{const t=O.tenant;
+  if(t.status==='suspended')return `<div class="banner bad"><b>Your subscription is suspended.</b> Cameras have stopped uploading. See Billing, or contact support to reactivate.</div>`;
+  if(t.status==='past_due')return `<div class="banner"><b>Payment is overdue.</b> Cameras keep working for a short grace period. See Billing.</div>`;
+  if(t.status==='trial'&&t.trial_end)return `<div class="banner">Free trial: ${Math.max(0,Math.ceil((t.trial_end-O.now)/86400))} days left.</div>`;return ''};
+const title=(t,right='')=>`<div class="ptitle"><h1>${t}</h1><div class="sp"></div>${right}</div>`;
+const STATE_TXT={unclaimed:'Waiting to be set up.',mounting:'Setting up: mount it, aim at the gate, then arm it',armed:'Protecting your gate',service:'Service window: handle the camera, then arm it again',locked:'LOCKED: the camera was disturbed. Check it, then unlock',revoked:'Disabled by Solavis'};
+const camActions=c=>!isOwner()?'':({mounting:`<button class="p" onclick="act(${c.id},'arm')">Arm here</button>`,service:`<button class="p" onclick="act(${c.id},'arm')">Arm now</button>`,
+  armed:`<button onclick="act(${c.id},'service')">Service window</button>`,locked:`<button class="p" onclick="act(${c.id},'unlock')">Unlock…</button>`}[c.state]||'')+(isOwner()?` <button class="sm" onclick="renameCam(${c.id},'${esc(c.name).replace(/'/g,'')}')">Rename</button>`:'');
+const devCard=c=>`<div class="card dev ${c.state}" style="margin:0 0 12px"><div class="glyph">${ico(c.state==='locked'?'lock':'device')}</div><div>
+  <div class="row" style="margin:0"><b style="font-size:16px">${esc(c.name)}</b> ${pill(c.state)} ${c.lock_reason?`<span class="pill critical">${esc(c.lock_reason.replace('_',' '))}</span>`:''}<div class="sp"></div>${camActions(c)}</div>
+  <div class="mut">${STATE_TXT[c.state]||''}${c.state==='unclaimed'?` Claim code <b>${esc(c.claim_code)}</b>.`:''}</div>
+  ${c.state==='unclaimed'?'':`<div class="meta"><span><span class="dot ${c.online?'on':'off'}"></span><b>${c.online?'Online':'Offline'}</b> · seen ${ago(c.last_seen)}</span><span>${batt(c.battery)}</span><span>${esc((c.net||'').toUpperCase())} ${c.rssi??''} dBm</span>
+  <span>Visitors 24h <b>${c.visitors_24h}</b></span><span>Tilt <b>${c.tilt??'–'}°</b> Heading <b>${c.heading??'–'}°</b></span></div>`}
+  <div class="meta"><span>Serial <b>${esc(c.serial||'–')}</b></span><span>Firmware <b>${esc(c.fw_version||'–')}</b></span><span>Warranty <b>${dshort(c.warranty_until)}</b></span></div></div></div>`;
+const alertRow=a=>`<div class="alert ${a.level} ${a.acked?'acked':''}">${a.snap?`<img class="s" src="/api/snap/${a.snap}">`:`<div class="s" style="display:grid;place-items:center;color:var(--mut)">${ico('alert')}</div>`}<div class="sp">${pill(a.level)} ${esc(a.text)}<div class="mut" style="font-size:13px">${when(a.ts)} ${a.camera?'· '+esc(a.camera):''}</div></div>${a.acked?'':`<button class="sm" onclick="ack(${a.id})">Got it</button>`}</div>`;
+const evCard=e=>`<div>${e.snap?`<img class="snap" src="/api/snap/${e.snap}" onclick="zoom('${e.snap}')" style="cursor:zoom-in" loading="lazy">`:`<div class="snap" style="display:grid;place-items:center;color:var(--mut)"><div style="width:44px">${ico('person')}</div></div>`}<div style="margin-top:4px">${pill(e.kind==='watchlist'?'watchlist':e.verdict)} ${e.review==='dismissed'?'<span class="mut">dismissed</span>':e.review==='confirmed'?pill('confirmed'):''}</div>
+  <div>${esc(e.name||'Unknown')}${e.score?` <span class="mut">${e.score}</span>`:''}</div><div class="mut" style="font-size:12px">${esc(e.camera)} · ${ago(e.ts)}</div>
+  ${(e.kind==='watchlist'||e.verdict!=='known')&&e.review==='new'?`<div class="row" style="margin:4px 0"><button class="sm" onclick="rev(${e.id},'confirmed')">Confirm</button><button class="sm" onclick="rev(${e.id},'dismissed')">Dismiss</button></div>`:''}</div>`;
+const usage=(l,a,b)=>`<div style="margin:8px 0"><div class="row" style="margin:0"><span>${l}</span><div class="sp"></div><span class="mut">${a} / ${b}</span></div><div class="bar"><i style="width:${Math.min(100,100*a/Math.max(1,b))}%"></i></div></div>`;
+
+const VIEWS={
+ async dashboard(){const t=O.tenant;const [al,ev,rep]=await Promise.all([api('/api/alerts?limit=5'),api('/api/events?limit=8'),api('/api/reports?days=14')]);const dev=await api('/api/devices');
+  const on=dev.filter(d=>d.online).length,locked=dev.filter(d=>d.state==='locked').length;
+  return banner()+title('Dashboard')+`<div class="kpi"><div class="card stat"><span class="l">Devices online</span><b>${on}/${dev.length}</b><small>${locked?`<span style="color:var(--bad)">${locked} locked</span>`:'all calm'}</small><div class="ic">${ico('device')}</div></div>
+   <div class="card stat"><span class="l">Open alerts</span><b style="color:${O.open_alerts?'var(--bad)':'inherit'}">${O.open_alerts}</b><small>need attention</small><div class="ic">${ico('bell')}</div></div>
+   <div class="card stat"><span class="l">Visitors today</span><b>${t.events_today}</b><div class="bar progress"><i style="width:${Math.min(100,100*t.events_today/t.events_per_day)}%"></i></div><small>limit ${t.events_per_day}/day</small><div class="ic">${ico('users')}</div></div>
+   <div class="card stat"><span class="l">Plan</span><b>${esc(t.plan)}</b>${pill(t.status)}<div class="ic">${ico('card')}</div></div></div>
+  <div class="two"><div><div class="card"><h2>Devices</h2>${dev.length?dev.map(devCard).join(''):empty('No device yet. Solavis will add your camera to this account.')}</div></div>
+  <div><div class="card"><h2>Needs attention</h2>${al.filter(a=>!a.acked).length?al.filter(a=>!a.acked).map(alertRow).join(''):empty('Nothing needs attention.')}</div>
+  <div class="card"><h2>Last 14 days</h2>${rep.total?stackedBars(rep.days,['known','unknown','watchlist'],['#1fb35a','#6b8afd','#e5484d'])+`<div class="legend"><span><i style="background:#1fb35a"></i>Known</span><span><i style="background:#6b8afd"></i>Unknown</span><span><i style="background:#e5484d"></i>Watch list</span></div>`:empty('No visitors yet.')}</div></div></div>
+  <div class="card"><h2>Latest visitors</h2>${ev.length?`<div class="grid">${ev.map(evCard).join('')}</div>`:empty('Nobody has been seen yet.')}</div>`},
+ async devices(){const dev=await api('/api/devices');return banner()+title('Devices')+(dev.length?dev.map(devCard).join(''):`<div class="card">${empty('No device yet.')}</div>`)},
+ async alerts(){const f=STATE.alerts;const al=await api('/api/alerts?limit=200');const rows=al.filter(a=>f==='all'||(f==='open'?!a.acked:a.level===f));
+  return title('Alerts',O.open_alerts?`<button onclick="ackAll()">Mark all as read</button>`:'')+chips([['open','Open',al.filter(a=>!a.acked).length],['critical','Critical'],['high','High'],['all','All',al.length]],f,'setAlerts')+`<div class="card">${rows.length?rows.map(alertRow).join(''):empty('No alerts here.')}</div>`},
+ async visitors(){const f=STATE.visitors;const ev=await api('/api/events?limit=200');const rows=ev.filter(e=>f==='all'||(f==='watchlist'?e.kind==='watchlist':e.verdict===f));
+  return title('Visitors')+chips([['all','All'],['known','Known'],['unknown','Unknown'],['uncertain','Uncertain'],['watchlist','Watch list']],f,'setVisitors')+`<div class="card">${rows.length?`<div class="grid">${rows.map(evCard).join('')}</div>`:empty('Nobody here.')}</div>`},
+ async people(){const p=await api('/api/people');const t=O.tenant;
+  return title('People',isOwner()?`<button class="p" onclick="addPersonDlg()">+ Add person</button>`:'')+`<div class="card">${usage('People registered',p.length,t.max_people)}${p.length?`<div class="scroll"><table class="t"><tr><th>Name</th><th>List</th><th>Photos</th><th>Consent / basis</th><th></th></tr>${p.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${pill(x.kind)}</td><td>${x.photos}</td><td class="mut">${esc(x.consent)}</td><td>${isOwner()?`<button class="sm d" onclick="delPerson(${x.id})">Delete</button>`:''}</td></tr>`).join('')}</table></div>`:empty('Nobody registered. Anyone not registered is shown as "unknown".')}
+  <p class="mut" style="margin-bottom:0">Watch-list results are always a "possible match": a person must verify before acting.</p></div>`},
+ async reports(){const d=STATE.days;const r=await api('/api/reports?days='+d);
+  return title('Reports',`<select onchange="STATE.days=+this.value;render()">${[7,14,30,90].map(n=>`<option value="${n}" ${n===d?'selected':''}>Last ${n} days</option>`).join('')}</select>`)+
+  `<div class="kpi"><div class="card stat"><span class="l">Visitors</span><b>${r.total}</b></div><div class="card stat"><span class="l">Known</span><b>${r.days.reduce((s,x)=>s+x.known,0)}</b></div><div class="card stat"><span class="l">Unknown</span><b>${r.days.reduce((s,x)=>s+x.unknown,0)}</b></div><div class="card stat"><span class="l">Watch list</span><b>${r.days.reduce((s,x)=>s+x.watchlist,0)}</b></div></div>
+  <div class="card"><h2>Visitors per day</h2>${stackedBars(r.days,['known','unknown','watchlist'],['#1fb35a','#6b8afd','#e5484d'])}<div class="legend"><span><i style="background:#1fb35a"></i>Known</span><span><i style="background:#6b8afd"></i>Unknown</span><span><i style="background:#e5484d"></i>Watch list</span></div></div>
+  <div class="two"><div class="card"><h2>Busiest hours</h2>${hourBars(r.by_hour)}</div><div class="card"><h2>Most seen people</h2>${r.top_people.length?r.top_people.map(([n,c])=>`<div class="row" style="margin:6px 0"><span>${esc(n)}</span><div class="sp"></div><b>${c}</b></div>`).join(''):empty('No recognised visitors yet.')}</div></div>`},
+ async activity(){const a=await api('/api/activity');return title('Activity log')+`<div class="card">${a.length?`<div class="timeline">${a.map(x=>`<div><b>${esc(x.action)}</b> ${x.detail?`<span class="mut">${esc(x.detail)}</span>`:''}<div class="mut" style="font-size:13px">${esc(x.who)} · ${when(x.ts)}</div></div>`).join('')}</div>`:empty('Nothing yet.')}</div>`},
+ async support(r){if(r.id)return ticketView(+r.id);const t=await api('/api/tickets');
+  return title('Support',`<button class="p" onclick="newTicket()">+ New ticket</button>`)+`<div class="card">${t.length?`<table class="t"><tr><th>#</th><th>Subject</th><th>Status</th><th>Updated</th></tr>${t.map(x=>`<tr class="click" onclick="nav('support/${x.id}')"><td>${x.id}</td><td><b>${esc(x.subject)}</b></td><td>${pill(x.status)}</td><td class="mut">${ago(x.updated)}</td></tr>`).join('')}</table>`:empty('No tickets. Need help? Open one and our team will reply here.')}</div>`},
+ async billing(){const b=await api('/api/billing');const t=O.tenant;
+  return banner()+title('Billing')+`<div class="two"><div class="card"><h2>Your plan</h2><div class="row" style="margin:0"><b style="font-size:22px">${esc(b.plan.name)}</b>${pill(b.status)}</div><div style="font-size:20px;margin:4px 0">${vnd(b.plan.price_vnd)} <span class="mut" style="font-size:13px">per month</span></div>
+   ${usage('Cameras',O.cameras.length,b.plan.max_cameras)}${usage('People',t.people,b.plan.max_people)}${usage('Visitors today',t.events_today,b.plan.events_per_day)}<div class="mut">Watch list ${b.plan.watchlist?'included':'not included'}</div></div>
+  <div class="card"><h2>How to pay</h2><dl class="kv"><dt>Bank</dt><dd>${esc(b.pay_to.bank)}</dd><dt>Account number</dt><dd><b>${esc(b.pay_to.account_no)}</b></dd><dt>Account holder</dt><dd>${esc(b.pay_to.account_name)}</dd><dt>Transfer note</dt><dd>${esc(b.pay_to.note)}</dd></dl>
+   <p class="mut">Payments are matched by our finance team, usually within one working day.</p></div></div>
+  <div class="card"><h2>Invoices</h2>${b.invoices.length?`<div class="scroll"><table class="t"><tr><th>Number</th><th>Description</th><th>Issued</th><th>Due</th><th>Amount</th><th>Status</th><th></th></tr>${b.invoices.map(i=>`<tr><td><b>${esc(i.number)}</b></td><td>${esc(i.description)}</td><td>${dshort(i.issued)}</td><td>${dshort(i.due)}</td><td>${vnd(i.total)}</td><td><span class="pill ${({sent:'past_due',overdue:'suspended',paid:'active',void:'closed'})[i.state]}">${i.state==='sent'?'unpaid':i.state}</span></td><td>${i.qr_url?`<a href="${i.qr_url}" target="_blank" rel="noopener">QR</a>`:''}</td></tr>`).join('')}</table></div>`:empty('No invoices yet.')}</div>`},
+ async team(){const m=await api('/api/team');return title('Team',`<button class="p" onclick="inviteDlg()">+ Add family member</button>`)+`<div class="card"><table class="t">${m.map(x=>`<tr><td><b>${esc(x.email)}</b></td><td><span class="pill ${x.role==='owner'?'active':'info'}">${x.role}</span></td><td class="mut">${x.last_login?'last login '+ago(x.last_login):'never signed in'}</td><td>${x.active?(x.id!==ME.id?`<button class="sm d" onclick="disableMember(${x.id})">Disable</button>`:''):pill('closed')}</td></tr>`).join('')}</table><p class="mut">Family members can view and review visitors, but not change cameras, people or billing.</p></div>`},
+ async settings(){const t=O.tenant;return title('Settings')+`<div class="card"><h2>Telegram alerts</h2><p class="mut" style="margin-top:0">Get alerts in Telegram. Paste your chat id.</p><div class="row"><input id="tg" placeholder="Telegram chat id"><button onclick="saveTg()">Save</button>${t.telegram?'<span class="pill active">connected</span>':''}</div></div>
+   <div class="card"><h2>Your data</h2><p class="mut" style="margin-top:0">Download everything we hold about your account. Delete people (and their face data) from the People page.</p><a class="btn" href="/api/export" download>Download my data</a></div>
+   <div class="card"><h2>Password</h2><div class="row"><input id="o0" type="password" placeholder="current password"><input id="o1" type="password" placeholder="new password"><button onclick="chpw()">Change</button></div></div>`}};
+VIEWS.settings.live=false;
+async function ticketView(id){const d=await api('/api/tickets/'+id);const t=d.ticket;STATE.ticket=id;
+  return title(`#${t.id} ${esc(t.subject)}`,`<button onclick="nav('support')">← All tickets</button>`)+`<div class="card"><div class="row" style="margin:0">${pill(t.status)} <span class="mut">${esc(t.category)} · opened ${when(t.created)}</span><div class="sp"></div>${['solved','closed'].includes(t.status)?'':`<button class="sm" onclick="closeTicket(${t.id})">Mark solved</button>`}</div>${thread(d.messages,'customer')}
+   <label>Reply</label><textarea id="rp" rows="3" style="width:100%"></textarea><div class="row"><button class="p" onclick="replyTicket(${t.id})">Send</button></div></div>`}
+VIEWS.support.live=false;
+const setAlerts=k=>{STATE.alerts=k;render()},setVisitors=k=>{STATE.visitors=k;render()};
+const act=(id,a)=>guard(async()=>{await api(`/api/cameras/${id}/${a}`,{method:'POST'});toast(a==='arm'?'Camera armed':a==='unlock'?'Unlocked. Fix it, then press Arm now (the service window is limited).':'Service window opened');render()});
+const renameCam=(id,n)=>ask({title:'Rename device',fields:[{id:'name',label:'Name',value:n}],onSubmit:async v=>{await api(`/api/cameras/${id}/rename`,{json:v});render()}});
+const ack=id=>api(`/api/alerts/${id}/ack`,{method:'POST'}).then(()=>render());
+const ackAll=()=>api('/api/alerts/ack-all',{method:'POST'}).then(()=>render());
+const rev=(id,r)=>api(`/api/events/${id}/review`,{json:{review:r}}).then(()=>render());
+const zoom=s=>modal(`<img src="/api/snap/${s}" style="width:100%;border-radius:10px"><div class="row"><button onclick="this.closest('.modal').remove()">Close</button></div>`);
+const delPerson=id=>confirm('Delete this person and their face data?')&&guard(async()=>{await api('/api/people/'+id,{method:'DELETE'});render()});
+function addPersonDlg(){const t=O.tenant;const m=modal(`<h2>Add a person</h2><label>Name</label><input id="pn" style="width:100%"><label>List</label><select id="pk" style="width:100%"><option value="known">Known (family, staff)</option>${t.watchlist?'<option value="watchlist">Watch list</option>':''}</select>
+  <label>Clear face photos (2-5 recommended)</label><input id="pf" type="file" multiple accept="image/*" style="width:100%"><label>Consent or legal basis (required)</label><input id="pc" style="width:100%" placeholder="e.g. Family member, agreed in person"><div class="err" id="perr"></div>
+  <div class="row"><button class="p" id="pgo">Add person</button><button onclick="this.closest('.modal').remove()">Cancel</button></div>`);
+  $('pgo').onclick=async()=>{const f=new FormData();f.append('name',$('pn').value);f.append('kind',$('pk').value);f.append('consent',$('pc').value);for(const x of $('pf').files)f.append('photos',x);
+   try{const r=await api('/api/people',{method:'POST',body:f});m.remove();toast(`Added (${r.photos_used} photo(s) used${r.photos_rejected?', '+r.photos_rejected+' rejected':''})`);render()}catch(e){$('perr').textContent=e.message}}}
+const saveTg=()=>guard(async()=>{const r=await api('/api/settings/telegram',{json:{chat_id:$('tg').value}});toast(r.live?'Saved':'Saved. Telegram sending is not switched on by the operator yet.');render()});
+const chpw=()=>guard(async()=>{await api('/api/auth/password',{json:{current:$('o0').value,new:$('o1').value}});toast('Password changed')});
+const inviteDlg=()=>ask({title:'Add a family member',note:'They can view and review visitors. You pass the temporary password on yourself.',fields:[{id:'email',label:'Email',type:'email'}],submit:'Create account',
+  onSubmit:async v=>{const r=await api('/api/team',{json:v});shown('Account created',`<p>Email <b>${esc(r.email)}</b><br>Temporary password <b>${esc(r.temporary_password)}</b></p><p class="mut">Shown only once. They must change it at first login.</p>`);render()}});
+const disableMember=id=>confirm('Disable this account?')&&guard(async()=>{await api(`/api/team/${id}/disable`,{method:'POST'});render()});
+const newTicket=()=>ask({title:'New support ticket',fields:[{id:'subject',label:'Subject'},{id:'category',label:'Topic',type:'select',options:[['general','General'],['how-to','How do I…'],['device','A device problem'],['billing','Billing'],['privacy','Privacy / my data']]},{id:'priority',label:'Priority',type:'select',value:'normal',options:['low','normal','high']},{id:'body',label:'What do you need?',type:'textarea',rows:5}],submit:'Send',
+  onSubmit:async v=>{const r=await api('/api/tickets',{json:v});nav('support/'+r.id)}});
+const replyTicket=id=>guard(async()=>{await api(`/api/tickets/${id}/message`,{json:{body:$('rp').value}});render()});
+const closeTicket=id=>guard(async()=>{await api(`/api/tickets/${id}/close`,{method:'POST'});render()});
+</script></body></html>

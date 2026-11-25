@@ -1,0 +1,11 @@
+# Alert delivery. In-app alerts always work; these add outside channels.
+# Per-customer Telegram chat ids are set by the customer in the app; the bot token is yours.
+telegram:
+  enabled: false
+  bot_token: ${SOLAVIS_TG_TOKEN:-}
+webhook:                         # e.g. SMS gateway, Zalo bridge, Home Assistant
+  enabled: false
+  url: ${SOLAVIS_WEBHOOK_URL:-}
+  secret: ${SOLAVIS_WEBHOOK_SECRET:-}
+min_level: info                  # info | high | critical : lowest level that is sent outside the app
+timeout_seconds: 5

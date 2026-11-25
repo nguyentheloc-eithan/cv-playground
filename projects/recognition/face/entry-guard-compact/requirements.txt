@@ -5,3 +5,6 @@ fastapi
 uvicorn
 pytest
 httpx
+python-multipart
+sqlalchemy>=2.0
+pydantic>=2.6

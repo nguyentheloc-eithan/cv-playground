@@ -1,0 +1,26 @@
+# Pick ONE driver. Only SQLite works with no extra install.
+#   sqlite      development, demo, one small server
+#   postgresql  recommended for production   (pip install -r requirements-prod.txt)
+#   mysql       supported alternative         (pip install -r requirements-prod.txt)
+driver: sqlite
+url: ""                          # optional: a full SQLAlchemy URL, overrides everything below
+sqlite:
+  path: data/solavis/solavis.db  # relative to the repository root
+postgresql:
+  host: ${DB_HOST:-127.0.0.1}
+  port: 5432
+  user: ${DB_USER:-solavis}
+  password: ${DB_PASSWORD:-}
+  database: ${DB_NAME:-solavis}
+  sslmode: prefer                # require in production
+mysql:
+  host: ${DB_HOST:-127.0.0.1}
+  port: 3306
+  user: ${DB_USER:-solavis}
+  password: ${DB_PASSWORD:-}
+  database: ${DB_NAME:-solavis}
+pool:
+  size: 5
+  max_overflow: 10
+  recycle_seconds: 1800
+auto_create_tables: true         # create missing tables at start (set false when you manage schema yourself)

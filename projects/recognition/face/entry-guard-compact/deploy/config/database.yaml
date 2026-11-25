@@ -1,0 +1,7 @@
+driver: postgresql
+postgresql:
+  host: ${DB_HOST:-db}
+  user: ${DB_USER:-solavis}
+  password: ${DB_PASSWORD}
+  database: ${DB_NAME:-solavis}
+  sslmode: disable          # traffic stays inside the Docker network; use require for an external database

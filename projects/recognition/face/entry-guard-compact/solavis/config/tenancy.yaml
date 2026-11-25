@@ -1,0 +1,11 @@
+# Defaults for new customers (tenants). Admins can change each customer later.
+default_plan: lite
+trial_days: 14
+past_due_grace_days: 7
+closed_after_days: 30
+retention_days:
+  unknown_events: 30
+  known_events: 90
+  alerts: 180
+claim_code_prefix: SOL
+max_users_per_tenant: 10

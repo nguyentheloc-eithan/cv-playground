@@ -6,3 +6,6 @@ models/*.onnx
 config/customers/*.yaml
 !config/customers/example.yaml
 venv/
+
+solavis/demo_faces/
+.env

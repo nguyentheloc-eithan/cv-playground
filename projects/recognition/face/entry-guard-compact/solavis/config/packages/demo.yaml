@@ -1,0 +1,104 @@
+# DEMO PACKAGE. Load with:  python -m solavis.manage seed --package demo
+# Fills the CRM, billing, support and device inventory with sample companies so every screen has something to show.
+# All names, phones and addresses below are made up. Photo paths are relative to the repository root.
+name: demo
+staff:
+  - { email: staff@solavis.vn,   password: demo1234, name: Solavis Admin, staff_role: admin }
+  - { email: sales@solavis.vn,   password: demo1234, name: Sales Lead,    staff_role: sales }
+  - { email: support@solavis.vn, password: demo1234, name: Support Agent, staff_role: support }
+  - { email: finance@solavis.vn, password: demo1234, name: Finance,       staff_role: finance }
+inventory: { count: 8, model: Solavis Cam 4G, prefix: SOL-2611, cost_vnd: 2000000 }   # total stock units to keep
+tenants:
+  - name: Demo Home (Hanoi)
+    plan: home
+    status: active
+    contact_name: Tran Minh Anh
+    phone: "0901 000 001"
+    address: "12 Example Street, Ba Dinh, Hanoi"
+    industry: Residential
+    source: Referral
+    account_manager: sales@solavis.vn
+    users:
+      - { email: owner@demo.vn,  password: demo1234, role: owner,  name: Tran Minh Anh }
+      - { email: family@demo.vn, password: demo1234, role: member, name: Family member }
+    cameras:
+      - { name: Front gate, claim_code: SOL-4F7K-2Q9D }
+    people:
+      - { name: Person A, kind: known,     photos: "data/photos/5/*.jpg", max_photos: 3, consent: "Demo data" }
+      - { name: Person B, kind: watchlist, photos: "data/photos/6/*.jpg", max_photos: 2, consent: "Demo data" }
+    history_days: 14
+    contacts:
+      - { name: Tran Minh Anh, email: owner@demo.vn, phone: "0901 000 001", title: Owner }
+    notes:
+      - { author: sales@solavis.vn, text: "Installed at the front gate. Wants Telegram alerts for the night shift.", pinned: true, days_ago: 9 }
+    invoices:
+      - { months: 1, days_ago: 35, paid: true }
+      - { months: 1, days_ago: 5,  paid: false }
+    tickets:
+      - subject: How do I add my driver as a known person?
+        status: pending
+        category: how-to
+        requester: owner@demo.vn
+        assignee: support@solavis.vn
+        days_ago: 2
+        messages:
+          - { type: customer, author: owner@demo.vn, body: "I want my driver to be recognised at the gate. Where do I add him?" }
+          - { type: staff, author: support@solavis.vn, body: "Open People, then Add a person. Upload 2-5 clear face photos and tick the consent note." }
+  - name: Other Customer (Saigon)
+    plan: lite
+    status: past_due
+    contact_name: Le Thanh Hung
+    phone: "0902 000 002"
+    address: "88 Sample Road, District 3, Ho Chi Minh City"
+    industry: Retail
+    source: Website
+    account_manager: sales@solavis.vn
+    users:
+      - { email: other@demo.vn, password: demo1234, role: owner, name: Le Thanh Hung }
+    cameras:
+      - { name: Shop door, claim_code: SOL-9M2X-7TQ1 }
+    contacts:
+      - { name: Le Thanh Hung, email: other@demo.vn, phone: "0902 000 002", title: Shop owner }
+    invoices:
+      - { months: 1, days_ago: 40, paid: true }
+      - { months: 1, days_ago: 14, paid: false }
+    tasks:
+      - { title: Call about the overdue invoice, due_days: 1, assignee: finance@solavis.vn }
+  - name: Pho Viet Restaurant (Da Nang)
+    plan: home
+    status: trial
+    trial_days: 3
+    contact_name: Pham Quoc Bao
+    phone: "0903 000 003"
+    industry: Restaurant
+    source: Facebook ad
+    account_manager: sales@solavis.vn
+    users:
+      - { email: pho@demo.vn, password: demo1234, role: owner, name: Pham Quoc Bao }
+    tasks:
+      - { title: "Trial ends soon - offer the Home plan", due_days: 2, assignee: sales@solavis.vn }
+    notes:
+      - { author: sales@solavis.vn, text: "Interested in 2 cameras (front and back door).", days_ago: 1 }
+  - name: Greenfield Villas (Hue)
+    plan: pro
+    status: lead
+    contact_name: Nguyen Thi Lan
+    phone: "0904 000 004"
+    industry: Property management
+    source: Trade show
+    account_manager: sales@solavis.vn
+    contacts:
+      - { name: Nguyen Thi Lan, email: lan@example.com, phone: "0904 000 004", title: Operations manager }
+    notes:
+      - { author: sales@solavis.vn, text: "Needs 6 gates covered. Quote requested.", pinned: true, days_ago: 4 }
+    tasks:
+      - { title: Send quote for 6 cameras, due_days: 1, assignee: sales@solavis.vn }
+# Used by the camera simulator (python -m solavis.sim --package demo)
+simulator:
+  port: 8101
+  cloud_url: http://127.0.0.1:8100
+  camera: { claim_code: SOL-4F7K-2Q9D }
+  visitors:
+    - { label: Person A, photos: "data/photos/5/*.jpg" }
+    - { label: Person B, photos: "data/photos/6/*.jpg" }
+    - { label: Stranger, photos: "solavis/demo_faces/stranger/*.jpg" }
