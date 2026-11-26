@@ -1,7 +1,13 @@
-# Solavis portfolio pack (for my AI agent)
+# Solavis portfolio pack, revision 2 (for my AI agent)
 
 Self-employed project: **Solavis**, a solar-powered AI gate camera with a cloud subscription service.
 Everything in this folder is source material. The agent writes the Next.js page from it.
+
+## What is new in revision 2
+- `assets/`: 58 real screenshots and renders (customer app, ERP, simulator, tests, 3D). Index and privacy notes: `assets/INDEX.md`.
+- `3d-model/`: the presentation 3D model (`solavis-camera.glb`), its manifest and generator script.
+- Truth ledger, hardware doc, page spec and checklist updated. Open questions now have defaults (no TODOs on the page).
+- `prompt-task.md` starts with **Revision 2 tasks R1 to R6**; the revision 1 tasks remain below for verification.
 
 ## Read in this order
 | # | File | Purpose |
@@ -20,6 +26,8 @@ Everything in this folder is source material. The agent writes the Next.js page 
 | 11 | `questions-for-owner.md` | Gaps only I can fill (role, dates, links). Agent asks these before writing. |
 | 12 | `prompt-task.md` | **The task prompts** for the complex work (page, diagrams, interactive demos) |
 | - | `diagrams/*.mmd` | Mermaid sources (architecture, tamper states, power chain, auth flow) |
+| - | `assets/` | Screenshots and renders, with `assets/INDEX.md` |
+| - | `3d-model/` | `solavis-camera.glb`, manifest, generator, README |
 
 ## Rules for the agent
 1. Read `00-truth-ledger.md` and obey it. No invented numbers, customers, accuracy, or sales.

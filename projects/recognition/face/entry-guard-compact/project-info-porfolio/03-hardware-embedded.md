@@ -55,6 +55,9 @@ Camera also reports accelerometer/reed wake **immediately** via `/device/v1/tamp
 - Thermal: closed box in Vietnamese sun can exceed 60 °C; light colour, shade by panel, vent plug option, charging stops above 45 °C by design.
 - Goal IPX4 (splash). **No rating claimed**; proven only by hose test.
 
+## 3D product model (generated from code)
+`3d-model/build_product_model.py` (manifold3d + trimesh) builds the whole product as one glTF (`solavis-camera.glb`) with 26 named parts and PBR materials: rounded ASA shell (5 mm radius, 3.5 mm walls, 6.5 mm top), back plate with tongue ring and screw shelves, 110 × 80 mm panel in a 3.2 mm pocket on the 15° slope (alu frame, 5 × 3 cells, busbars), sealed 20 mm glass window, stacked lens (metal ring, black ring, blue-coated element, gold coating ring), tapered sun hood, AM312 Fresnel dome with ridges, LED with steel bezel, gold sun inlay, vent plug, then internals: dev board on four posts, ESP32 shield, LTE module, camera module, 18650 with caps, flexible antenna, reed capsule and magnet. Same dimensions as the print model, so one parameter block drives both. `solavis-camera.manifest.json` lists parts, groups and exploded-view offsets. Internal part shapes are simplified; real board dimensions are still to be confirmed. See `assets/3d/` for renders.
+
 ## Provisioning and test plan (designed)
 - Provisioning script: flash firmware, create device ID + key, register in inventory with claim code, print QR label.
 - End-of-line test (10 steps): battery read within 50 mV, sleep current, PIR wake, accelerometer wake, reed wake, sharp frame at 1.5 m, LED current <= 250 mA, upload over Wi-Fi and 4G, charge from lamp, claim by QR.

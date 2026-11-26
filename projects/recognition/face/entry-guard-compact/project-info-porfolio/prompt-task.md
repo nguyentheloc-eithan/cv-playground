@@ -1,16 +1,47 @@
-# prompt-task.md: orders for the AI agent
+# prompt-task.md: orders for the AI agent (REVISION 2)
 
-You are working in my **Next.js portfolio** workspace. This folder (`project-info-porfolio/`) is the source material for a new individual page about my self-employed project **Solavis**. The page must focus on **AI and hardware**.
+You already built a first version of the Solavis page from revision 1 of this pack. **This is revision 2.** Re-read the whole folder, then do the work below. Do not redo what already works: audit it, then fix and extend.
+
+## What changed in revision 2
+1. `assets/` now holds real screenshots (customer app, ERP, simulator, tests) and 3D renders. See `assets/INDEX.md`.
+2. `3d-model/` holds a presentation 3D model of the camera (`solavis-camera.glb`, 26 named parts) and its generator. A first interactive viewer already exists in the portfolio (`src/components/pages/solavis/demos/EnclosureViewer.tsx` and `ProductScene.tsx`, using `three`, `@react-three/fiber`, `@react-three/drei`, model at `public/models/solavis-camera.glb`, parts and exploded offsets in `src/content/solavis-camera.manifest.json`). Audit and polish it.
+3. `questions-for-owner.md` now gives defaults for every open item. **No `[TODO]` text may remain on the page.**
+4. The truth ledger has new entries (3D model, viewer, screenshots). Obey it.
+
+## Rev 2 tasks (do these first, in order)
+
+### R1. Audit the existing page
+List what exists: components, demos, content file, routes, tests. Run lint, type-check, tests, build. Report failures and fix them. Check the page against `00-truth-ledger.md`: remove or soften any claim outside it.
+
+### R2. Remove every TODO
+Search the whole source for `[TODO`. Replace each with the default from `questions-for-owner.md` (role, dates, repo text, video poster, contact reuse, experience section built only from existing portfolio content). Keep placeholders only where the owner must decide (face-photo privacy), and show a neutral fallback instead of visible TODO text.
+
+### R3. Wire the screenshots
+Copy the chosen images from `assets/` into the portfolio under `public/images/solavis/` (keep names), optimise with the existing image pipeline (`next/image`, width/height set, `priority` only for the hero). Replace the screenshot placeholder component with a gallery: tabs "Customer app", "ERP", "Camera simulator"; light/dark pair switcher that follows the site theme by default; lightbox with keyboard support and captions from `assets/INDEX.md`; alt text describing the screen. Add the tests image in the proof area. **Privacy:** images show face crops from demo sample photos. Until the owner confirms consent, wrap the visitor/people/security images in a "Show demo faces" toggle that is off by default (CSS blur of the crops is not enough; show the dashboard/devices/organization/sales-head images by default and gate the others), and mention it in the report.
+
+### R4. Make the hardware section impressive (the owner said the old one was not)
+Order: (1) full-width 3D hero (interactive, lazy, with `assets/3d/3d-hero.png` as poster so there is no empty box), (2) one-line spec strip (125 × 90 × 79 mm design, 6 V 1.5 W panel, 18650 about 11 Wh, ESP32-S3 + LTE, estimated 0.5 to 0.8 Wh/day), (3) exploded x-ray with a "layers" stepper that explains each group in order: solar, shell, optics, sensors, electronics, power, back plate, (4) power-chain diagram and power explorer, (5) tamper simulator, (6) parts table. Keep the "Design render, not yet built" caption inside the 3D area.
+Viewer polish checklist: poster image while loading; `prefers-reduced-motion` respected; works with touch (pinch/drag); no page-scroll hijack on wheel (require a click or two-finger gesture to zoom on mobile); keyboard-operable controls with visible focus; pause rendering when off-screen; dispose geometries on unmount; fallback to `3d-exploded.png` if WebGL is missing; dark and light theme backgrounds; no console errors (React 19 dev-mode warning about "unmount a root" from the 3D canvas should be investigated and removed if it is ours).
+Optional upgrades if time allows: camera "fly-to" when a hotspot opens; part labels with leader lines in exploded mode; a "tour" button that steps through the views; subtle idle motion only when not reduced-motion; compress the GLB with `gltf-transform` meshopt (ask before adding a dev dependency); a second material variant.
+
+### R5. Use the new copy
+Update the page text from `08-copy-deck.md` and the updated `03-hardware-embedded.md` (new "3D product model" paragraph). Hero image: `assets/3d/3d-hero.png`. OpenGraph image: generated from `3d-exploded.png` or `3d-hero.png`.
+
+### R6. Final report
+Files changed, defaults applied, claims you softened, privacy decisions made, anything still blocked (only face-photo consent), how to run, test, build.
 
 ## Global rules (apply to every task)
-1. Read `README.md`, then `00-truth-ledger.md`. Claim only what the ledger allows. No invented numbers, customers, accuracy, awards, links. Label estimates "estimated" or "target".
+1. Read `README.md`, then `00-truth-ledger.md`. Claim only what the ledger allows. No invented numbers, customers, accuracy, awards, links. Label estimates "estimated" or "target". The 3D model is a "design render", never a prototype or photo.
 2. Do not publish anything under "Private" in the ledger.
-3. First read my portfolio code: router (app/ or pages/), components, styling system, content format, existing project pages, installed libraries. Follow its conventions. Smallest changes that fit. Do not redesign the site.
-4. Ask me the questions in `questions-for-owner.md` that block you (role, dates, links, my other experience). Do not guess. If I have not answered, use clearly marked placeholders `[TODO: ...]` and list them at the end.
-5. Add no new dependency unless a task says so or you justify it in one line and I approve. Prefer build-time rendering over client JS.
+3. Follow the portfolio's conventions. Smallest changes that fit. Do not redesign the site.
+4. Ask only about item 11 in `questions-for-owner.md`; use defaults for the rest.
+5. Dependencies already added for 3D: `three`, `@react-three/fiber`, `@react-three/drei`, `@types/three`. Add nothing else without asking.
 6. Never run git commit, push or stage. Leave changes in the working tree.
 7. Accessibility AA, responsive to 390 px, reduced-motion respected, dark/light follows the site.
-8. When done with each task: list files changed, claims you were unsure about, and what I must provide.
+
+---
+
+# Original task list (revision 1): verify, do not redo
 
 ## Task 0: Recon (do first, no code)
 Report: framework version, router type, styling (Tailwind/CSS modules), content system (MDX/TS data/CMS), existing project page structure, chart/3D/animation libs present, image handling, how diagrams are done. Propose the file plan for the Solavis page. Wait for my OK if the plan touches shared layout.
@@ -30,7 +61,7 @@ Client component: a synthetic score distribution (clearly labelled "illustrative
 ## Task 5: Power budget explorer (hardware showcase)
 Client component with inputs: check-ins per day, events per day, network mode (Wi-Fi / 4G), sleep current (mA), panel yield (good light / winter). Compute daily energy using the model in `03-hardware-embedded.md` (document formulas in code comments), show a stacked bar, panel yield line, and days of autonomy for an 11 Wh cell. Defaults reproduce about 0.5 Wh (Wi-Fi) and 0.8 Wh (4G). Banner: "Estimates from datasheet values. Not measured." Add unit tests for the calculation.
 
-## Task 6: 3D enclosure viewer
+## Task 6: 3D enclosure viewer (DONE in rev 2: see R4)
 Display the enclosure. Preferred: render the STL files (`hardware/enclosure/cover.stl`, `backplate.stl`, `lens_hood.stl`, copy into `public/` after I approve) with react-three-fiber (ask before adding the dependency), orbit controls, exploded-view toggle, lazy-loaded behind a "Load 3D view" button on mobile. Fallback if no 3D library: 6 pre-rendered images in a gallery. Caption: "Design, not yet printed." Also show the parameter block idea ("one number changes the whole box") with a small code excerpt.
 
 ## Task 7: Diagrams

@@ -29,4 +29,4 @@ A gate camera that runs on sunlight and knows who is at your door. It switches f
 2. Solavis Platform (later): same cloud for customers' existing cameras via an on-site agent (concept).
 
 ## Role and timeline
-Sole designer and engineer: product, hardware architecture, AI pipeline, backend, two web apps, security design, documentation, CAD scripting. Repository history 16 Sep to 26 Nov 2026. `[OWNER: confirm role title, dates, link, see questions-for-owner.md]`
+Founder and sole engineer (self-employed): product, hardware architecture, AI pipeline, backend, two web apps, security design, documentation, CAD scripting and the 3D product model. Sep 2026 to present (repository history starts 16 Sep 2026). Private repository, walkthrough on request. (Defaults; see `questions-for-owner.md`.)

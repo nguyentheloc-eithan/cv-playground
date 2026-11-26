@@ -7,11 +7,11 @@ Route suggestion: `/projects/solavis` (match the portfolio's existing route patt
 2. **Problem and solution:** two columns, 4 problem bullets, 6 solution cards with icons.
 3. **System diagram:** interactive architecture (camera, cloud, apps). Hover a node for 1-sentence detail. Source `diagrams/architecture.mmd`.
 4. **AI and computer vision:** pipeline strip (capture, detect, embed, match, decide), decision table, threshold slider demo (see prompt-task Task 3), "what I would measure next".
-5. **Hardware:** block diagram, parts table with "why", power-budget chart (stacked bars Wi-Fi vs 4G), 3D enclosure viewer (STL via react-three-fiber, or pre-rendered turntable images).
+5. **Hardware:** lead with `assets/3d/3d-hero.png` / the interactive 3D viewer (`3d-model/solavis-camera.glb`, exploded x-ray, hotspots, finish, gate post). Then block diagram, parts table with "why", power-budget chart (stacked bars Wi-Fi vs 4G). Use `assets/3d/3d-exploded.png` as the static fallback and share image.
 6. **Tamper protection:** state-machine diagram plus an interactive "try to tamper" simulator (Task 2): tilt, turn, open cover, cover lens, cut network; each lights up the layer that catches it, with its weakness.
 7. **Cloud and subscription:** device API list, request flow for an event (402/423/429 outcomes), plan limits toggle demo.
 8. **Security and trust:** President face-login flow diagram, ceilings and delegation visual (Task 4), hash-chain visual with a "tamper with a record" button that breaks the chain.
-9. **Apps:** screenshots of customer app and ERP in a tabbed carousel (light and dark).
+9. **Apps:** screenshots from `assets/customer-app/`, `assets/erp/`, `assets/simulator/` in a tabbed gallery (light and dark pairs). Show `evidence/tests-157-passed.png` in the proof area.
 10. **Decisions and trade-offs:** filterable table from `07`.
 11. **Status, honesty box:** built / designed / not done (from the ledger). Visible, not hidden.
 12. **Roadmap:** bench test, firmware, 5 units, 5-user pilot, payments, custom PCB.

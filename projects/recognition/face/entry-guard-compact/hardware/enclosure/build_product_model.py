@@ -221,12 +221,12 @@ PARTS = [
 
 # Exploded view offsets in mm along glTF axes (x right, y up, z toward the viewer at the front)
 EXPLODE = {
-    "hood": [0, 0, 46], "glass": [0, 0, 30], "lens_ring_1": [0, 0, 18], "lens_ring_2": [0, 0, 12], "lens_glass": [0, 0, 6],
-    "lens_coat": [0, 0, 9], "pir_dome": [0, 0, 24], "led_bezel": [0, 0, 22], "led_lens": [0, 0, 32], "badge": [0, 0, 14],
-    "panel_frame": [0, 46, 0], "panel_cells": [0, 56, 0], "panel_busbars": [0, 60, 0],
-    "camera_module": [0, 0, -14], "pcb": [0, 0, -30], "esp32": [0, 0, -42], "lte_module": [0, 0, -42], "chips": [0, 0, -40],
-    "battery": [0, -26, -30], "battery_caps": [0, -26, -30], "antenna": [-30, 0, -30],
-    "reed": [0, 12, -56], "magnet": [0, 12, -64], "backplate": [0, 0, -84], "vent_plug": [0, -26, 0],
+    "hood": [0, 0, 52], "glass": [0, 0, 34], "lens_ring_1": [0, 0, 20], "lens_ring_2": [0, 0, 14], "lens_glass": [0, 0, 7],
+    "lens_coat": [0, 0, 10], "pir_dome": [0, 0, 28], "led_bezel": [0, 0, 26], "led_lens": [0, 0, 38], "badge": [0, 0, 16],
+    "panel_frame": [0, 52, 0], "panel_cells": [0, 62, 0], "panel_busbars": [0, 62.5, 0],
+    "camera_module": [0, 0, -22], "pcb": [0, 0, -44], "esp32": [0, 0, -58], "lte_module": [0, 0, -58], "chips": [0, 0, -54],
+    "battery": [0, -22, -48], "battery_caps": [0, -22, -48], "antenna": [-34, 0, -44],
+    "reed": [0, 14, -66], "magnet": [0, 14, -78], "backplate": [0, 0, -104], "vent_plug": [0, -30, 0],
 }
 
 

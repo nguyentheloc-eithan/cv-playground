@@ -20,7 +20,7 @@ A gate camera that runs on sunlight, recognises visitors, and locks itself when 
 ## Section blurbs
 **AI.** Camera detects, cloud recognises: YuNet finds faces, SFace turns them into 128-number vectors, cosine scores decide known, uncertain or unknown. Watch-list matches always need a human.
 
-**Hardware.** ESP32-S3 with LTE, solar charger, 18650 cell, PIR, accelerometer, compass and a reed switch. A 125 × 90 × 79 mm wedge enclosure generated from code.
+**Hardware.** ESP32-S3 with LTE, solar charger, 18650 cell, PIR, accelerometer, compass and a reed switch. A 125 × 90 × 79 mm wedge enclosure and a full 26-part 3D product model, both generated from code (design renders, not yet built).
 
 **Tamper.** Accelerometer, compass, magnet switch, image comparison and missed check-ins. Any one trips a lock; only the owner unlocks.
 
