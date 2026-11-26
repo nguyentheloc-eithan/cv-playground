@@ -1,0 +1,11 @@
+flowchart LR
+  P[Solar panel 6V 1.5W] --> C[CN3791 charger + NTC cutoff 0-45C]
+  C --> B[18650 3000mAh protected]
+  B --> M[ESP32-S3 + LTE]
+  M --> CAM[OV2640]
+  PIR[PIR] --> M
+  ACC[Accelerometer] --> M
+  MAG[Compass] --> M
+  REED[Reed switch] --> M
+  M --> LED[White LED via MOSFET]
+  B --> DIV[Divider] --> M

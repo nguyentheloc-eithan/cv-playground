@@ -14,13 +14,14 @@
   --sv-text: #111827;
   --sv-text-secondary: #525c6e;
   --sv-text-muted: #6b7385;
-  --sv-text-on-primary: #ffffff;
+  --sv-text-on-primary: #111827;
+  --sv-text-on-danger: #ffffff;
 
-  --sv-primary: #4f46e5;
-  --sv-primary-hover: #4338ca;
-  --sv-primary-text: #4f46e5;
-  --sv-primary-soft: #eef0ff;
-  --sv-focus-ring: rgba(79, 70, 229, 0.35);
+  --sv-primary: #D4A017;
+  --sv-primary-hover: #C2910F;
+  --sv-primary-text: #8A6300;
+  --sv-primary-soft: #FDF6E3;
+  --sv-focus-ring: rgba(212, 160, 23, 0.45);
 
   --sv-success: #15803d;
   --sv-success-soft: #e9f7ef;
@@ -32,12 +33,12 @@
   --sv-info: #0369a1;
   --sv-info-soft: #e8f5fc;
 
-  --sv-chart-1: #4f46e5;
-  --sv-chart-2: #0ea5e9;
-  --sv-chart-3: #f59e0b;
-  --sv-chart-4: #10b981;
-  --sv-chart-5: #f43f5e;
-  --sv-chart-6: #94a3b8;
+  --sv-chart-1: #D4A017;
+  --sv-chart-2: #475569;
+  --sv-chart-3: #0EA5E9;
+  --sv-chart-4: #9C6B3C;
+  --sv-chart-5: #1E40AF;
+  --sv-chart-6: #94A3B8;
   --sv-chart-grid: #e6e9f2;
 
   --sv-font: 'Inter', ui-sans-serif, -apple-system, 'Helvetica Neue', Arial, sans-serif;
@@ -86,11 +87,12 @@
   --sv-text-secondary: #a4acbd;
   --sv-text-muted: #8891a5;
 
-  --sv-primary: #5b54f0;
-  --sv-primary-hover: #4f46e5;
-  --sv-primary-text: #8b90ff;
-  --sv-primary-soft: rgba(91, 84, 240, 0.18);
-  --sv-focus-ring: rgba(139, 144, 255, 0.45);
+  --sv-primary: #E3B341;
+  --sv-primary-hover: #D4A017;
+  --sv-primary-text: #F2C94C;
+  --sv-primary-soft: rgba(227, 179, 65, 0.16);
+  --sv-text-on-primary: #111827;
+  --sv-focus-ring: rgba(242, 201, 76, 0.45);
 
   --sv-success: #4ade80;
   --sv-success-soft: rgba(74, 222, 128, 0.14);
@@ -101,6 +103,12 @@
   --sv-info: #38bdf8;
   --sv-info-soft: rgba(56, 189, 248, 0.14);
 
+  --sv-chart-1: #E3B341;
+  --sv-chart-2: #94A3B8;
+  --sv-chart-3: #38BDF8;
+  --sv-chart-4: #C08A55;
+  --sv-chart-5: #60A5FA;
+  --sv-chart-6: #64748B;
   --sv-chart-grid: #232c40;
 
   --sv-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -108,3 +116,5 @@
   --sv-shadow-overlay: 0 16px 40px rgba(0, 0, 0, 0.55);
   --sv-overlay: rgba(0, 0, 0, 0.6);
 }
+
+::selection { background: var(--sv-primary-soft); color: var(--sv-text); }

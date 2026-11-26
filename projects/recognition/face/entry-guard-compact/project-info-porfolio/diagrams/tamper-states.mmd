@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> unclaimed
+  unclaimed --> mounting: claim code
+  mounting --> armed: owner arms at final spot
+  armed --> locked: moved / turned / cover opened / view changed / missed check-ins
+  locked --> service: owner unlocks (15 min window)
+  service --> armed: re-arm or window ends
+  armed --> revoked: staff revoke
+  locked --> revoked: staff revoke

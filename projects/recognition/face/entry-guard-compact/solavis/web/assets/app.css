@@ -1,6 +1,8 @@
 /* Solavis components. Only var(--sv-*) tokens: no literal colors, radii or shadows here. */
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+*{scrollbar-width:thin;scrollbar-color:var(--sv-border-input) transparent}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{margin:0;font:400 14px/20px var(--sv-font);color:var(--sv-text);background:var(--sv-bg);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
 h1,h2,h3{margin:0;letter-spacing:-.01em;font-weight:600}
 h1{font-size:24px;line-height:32px}h2{font-size:16px;line-height:24px}h3{font-size:13px;line-height:18px;color:var(--sv-text-secondary);font-weight:500}
@@ -10,7 +12,7 @@ p{margin:0}.muted{color:var(--sv-text-muted)}.sec{color:var(--sv-text-secondary)
 .row{display:flex;gap:var(--sv-space-2);flex-wrap:wrap;align-items:center}.row.nowrap{flex-wrap:nowrap}.stack{display:flex;flex-direction:column;gap:var(--sv-space-3)}
 svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}svg.i.s16{width:16px;height:16px}svg.i.s18{width:18px;height:18px}
 :focus-visible{outline:0;box-shadow:0 0 0 3px var(--sv-focus-ring)}
-input:focus-visible,select:focus-visible,textarea:focus-visible{border-color:var(--sv-primary)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{border-color:var(--sv-primary-text)}
 @media(prefers-reduced-motion:reduce){*{transition-duration:.001ms!important;animation:none!important}}
 
 /* ---------- app shell ---------- */
@@ -33,7 +35,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{border-color:var
 .topbar.scrolled{background:var(--sv-bg);border-bottom-color:var(--sv-border)}
 .topbar .ttl h1{font-size:24px}.topbar .ttl .sub{font-size:13px;line-height:18px;color:var(--sv-text-secondary)}
 .search{display:flex;align-items:center;gap:var(--sv-space-2);width:320px;height:40px;padding:0 var(--sv-space-3);background:var(--sv-surface);border:1px solid var(--sv-border-input);border-radius:var(--sv-radius-md);color:var(--sv-text-muted)}
-.search input{border:0;background:transparent;flex:1;min-width:0;height:100%;padding:0;color:var(--sv-text);font:inherit;outline:0}.search:focus-within{border-color:var(--sv-primary);box-shadow:0 0 0 3px var(--sv-focus-ring)}
+.search input{border:0;background:transparent;flex:1;min-width:0;height:100%;padding:0;color:var(--sv-text);font:inherit;outline:0}.search:focus-within{border-color:var(--sv-primary-text);box-shadow:0 0 0 3px var(--sv-focus-ring)}
 kbd{font:500 12px/16px var(--sv-font);border:1px solid var(--sv-border);background:var(--sv-surface-muted);border-radius:var(--sv-radius-sm);padding:2px 6px;color:var(--sv-text-muted)}
 .iconbtn{width:40px;height:40px;border-radius:var(--sv-radius-md);background:var(--sv-surface);border:1px solid var(--sv-border);color:var(--sv-text-secondary);display:grid;place-items:center;cursor:pointer;position:relative;padding:0}
 .iconbtn:hover{background:var(--sv-surface-hover);color:var(--sv-text)}.iconbtn .dotbad{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--sv-danger-solid)}
@@ -65,7 +67,7 @@ kbd{font:500 12px/16px var(--sv-font);border:1px solid var(--sv-border);backgrou
 .btn:hover{background:var(--sv-surface-hover);text-decoration:none}.btn.sm{height:32px;padding:0 var(--sv-space-3);font-size:13px}
 .btn.primary{background:var(--sv-primary);border-color:var(--sv-primary);color:var(--sv-text-on-primary)}.btn.primary:hover{background:var(--sv-primary-hover);border-color:var(--sv-primary-hover)}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--sv-text-secondary)}.btn.ghost:hover{background:var(--sv-surface-hover)}
-.btn.danger{background:var(--sv-danger-solid);border-color:var(--sv-danger-solid);color:var(--sv-text-on-primary)}.btn.danger:hover{background:var(--sv-danger)}
+.btn.danger{background:var(--sv-danger-solid);border-color:var(--sv-danger-solid);color:var(--sv-text-on-danger)}.btn.danger:hover{background:var(--sv-danger)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .field{margin-bottom:var(--sv-space-4)}.field label{display:block;font-size:13px;line-height:18px;font-weight:500;color:var(--sv-text);margin-bottom:6px}.field .help{font-size:12px;color:var(--sv-text-muted);margin-top:4px}
 input,select,textarea{font:400 14px/20px var(--sv-font);height:40px;padding:0 12px;border:1px solid var(--sv-border-input);border-radius:var(--sv-radius-md);background:var(--sv-surface);color:var(--sv-text);max-width:100%;width:100%}

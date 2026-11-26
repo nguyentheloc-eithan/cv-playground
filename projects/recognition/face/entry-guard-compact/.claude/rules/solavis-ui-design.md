@@ -32,10 +32,10 @@ user's explicit request in chat → reference image (§1) → this file → exis
 
 - Clean, airy, light-first SaaS admin: a cool grey canvas with white cards floating on soft shadows.
 - Generous radii (10–20px), generous whitespace, few visible borders.
-- **One accent color (indigo)**, used sparingly: primary actions, the active nav item, the main chart series.
+- **One accent color (Solavis Gold)**, used sparingly: primary actions, the active nav item, the main chart series.
 - Data first: large, readable KPI numbers, quiet labels and calm charts.
 - Status is shown with **soft tinted pills**, never saturated solid badges.
-- **What it is not:** Fluent's small 4px corners, Segoe UI, acrylic/mica/blur materials, reveal-highlight effects, Fluent's brand blue `#0F6CBD`, dense ribbon-style command bars.
+- **What it is not:** violet, purple and pink accents, Fluent's small 4px corners, Segoe UI, acrylic/mica/blur materials, reveal-highlight effects, Fluent's brand blue `#0F6CBD`, dense ribbon-style command bars.
 
 ---
 
@@ -61,14 +61,14 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
   --sv-text: #111827;
   --sv-text-secondary: #525c6e;
   --sv-text-muted: #6b7385; /* lightest color allowed for readable text */
-  --sv-text-on-primary: #ffffff;
+  --sv-text-on-primary: #111827; /* dark text on gold, never white */
 
   /* Brand */
-  --sv-primary: #4f46e5;
-  --sv-primary-hover: #4338ca;
-  --sv-primary-text: #4f46e5; /* links / primary-colored text */
-  --sv-primary-soft: #eef0ff; /* active nav bg, icon tiles, chips */
-  --sv-focus-ring: rgba(79, 70, 229, 0.35);
+  --sv-primary: #D4A017;
+  --sv-primary-hover: #C2910F;
+  --sv-primary-text: #8A6300; /* gold text, links, active nav, icons on soft bg */
+  --sv-primary-soft: #FDF6E3; /* active nav bg, icon tiles, chips */
+  --sv-focus-ring: rgba(212, 160, 23, 0.45);
 
   /* Status: text color / soft background */
   --sv-success: #15803d;
@@ -82,12 +82,12 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
   --sv-info-soft: #e8f5fc;
 
   /* Charts (use in this order) */
-  --sv-chart-1: #4f46e5; /* indigo */
-  --sv-chart-2: #0ea5e9; /* sky */
-  --sv-chart-3: #f59e0b; /* amber */
-  --sv-chart-4: #10b981; /* emerald */
-  --sv-chart-5: #f43f5e; /* rose */
-  --sv-chart-6: #94a3b8; /* slate (other / previous period) */
+  --sv-chart-1: #D4A017; /* gold */
+  --sv-chart-2: #475569; /* graphite */
+  --sv-chart-3: #0EA5E9; /* sky */
+  --sv-chart-4: #9C6B3C; /* bronze */
+  --sv-chart-5: #1E40AF; /* navy */
+  --sv-chart-6: #94A3B8; /* silver */
   --sv-chart-grid: #e6e9f2;
 
   /* Typography */
@@ -145,11 +145,12 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
   --sv-text-secondary: #a4acbd;
   --sv-text-muted: #8891a5;
 
-  --sv-primary: #5b54f0;
-  --sv-primary-hover: #4f46e5;
-  --sv-primary-text: #8b90ff;
-  --sv-primary-soft: rgba(91, 84, 240, 0.18);
-  --sv-focus-ring: rgba(139, 144, 255, 0.45);
+  --sv-primary: #E3B341;
+  --sv-primary-hover: #D4A017;
+  --sv-primary-text: #F2C94C;
+  --sv-primary-soft: rgba(227, 179, 65, 0.16);
+  --sv-text-on-primary: #111827;
+  --sv-focus-ring: rgba(242, 201, 76, 0.45);
 
   --sv-success: #4ade80;
   --sv-success-soft: rgba(74, 222, 128, 0.14);
@@ -160,6 +161,12 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
   --sv-info: #38bdf8;
   --sv-info-soft: rgba(56, 189, 248, 0.14);
 
+  --sv-chart-1: #E3B341;
+  --sv-chart-2: #94A3B8;
+  --sv-chart-3: #38BDF8;
+  --sv-chart-4: #C08A55;
+  --sv-chart-5: #60A5FA;
+  --sv-chart-6: #64748B;
   --sv-chart-grid: #232c40;
 
   /* In dark mode cards get a 1px --sv-border instead of a visible shadow */
@@ -225,6 +232,7 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
 - Nav item: 44px tall, `--sv-radius-md`, padding 0 12px, 12px gap, 20px icon, label 14/500 in `--sv-text-secondary`.
   - Hover: `--sv-surface-hover` background, `--sv-text` color.
   - **Active:** `--sv-primary-soft` background, `--sv-primary-text` for icon and label, weight 600.
+  - Icons on `--sv-primary-soft` (KPI icon tiles, active nav) use `--sv-primary-text`. Anything on `--sv-primary` (logo mark, checkbox checkmark, radio dot, switch knob icon) uses `--sv-text-on-primary`.
   - Count badge: a right-aligned pill in `--sv-primary-soft` / `--sv-primary-text`, 12/500.
 - Group labels (e.g. MAIN, MANAGEMENT, SYSTEM) use the sidebar-section-label style, with 24px above and 8px below.
 - Bottom (optional): a help/upgrade card (`--sv-primary-soft`, `--sv-radius-2xl`, 16px padding), then the user row: 36px avatar, name 14/600, role 12 muted, chevron.
@@ -257,7 +265,7 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
 - Body rows: 60px tall, 14px text, 1px `--sv-border` divider between rows. Hover uses `--sv-surface-hover`; selected uses `--sv-primary-soft`.
 - First column: checkbox (18px, `--sv-radius-sm`), 32px avatar, name 14/600 with a 12 muted subline.
 - Numbers are right-aligned with tabular-nums. Status uses the status badge below. The last column is a kebab menu.
-- Footer: "Showing 1–10 of 248" (13 muted) on the left. Pagination on the right uses 32×32 `--sv-radius-md` buttons; the active page is `--sv-primary` with white text.
+- Footer: "Showing 1–10 of 248" (13 muted) on the left. Pagination on the right uses 32×32 `--sv-radius-md` buttons; the active page is `--sv-primary` with `--sv-text-on-primary` text.
 
 ### Status badge
 
@@ -272,7 +280,7 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
 ### Buttons
 
 - Sizes: **md** is 40px tall, padding 0 16px, 14/600. **sm** is 32px tall, padding 0 12px, 13/600. Both use `--sv-radius-md`, an 18px icon and an 8px gap.
-- **Primary:** `--sv-primary` background with white text; hover `--sv-primary-hover`. **Only one primary button per region.**
+- **Primary:** `--sv-primary` background with `--sv-text-on-primary` text (never white); hover `--sv-primary-hover`. **Only one primary button per region.**
 - **Secondary:** `--sv-surface` background, 1px `--sv-border`, `--sv-text`; hover `--sv-surface-hover`.
 - **Ghost:** transparent, `--sv-text-secondary`; hover `--sv-surface-hover`.
 - **Destructive:** `--sv-danger-solid` background with white text.
@@ -285,7 +293,7 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
 - 40px tall, `--sv-radius-md`, `--sv-surface` background, 1px `--sv-border-input`, padding 0 12px, 14px text, placeholder in `--sv-text-muted`.
 - Label above the field (13/500 `--sv-text`, 6px gap). Helper text 12 muted. On error: `--sv-danger-solid` border plus a 12px message in `--sv-danger` with an icon.
 - Selects have a 16px chevron-down. Checkbox, radio and switch use `--sv-primary` when on. The switch is a 36×20 pill.
-- **Focus (every interactive element, `:focus-visible`):** `--sv-primary` border plus `box-shadow: 0 0 0 3px var(--sv-focus-ring)`.
+- **Focus (every interactive element, `:focus-visible`):** `--sv-primary-text` border plus `box-shadow: 0 0 0 3px var(--sv-focus-ring)`.
 
 ### Tabs and segmented control
 
@@ -345,6 +353,8 @@ If no tokens file exists yet, create `src/styles/solavis-tokens.css` (or put it 
 - All text tokens already meet WCAG AA (4.5:1). Don't introduce lighter text colors.
 - Form-control outlines use `--sv-border-input`, which meets 3:1.
 - Every interactive element has a visible `:focus-visible` style (§5 Inputs).
+- Gold (`--sv-primary`) is a fill color only. Never use it for text or thin icons on light surfaces; use `--sv-primary-text`.
+- Warning badges always show a text label so they are never confused with gold.
 - The sidebar, menus, tabs, tables and modals are fully keyboard-operable. Modals trap focus and close on Esc.
 - Icon-only buttons have an `aria-label`. Charts have a text alternative (title plus summary, or a data table).
 - Hit targets are at least 32px (40px preferred).

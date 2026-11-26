@@ -1,0 +1,14 @@
+sequenceDiagram
+  participant U as President
+  participant B as Browser
+  participant S as Server
+  U->>B: email + password
+  B->>S: POST /login
+  S-->>B: session (face_pending)
+  B->>S: frames: straight + head turn
+  S->>S: SFace match >= 0.50 and yaw >= 0.20
+  S-->>B: session active (60 min) + log entry
+  U->>B: sensitive action
+  B->>S: request
+  S-->>B: 428 face_reverify (if older than 10 min)
+  B->>S: fresh face check, then retry

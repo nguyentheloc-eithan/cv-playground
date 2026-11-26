@@ -1,0 +1,12 @@
+flowchart LR
+  CAM[Camera ESP32-S3 + 4G] -->|HTTPS device key| API[Device API v1]
+  API --> REC[Recognition YuNet + SFace]
+  API --> TAM[Tamper evaluator]
+  REC --> DB[(SQL database)]
+  TAM --> DB
+  REC --> ST[(Snapshot storage)]
+  DB --> CUST[Customer app]
+  DB --> ERP[Solavis ERP]
+  TAM --> AL[Alerts: web, Telegram, webhook]
+  REC --> AL
+  ERP -->|plans, suspend, revoke| API

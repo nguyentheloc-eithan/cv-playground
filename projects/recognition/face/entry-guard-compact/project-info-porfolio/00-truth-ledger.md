@@ -1,0 +1,43 @@
+# Truth ledger (what may be claimed)
+
+Snapshot: 26 Nov 2026. Repository: `entry-guard-compact` (private, 21 commits since 16 Sep 2026).
+
+## A. Built and tested (can say "built")
+| Item | Evidence |
+|---|---|
+| Face detection + recognition pipeline (YuNet detector, SFace 128-number vectors, cosine score, accept/uncertain/unknown thresholds) | `app/faces.py`, `solavis/recog.py`; tests use real sample photos |
+| Multi-tenant cloud backend (FastAPI + SQLAlchemy; SQLite default, PostgreSQL/MySQL by config) | `solavis/`, ~3,500 lines of Python, 22 tables |
+| Device API v1: claim code to device key, config, heartbeat, events (recognise), tamper report | `solavis/api/device.py` |
+| Server-side tamper evaluation: tilt, heading, cover, image-histogram view change, missed check-ins; auto-lock and critical alert; owner unlock into a service window | `solavis/services.py`, `tamper.yaml` |
+| Subscription control: trial, active, past due, suspended, closed; plan limits (cameras, people, events/day, watch-list) enforced per request | `services.entitlement`, `device.py` |
+| Customer web app (devices, alerts, visitors review, people with consent, reports, activity log, tickets, billing, team) | `solavis/web/customer.html` |
+| Solavis ERP (customers/CRM, billing, support, inventory, tasks, organisation, access review, security) | `solavis/web/admin.html` |
+| Departments with ceilings, head-managed roles, per-person grants/denials (dynamic RBAC) | `permissions.py`, `api/org.py` |
+| President login = password + live face check (head-turn liveness, lockout, re-verify for sensitive actions) | `faceauth.py`, `api/auth.py` |
+| Tamper-evident hash-chained security log with integrity verification | `services.sec_log`, `verify_chain` |
+| Camera simulator that behaves like the device (claim, heartbeat, visitors, tilt/turn) | `solavis/sim/` |
+| Automated tests | **157 tests passing** across 4 test files (~2,000 lines of tests) |
+| Config-as-YAML with start-up validation (typos stop the server) | `solavis/settings.py`, `solavis/config/*.yaml` |
+| Design system (own tokens, light/dark, collapsible sidebar, no UI kit) | `solavis-tokens.css`, `app.css` |
+| Parametric 3D enclosure generator (3 STL files) | `hardware/enclosure/build_enclosure.py` |
+
+## B. Designed, documented, NOT built (say "designed")
+| Item | Note |
+|---|---|
+| The physical camera (ESP32-S3 + LTE, OV2640, PIR, accelerometer, compass, reed switch, solar charger, 18650) | Spec SOL-HW-001 v0.1. No board assembled. No firmware written. |
+| Enclosure | STL generated, **not printed**, Rev C changes not modelled |
+| Power budget (about 0.5 to 0.8 Wh/day) | **Estimate** from datasheets, never measured |
+| Parts cost (about 2.0M VND per unit at ~10 units) | **Estimate** |
+| Bring-your-own-camera "Platform" product with on-site agent | Concept only |
+| ~150 numbered requirements (SRS) | Exist as documents |
+
+## C. Not done (never imply otherwise)
+No real customers, no pilot, no sales, no revenue, no field test, no measured recognition accuracy, no measured battery life, no radio/regulatory approval, no payment gateway (billing is manual), no email/push sending, no firmware, no migrations tool (Alembic), PostgreSQL/MySQL not yet run on real servers, printed-photo attacks only partly covered by head-turn check.
+
+## D. Allowed wording
+- Status badge: **"Software built and tested against a simulator. Hardware in design. Pilot planned."**
+- Allowed numbers: 157 passing tests; ~3,500 lines backend; 22 tables; 8 departments; 3 STL parts; 125 × 90 × 79 mm (design); thresholds 0.363 / 0.30 (SFace published defaults, not tuned); 6 V 1.5 W panel; 18650 3000 mAh (about 11 Wh); estimated 0.5 to 0.8 Wh/day; estimated 14 days autonomy (calculated).
+- Forbidden: accuracy %, "deployed", "customers", "used by", "production-ready", "IP65/IPX4 rated" (goal only), "military-grade", anything about revenue.
+
+## E. Private (do not publish)
+Selling prices, plan prices (the YAML values are samples), margins, pilot budget, supplier/shop names, owner email/phone, implementation-plan finance section, demo passwords, secret keys, `data/` folder contents (face photos).
