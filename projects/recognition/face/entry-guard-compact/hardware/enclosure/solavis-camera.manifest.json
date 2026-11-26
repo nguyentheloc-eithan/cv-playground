@@ -1,0 +1,298 @@
+{
+  "units": "cm",
+  "size_mm": [
+    125.0,
+    79.1,
+    95.0
+  ],
+  "tilt_deg": 15.0,
+  "note": "Presentation model. Design only, not yet printed or assembled.",
+  "parts": [
+    {
+      "name": "cover",
+      "group": "shell",
+      "material": "shell_white",
+      "triangles": 6372,
+      "explode_cm": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "backplate",
+      "group": "shell",
+      "material": "plate_graphite",
+      "triangles": 4192,
+      "explode_cm": [
+        0.0,
+        0.0,
+        -10.4
+      ]
+    },
+    {
+      "name": "hood",
+      "group": "optics",
+      "material": "hood_black",
+      "triangles": 1590,
+      "explode_cm": [
+        0.0,
+        0.0,
+        5.2
+      ]
+    },
+    {
+      "name": "glass",
+      "group": "optics",
+      "material": "glass_dark",
+      "triangles": 252,
+      "explode_cm": [
+        0.0,
+        0.0,
+        3.4
+      ]
+    },
+    {
+      "name": "lens_ring_1",
+      "group": "optics",
+      "material": "lens_metal",
+      "triangles": 512,
+      "explode_cm": [
+        0.0,
+        0.0,
+        2.0
+      ]
+    },
+    {
+      "name": "lens_ring_2",
+      "group": "optics",
+      "material": "lens_black",
+      "triangles": 512,
+      "explode_cm": [
+        0.0,
+        0.0,
+        1.4
+      ]
+    },
+    {
+      "name": "lens_glass",
+      "group": "optics",
+      "material": "lens_coat_blue",
+      "triangles": 2048,
+      "explode_cm": [
+        0.0,
+        0.0,
+        0.7
+      ]
+    },
+    {
+      "name": "lens_coat",
+      "group": "optics",
+      "material": "lens_coat_gold",
+      "triangles": 512,
+      "explode_cm": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "pir_dome",
+      "group": "sensors",
+      "material": "pir_frost",
+      "triangles": 3694,
+      "explode_cm": [
+        0.0,
+        0.0,
+        2.8
+      ]
+    },
+    {
+      "name": "led_bezel",
+      "group": "sensors",
+      "material": "bezel_steel",
+      "triangles": 512,
+      "explode_cm": [
+        0.0,
+        0.0,
+        2.6
+      ]
+    },
+    {
+      "name": "led_lens",
+      "group": "sensors",
+      "material": "led_warm",
+      "triangles": 2048,
+      "explode_cm": [
+        0.0,
+        0.0,
+        3.8
+      ]
+    },
+    {
+      "name": "badge",
+      "group": "shell",
+      "material": "badge_gold",
+      "triangles": 348,
+      "explode_cm": [
+        0.0,
+        0.0,
+        1.6
+      ]
+    },
+    {
+      "name": "vent_plug",
+      "group": "shell",
+      "material": "rubber_black",
+      "triangles": 764,
+      "explode_cm": [
+        0.0,
+        -3.0,
+        0.0
+      ]
+    },
+    {
+      "name": "panel_frame",
+      "group": "solar",
+      "material": "alu_frame",
+      "triangles": 12,
+      "explode_cm": [
+        0.0,
+        5.2,
+        0.0
+      ]
+    },
+    {
+      "name": "panel_cells",
+      "group": "solar",
+      "material": "solar_cell",
+      "triangles": 180,
+      "explode_cm": [
+        0.0,
+        6.2,
+        0.0
+      ]
+    },
+    {
+      "name": "panel_busbars",
+      "group": "solar",
+      "material": "busbar_silver",
+      "triangles": 360,
+      "explode_cm": [
+        0.0,
+        6.25,
+        0.0
+      ]
+    },
+    {
+      "name": "pcb",
+      "group": "electronics",
+      "material": "pcb_green",
+      "triangles": 1052,
+      "explode_cm": [
+        0.0,
+        0.0,
+        -4.4
+      ]
+    },
+    {
+      "name": "esp32",
+      "group": "electronics",
+      "material": "shield_steel",
+      "triangles": 12,
+      "explode_cm": [
+        0.0,
+        0.0,
+        -5.8
+      ]
+    },
+    {
+      "name": "lte_module",
+      "group": "electronics",
+      "material": "lte_black",
+      "triangles": 12,
+      "explode_cm": [
+        0.0,
+        0.0,
+        -5.8
+      ]
+    },
+    {
+      "name": "chips",
+      "group": "electronics",
+      "material": "ic_black",
+      "triangles": 60,
+      "explode_cm": [
+        0.0,
+        0.0,
+        -5.4
+      ]
+    },
+    {
+      "name": "camera_module",
+      "group": "electronics",
+      "material": "cam_black",
+      "triangles": 268,
+      "explode_cm": [
+        0.0,
+        0.0,
+        -2.2
+      ]
+    },
+    {
+      "name": "battery",
+      "group": "power",
+      "material": "cell_wrap",
+      "triangles": 252,
+      "explode_cm": [
+        0.0,
+        -2.2,
+        -4.8
+      ]
+    },
+    {
+      "name": "battery_caps",
+      "group": "power",
+      "material": "cell_steel",
+      "triangles": 760,
+      "explode_cm": [
+        0.0,
+        -2.2,
+        -4.8
+      ]
+    },
+    {
+      "name": "antenna",
+      "group": "electronics",
+      "material": "fpc_gold",
+      "triangles": 12,
+      "explode_cm": [
+        -3.4,
+        0.0,
+        -4.4
+      ]
+    },
+    {
+      "name": "magnet",
+      "group": "sensors",
+      "material": "magnet_nickel",
+      "triangles": 252,
+      "explode_cm": [
+        0.0,
+        1.4,
+        -7.8
+      ]
+    },
+    {
+      "name": "reed",
+      "group": "sensors",
+      "material": "reed_glass",
+      "triangles": 252,
+      "explode_cm": [
+        0.0,
+        1.4,
+        -6.6
+      ]
+    }
+  ]
+}

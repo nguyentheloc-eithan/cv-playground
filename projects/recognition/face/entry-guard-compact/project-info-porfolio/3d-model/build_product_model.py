@@ -2,7 +2,8 @@
 
 Run:  python build_product_model.py [out_dir]
 Needs: pip install manifold3d numpy trimesh
-Writes: solavis-camera.glb and solavis-camera.manifest.json (part names, groups, exploded-view offsets).
+Writes: solavis-camera.glb, solavis-camera.manifest.json (part names, groups, exploded-view offsets) and two STL files
+(solavis-camera-assembled.stl, solavis-camera-exploded.stl) that GitHub previews as interactive 3D models.
 
 Same dimensions as build_enclosure.py (the print model). This file adds what a print file does not need:
 rounded product shell, solar cells, glass, lens stack, PIR dome, LED, inlay badge and the internal parts.
@@ -256,6 +257,29 @@ for name, m, material, group in PARTS:
     info.append({"name": name, "group": group, "material": material.name, "triangles": int(len(t.faces)),
                  "explode_cm": [round(c / 10, 2) for c in EXPLODE.get(name, [0, 0, 0])]})
 out.mkdir(parents=True, exist_ok=True)
+
+
+def stl_frame(t, offset_cm=(0, 0, 0)):
+    """glTF cm (x right, y up, z front) -> STL mm, z up, front toward -y, resting on z = 0."""
+    v = (np.asarray(t.vertices, float) + np.asarray(offset_cm, float)) * 10.0
+    return trimesh.Trimesh(np.column_stack([v[:, 0], -v[:, 2], v[:, 1]]), t.faces, process=False)
+
+
+def write_stl(path, exploded):
+    meshes = []
+    for name, m, _, _ in PARTS:
+        t = as_mesh(m)
+        off = [c / 10 for c in EXPLODE.get(name, [0, 0, 0])] if exploded else (0, 0, 0)
+        meshes.append(stl_frame(t, off))
+    whole = trimesh.util.concatenate(meshes)
+    whole.apply_translation([0, 0, -whole.bounds[0][2]])
+    whole.export(path)
+    return whole
+
+
+for fname, ex in (("solavis-camera-assembled.stl", False), ("solavis-camera-exploded.stl", True)):
+    w = write_stl(out / fname, ex)
+    print(f"{fname}  {(out / fname).stat().st_size / 1024:.0f} KB, bounds mm {np.round(w.bounds[1] - w.bounds[0], 1).tolist()}")
 glb = out / "solavis-camera.glb"
 glb.write_bytes(scene.export(file_type="glb"))
 (out / "solavis-camera.manifest.json").write_text(json.dumps({

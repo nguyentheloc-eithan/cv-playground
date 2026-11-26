@@ -4,6 +4,7 @@
 |---|---|
 | `solavis-camera.glb` | One glTF binary, 26 named meshes with PBR materials, units cm, Y up, front faces +Z, about 700 KB, 26,840 triangles |
 | `solavis-camera.manifest.json` | Part names, groups (shell, optics, sensors, solar, electronics, power), triangle counts, exploded-view offsets in cm (x right, y up, z toward the front) |
+| `solavis-camera-assembled.stl`, `solavis-camera-exploded.stl` | Same model as STL (mm, z up, front toward -y). **GitHub renders STL files as an interactive 3D preview**, so keep them in the repo; they live in `hardware/enclosure/` there |
 | `build_product_model.py` | Generator (python 3, `pip install manifold3d trimesh numpy scipy networkx`). `python build_product_model.py <out_dir>`. Same parameters as the print model `hardware/enclosure/build_enclosure.py` |
 
 Load in Next.js with `@react-three/drei` `useGLTF('/models/solavis-camera.glb')`. Find parts with `scene.getObjectByName('pcb')` etc. Move parts by the manifest offsets for the exploded view. Materials are named (`shell_white`, `plate_graphite`, `glass_dark`, `solar_cell`, `led_warm`, `badge_gold`, ...) so finish changes and highlights are one lookup. The glass material is replaced by a physical clear-coat material in the viewer.
