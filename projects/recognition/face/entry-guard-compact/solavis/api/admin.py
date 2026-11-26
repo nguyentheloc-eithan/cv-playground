@@ -16,26 +16,50 @@ def bad(msg):
     raise HTTPException(400, msg)
 
 
+def _team_emails(c, u):
+    """Whose work this person may see: the President sees everyone, a head sees their department, others only themselves."""
+    if u.get("is_super"):
+        return None
+    if u.get("is_head") and u.get("department_id"):
+        return [r[0] for r in c.execute(select(users.c.email).where(users.c.department_id == u["department_id"], users.c.role == "staff"))]
+    return [u["email"]]
+
+
 @router.get("/summary")
-def summary(u=Depends(need("accounts.read"))):
+def summary(u=Depends(staff)):
+    """The home page. Each block appears only if the person holds the right for it, so nobody sees another department's numbers."""
     day, t = now() - now() % 86400, settings.get().tamper
+    has = lambda p: services.can(u, p)  # noqa: E731
     with db.tx() as c:
         n = lambda tb, *w: c.execute(select(func.count()).select_from(tb).where(*w)).scalar()  # noqa: E731
-        by = {s: n(tenants, tenants.c.status == s) for s in services.STATUSES}
-        overdue = [i for i in many(c, select(invoices).where(invoices.c.status == "sent", invoices.c.due < now()))]
-        mtd = now() - 30 * 86400
-        out = {"mrr": services.mrr(c), "tenants": n(tenants, True), "by_status": by,
-               "trials_ending": many(c, select(tenants.c.id, tenants.c.name, tenants.c.trial_end).where(tenants.c.status == "trial", tenants.c.trial_end < now() + 7 * 86400).order_by(tenants.c.trial_end)),
-               "overdue_count": len(overdue), "overdue_amount": sum(i["total"] for i in overdue),
-               "new_30d": n(tenants, tenants.c.created > mtd), "churn_30d": n(tenants, tenants.c.status == "closed", tenants.c.closed_at > mtd),
-               "tickets_open": n(tickets, tickets.c.status.in_(("open", "pending"))), "tickets_unassigned": n(tickets, tickets.c.status == "open", tickets.c.assignee.is_(None)),
-               "fleet": {"units": n(inventory, inventory.c.status == "assigned"), "in_stock": n(inventory, inventory.c.status == "in_stock"), "rma": n(inventory, inventory.c.status == "rma"),
-                         "online": n(cameras, cameras.c.last_seen > now() - t.checkin_seconds * t.quiet_after_missed), "locked": n(cameras, cameras.c.state == "locked")},
-               "events_today": n(events, events.c.ts >= day),
-               "my_tasks": many(c, select(tasks, tenants.c.name.label("tenant")).join(tenants, tenants.c.id == tasks.c.tenant_id, isouter=True)
-                                .where(tasks.c.status == "open", tasks.c.assignee == u["email"]).order_by(tasks.c.due).limit(8)),
-               "recent_tickets": many(c, select(tickets, tenants.c.name.label("tenant")).join(tenants, tenants.c.id == tickets.c.tenant_id)
-                                      .where(tickets.c.status.in_(("open", "pending"))).order_by(tickets.c.updated.desc()).limit(6))}
+        out = {"has": {k: has(k) for k in ("accounts.read", "billing.read", "support.read", "inventory.read", "system.read", "tasks")}}
+        if has("accounts.read"):
+            mtd = now() - 30 * 86400
+            out.update(tenants=n(tenants, True), by_status={s_: n(tenants, tenants.c.status == s_) for s_ in services.STATUSES},
+                       trials_ending=many(c, select(tenants.c.id, tenants.c.name, tenants.c.trial_end).where(tenants.c.status == "trial", tenants.c.trial_end < now() + 7 * 86400).order_by(tenants.c.trial_end)),
+                       new_30d=n(tenants, tenants.c.created > mtd), churn_30d=n(tenants, tenants.c.status == "closed", tenants.c.closed_at > mtd))
+        if has("billing.read"):
+            overdue = many(c, select(invoices).where(invoices.c.status == "sent", invoices.c.due < now()))
+            out.update(mrr=services.mrr(c), overdue_count=len(overdue), overdue_amount=sum(i["total"] for i in overdue))
+        if has("support.read"):
+            out.update(tickets_open=n(tickets, tickets.c.status.in_(("open", "pending"))), tickets_unassigned=n(tickets, tickets.c.status == "open", tickets.c.assignee.is_(None)),
+                       recent_tickets=many(c, select(tickets, tenants.c.name.label("tenant")).join(tenants, tenants.c.id == tickets.c.tenant_id)
+                                           .where(tickets.c.status.in_(("open", "pending"))).order_by(tickets.c.updated.desc()).limit(6)))
+        if has("inventory.read"):
+            out["fleet"] = {"units": n(inventory, inventory.c.status == "assigned"), "in_stock": n(inventory, inventory.c.status == "in_stock"), "rma": n(inventory, inventory.c.status == "rma"),
+                            "online": n(cameras, cameras.c.last_seen > now() - t.checkin_seconds * t.quiet_after_missed), "locked": n(cameras, cameras.c.state == "locked")}
+        if has("system.read"):
+            out["events_today"] = n(events, events.c.ts >= day)
+        if has("tasks"):
+            out["my_tasks"] = many(c, select(tasks, tenants.c.name.label("tenant")).join(tenants, tenants.c.id == tasks.c.tenant_id, isouter=True)
+                                   .where(tasks.c.status == "open", tasks.c.assignee == u["email"]).order_by(tasks.c.due).limit(8))
+        if u.get("is_head") and u.get("department_id"):                      # the head's own team at a glance
+            team = []
+            for m in many(c, select(users).where(users.c.department_id == u["department_id"], users.c.role == "staff", users.c.active == True).order_by(users.c.id)):  # noqa: E712
+                team.append({"email": m["email"], "name": m["name"], "job_title": m["job_title"], "last_login": m["last_login"],
+                             "open_tasks": n(tasks, tasks.c.assignee == m["email"], tasks.c.status == "open"),
+                             "overdue_tasks": n(tasks, tasks.c.assignee == m["email"], tasks.c.status == "open", tasks.c.due < now())})
+            out["team"] = team
         return out
 
 
@@ -175,9 +199,12 @@ def del_note(nid: int, u=Depends(need("accounts.write"))):
 @router.get("/tasks")
 def list_tasks(scope: str = "mine", u=Depends(need("tasks"))):
     q = select(tasks, tenants.c.name.label("tenant")).join(tenants, tenants.c.id == tasks.c.tenant_id, isouter=True).order_by(tasks.c.status.desc(), tasks.c.due)
-    if scope == "mine":
-        q = q.where(tasks.c.assignee == u["email"])
     with db.tx() as c:
+        team = _team_emails(c, u)
+        if scope == "mine":
+            q = q.where(tasks.c.assignee == u["email"])
+        elif team is not None:                              # a head's "everyone" is their own department
+            q = q.where(tasks.c.assignee.in_(team))
         return many(c, q.limit(200))
 
 
@@ -186,14 +213,24 @@ def add_task(body: dict, u=Depends(need("tasks"))):
     if not str(body.get("title", "")).strip():
         bad("title required")
     with db.tx() as c:
+        assignee = body.get("assignee") or u["email"]
+        team = _team_emails(c, u)
+        if team is not None and assignee not in team:
+            raise HTTPException(403, "you can assign tasks to yourself or, as a head, to your own department")
         tid = db.insert(c, tasks, tenant_id=body.get("tenant_id"), title=body["title"].strip(), due=body.get("due"), status="open",
-                        assignee=body.get("assignee") or u["email"], created_by=u["email"], created=now())
+                        assignee=assignee, created_by=u["email"], created=now())
     return {"id": tid}
 
 
 @router.post("/tasks/{tid}/done")
 def done_task(tid: int, u=Depends(need("tasks"))):
     with db.tx() as c:
+        t = one(c, select(tasks).where(tasks.c.id == tid))
+        if not t:
+            raise HTTPException(404)
+        team = _team_emails(c, u)
+        if team is not None and t["assignee"] not in team and t["created_by"] != u["email"]:
+            raise HTTPException(403, "this task belongs to someone outside your team")
         c.execute(update(tasks).where(tasks.c.id == tid).values(status="done", done_at=now()))
     return {"ok": True}
 
@@ -205,8 +242,8 @@ def user_action(uid: int, action: str, u=Depends(need("accounts.write"))):
         usr = one(c, select(users).where(users.c.id == uid))
         if not usr:
             raise HTTPException(404)
-        if usr["role"] == "staff" and not services.can(u, "staff.manage"):
-            raise HTTPException(403, "your role cannot manage staff")
+        if usr["role"] == "staff":
+            raise HTTPException(403, "staff are managed in Organization")
         if action == "reset-password":
             pw = security.temp_password()
             c.execute(update(users).where(users.c.id == uid).values(pw_hash=security.hash_password(pw), must_change_pw=True))
@@ -219,43 +256,6 @@ def user_action(uid: int, action: str, u=Depends(need("accounts.write"))):
             services.record(c, u["email"], f"user_{action}", usr["email"], usr["tenant_id"])
             return {"ok": True}
     bad("unknown action")
-
-
-# ───────── staff ─────────
-@router.get("/staff")
-def list_staff(u=Depends(need("staff.manage"))):
-    with db.tx() as c:
-        return many(c, select(users.c.id, users.c.email, users.c.name, users.c.staff_role, users.c.active, users.c.last_login).where(users.c.role == "staff"))
-
-
-@router.get("/roles")
-def roles(u=Depends(staff)):
-    return settings.get().staff_roles.roles
-
-
-@router.post("/staff")
-def add_staff(body: dict, u=Depends(need("staff.manage"))):
-    role = body.get("staff_role", "support")
-    if role not in settings.get().staff_roles.roles:
-        bad("unknown staff role")
-    with db.tx() as c:
-        try:
-            _, pw = services.create_user(c, body.get("email", ""), role="staff", name=body.get("name", ""), actor=u["email"], staff_role=role)
-        except ValueError as e:
-            bad(str(e))
-    return {"email": body["email"].strip().lower(), "temporary_password": pw}
-
-
-@router.post("/staff/{uid}/role")
-def set_staff_role(uid: int, body: dict, u=Depends(need("staff.manage"))):
-    if body.get("staff_role") not in settings.get().staff_roles.roles:
-        bad("unknown staff role")
-    if uid == u["id"]:
-        bad("you cannot change your own role")
-    with db.tx() as c:
-        c.execute(update(users).where(users.c.id == uid, users.c.role == "staff").values(staff_role=body["staff_role"]))
-        services.record(c, u["email"], "staff_role", f"{uid} {body['staff_role']}")
-    return {"ok": True}
 
 
 @router.get("/audit")

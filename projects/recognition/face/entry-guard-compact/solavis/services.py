@@ -1,13 +1,15 @@
 """Business rules shared by the device, customer and admin APIs."""
+import hashlib
 import json
 import logging
+import secrets
 import time
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 
 from . import db, notify, security, settings, storage
-from .db import (alerts, audit, cameras, events, inventory, invoices, many, now, one, payments, people, plans, sessions, tenants,
-                 ticket_messages, tickets, users, vectors)
+from .db import (alerts, audit, cameras, dept_roles, departments, events, face_vectors, inventory, invoices, many, now, one, payments, people, plans,
+                 security_log, sessions, tenants, ticket_messages, tickets, users, vectors)
 
 log = logging.getLogger("solavis")
 STATUSES = ("lead", "trial", "active", "past_due", "suspended", "closed")
@@ -109,7 +111,7 @@ def create_user(c, email, password=None, role="owner", tenant_id=None, name="", 
         must_change = generated and settings.get().security.password.must_change_on_first_login
     uid = db.insert(c, users, tenant_id=tenant_id if role != "staff" else None, email=email, name=name or email.split("@")[0],
                     pw_hash=security.hash_password(password), role=role, active=True, must_change_pw=must_change, created=now(),
-                    staff_role=(staff_role or "admin") if role == "staff" else None)
+                    staff_role=None)
     record(c, actor, "user_create", f"{email}/{role}", tenant_id)
     return uid, password
 
@@ -168,6 +170,13 @@ def retention():
             if old:
                 c.execute(delete(events).where(events.c.id.in_([e["id"] for e in old])))
         c.execute(delete(alerts).where(alerts.c.ts < now() - cfg.alerts * 86400))
+        # captured frames of sign-in attempts are biometric data: keep them only as long as configured (the log record stays)
+        keep = settings.get().security.face.snapshot_retention_days * 86400
+        for r in many(c, select(security_log.c.snap).where(security_log.c.snap.isnot(None), security_log.c.ts < now() - keep)):
+            try:
+                store.delete(r["snap"])
+            except Exception:
+                pass
         # a suspended customer is closed after the configured number of days
         limit = settings.get().tenancy.closed_after_days * 86400
         for t in many(c, select(tenants).where(tenants.c.status == "suspended")):
@@ -183,17 +192,142 @@ def session_cleanup():
         c.execute(delete(sessions).where(sessions.c.expires < now()))
 
 
-# ───────── permissions ─────────
-def perms_for(user):
-    if user["role"] != "staff":
+# ───────── permissions (dynamic: department ceiling, role, per-person grants) ─────────
+def _j(text):
+    try:
+        return list(json.loads(text)) if text else []
+    except Exception:
         return []
-    allowed = settings.get().staff_roles.roles.get(user.get("staff_role") or "admin", [])
-    return ["*"] if "*" in allowed else list(allowed)
+
+
+def effective_perms(c, u):
+    """What this staff member may do right now. The President holds everything ("*").
+    Everyone else: (role + personal grants - personal denials), limited to the department ceiling.
+    A department head holds the whole ceiling."""
+    if u["role"] != "staff":
+        return []
+    if u.get("is_super"):
+        return ["*"]
+    d = one(c, select(departments).where(departments.c.id == u.get("department_id")))
+    if not d or not d["active"]:
+        return []
+    ceiling = set(_j(d["ceiling"]))
+    if d["head_user_id"] == u["id"]:
+        base = set(ceiling)
+    else:
+        base = set()
+        if u.get("role_id"):
+            r = one(c, select(dept_roles).where(dept_roles.c.id == u["role_id"], dept_roles.c.department_id == d["id"]))
+            if r:
+                base = set(_j(r["permissions"]))
+    base |= set(_j(u.get("extra_perms")))
+    base -= set(_j(u.get("denied_perms")))
+    return sorted(base & ceiling)
+
+
+def perms_for(user):
+    return user.get("perms", [])
 
 
 def can(user, perm):
-    p = perms_for(user)
+    p = user.get("perms", [])
     return "*" in p or perm in p
+
+
+def is_head_of(c, u, dept_id):
+    return bool(one(c, select(departments.c.id).where(departments.c.id == dept_id, departments.c.head_user_id == u["id"])))
+
+
+def may_manage_dept(c, u, dept_id):
+    """The President manages every department; a head manages only their own."""
+    return bool(u.get("is_super")) or is_head_of(c, u, dept_id)
+
+
+# ───────── tamper-evident security log (hash chain) ─────────
+def _chain_payload(r):
+    return json.dumps({"ts": r["ts"], "user_id": r["user_id"], "actor": r["actor"], "event": r["event"], "ok": bool(r["ok"]),
+                       "detail": r["detail"], "ip": r["ip"], "snap": r["snap"]}, sort_keys=True, separators=(",", ":"))
+
+
+def sec_log(c, event, ok=True, user=None, actor=None, detail=None, ip="", ua="", snap=None):
+    """Append one record. Each record's hash covers the previous hash, so editing or deleting history breaks the chain."""
+    if c.dialect.name == "postgresql":
+        c.execute(text("select pg_advisory_xact_lock(7001)"))         # one writer at a time keeps the chain linear
+    prev = c.execute(select(security_log.c.hash).order_by(security_log.c.id.desc()).limit(1)).scalar() or "0" * 64
+    row = {"ts": round(now(), 3), "user_id": user["id"] if user else None, "actor": actor or (user["email"] if user else "?"), "event": event, "ok": bool(ok),
+           "detail": json.dumps(detail, sort_keys=True, default=str) if detail is not None else "", "ip": ip or "", "snap": snap}
+    h = hashlib.sha256((prev + _chain_payload(row)).encode()).hexdigest()
+    c.execute(security_log.insert().values(prev_hash=prev, hash=h, ua=(ua or "")[:200], **row))
+
+
+def verify_chain(c):
+    prev, n = "0" * 64, 0
+    for r in c.execute(select(security_log).order_by(security_log.c.id)).mappings():
+        r = dict(r)
+        if r["prev_hash"] != prev or hashlib.sha256((prev + _chain_payload(r)).encode()).hexdigest() != r["hash"]:
+            return {"ok": False, "records": n, "broken_at": r["id"]}
+        prev, n = r["hash"], n + 1
+    return {"ok": True, "records": n, "broken_at": None}
+
+
+# ───────── departments, roles, staff ─────────
+def sync_departments(c, cfg_departments):
+    """Copy the shipped departments and their starter roles into the database when missing (never overwrites edits)."""
+    for d in cfg_departments:
+        row = one(c, select(departments).where(departments.c.code == d.code))
+        did = row["id"] if row else db.insert(c, departments, code=d.code, name=d.name, description=d.description, ceiling=json.dumps(d.ceiling), active=True, created=now())
+        if not row:
+            for r in d.roles:
+                db.insert(c, dept_roles, department_id=did, name=r.name, permissions=json.dumps(r.permissions), created_by="system", created=now())
+
+
+def clamp_to_ceiling(c, dept_id):
+    """After a ceiling shrinks, drop rights above it from roles and personal grants so stored data matches reality."""
+    d = one(c, select(departments).where(departments.c.id == dept_id))
+    ceiling = set(_j(d["ceiling"]))
+    for r in many(c, select(dept_roles).where(dept_roles.c.department_id == dept_id)):
+        keep = [p for p in _j(r["permissions"]) if p in ceiling]
+        c.execute(update(dept_roles).where(dept_roles.c.id == r["id"]).values(permissions=json.dumps(keep)))
+    for u in many(c, select(users).where(users.c.department_id == dept_id)):
+        c.execute(update(users).where(users.c.id == u["id"]).values(extra_perms=json.dumps([p for p in _j(u["extra_perms"]) if p in ceiling])))
+
+
+def check_within(c, dept_id, perms):
+    from .permissions import unknown
+    d = one(c, select(departments).where(departments.c.id == dept_id))
+    if not d:
+        raise ValueError("department not found")
+    bad = unknown(perms)
+    if bad:
+        raise ValueError(f"unknown permission(s): {bad}")
+    over = [p for p in perms if p not in set(_j(d["ceiling"]))]
+    if over:
+        raise ValueError(f"outside this department's ceiling: {over}")
+
+
+def issue_enroll_code(c, user_id):
+    """A one-time code (shown once) that allows a first face enrollment. Stored only as a hash."""
+    a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    code = "-".join("".join(secrets.choice(a) for _ in range(4)) for _ in range(3))
+    c.execute(update(users).where(users.c.id == user_id).values(enroll_hash=security.hash_token(code), enroll_expires=now() + settings.get().security.face.enroll_code_hours * 3600))
+    return code
+
+
+def create_staff(c, email, department_id, password=None, name="", job_title="", role_id=None, actor="system", is_super=False, head=False, must_change=None, face_required=None):
+    """Create a staff account inside a department. Returns (user_id, password)."""
+    d = one(c, select(departments).where(departments.c.id == department_id))
+    if not d or not d["active"]:
+        raise ValueError("department not found or inactive")
+    if role_id and not one(c, select(dept_roles.c.id).where(dept_roles.c.id == role_id, dept_roles.c.department_id == department_id)):
+        raise ValueError("that role does not belong to this department")
+    uid, pw = create_user(c, email, password, "staff", None, name, actor, must_change)
+    face = settings.get().security.face
+    c.execute(update(users).where(users.c.id == uid).values(department_id=department_id, role_id=role_id, job_title=job_title, is_super=bool(is_super),
+              face_required=bool(is_super and face.required_for_super_admin) if face_required is None else bool(face_required)))
+    if head:
+        c.execute(update(departments).where(departments.c.id == department_id).values(head_user_id=uid))
+    record(c, actor, "staff_create", f"{email} dept={d['code']}{' head' if head else ''}{' PRESIDENT' if is_super else ''}")
+    return uid, pw
 
 
 # ───────── billing ─────────

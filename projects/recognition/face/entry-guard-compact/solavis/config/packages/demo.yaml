@@ -1,12 +1,22 @@
 # DEMO PACKAGE. Load with:  python -m solavis.manage seed --package demo
-# Fills the CRM, billing, support and device inventory with sample companies so every screen has something to show.
+# Fills the ERP (CRM, billing, support, inventory, organisation) and the customer app with sample data so every screen has something to show.
 # All names, phones and addresses below are made up. Photo paths are relative to the repository root.
 name: demo
+# STAFF. The President signs in with password AND a live face check (enrol on first sign-in with the demo code below).
+# Heads manage the people and rights of their own department; staff hold a role from their department.
 staff:
-  - { email: staff@solavis.vn,   password: demo1234, name: Solavis Admin, staff_role: admin }
-  - { email: sales@solavis.vn,   password: demo1234, name: Sales Lead,    staff_role: sales }
-  - { email: support@solavis.vn, password: demo1234, name: Support Agent, staff_role: support }
-  - { email: finance@solavis.vn, password: demo1234, name: Finance,       staff_role: finance }
+  - { email: president@solavis.vn, password: demo1234, name: The President, job_title: President, department: executive, president: true, head: true, enroll_code: DEMO-FACE-2026 }
+  - { email: sales.head@solavis.vn,      password: demo1234, name: Head of Sales,       job_title: Head of Sales,       department: sales,       head: true }
+  - { email: support.head@solavis.vn,    password: demo1234, name: Head of Support,     job_title: Head of Support,     department: support,     head: true }
+  - { email: finance.head@solavis.vn,    password: demo1234, name: Chief Accountant,    job_title: Chief Accountant,    department: finance,     head: true }
+  - { email: ops.head@solavis.vn,        password: demo1234, name: Head of Operations,  job_title: Head of Operations,  department: operations,  head: true }
+  - { email: eng.head@solavis.vn,        password: demo1234, name: Head of Engineering, job_title: Head of Engineering, department: engineering, head: true }
+  - { email: compliance.head@solavis.vn, password: demo1234, name: Data Protection Officer, job_title: DPO,            department: compliance,  head: true }
+  - { email: people.head@solavis.vn,     password: demo1234, name: Head of People,      job_title: Head of People,      department: people,      head: true }
+  - { email: sales@solavis.vn,    password: demo1234, name: Sales Rep,     job_title: Sales representative, department: sales,      role: Sales representative }
+  - { email: support@solavis.vn,  password: demo1234, name: Support Agent, job_title: Support agent,        department: support,    role: Support agent }
+  - { email: finance@solavis.vn,  password: demo1234, name: Accountant,    job_title: Accountant,           department: finance,    role: Accountant }
+  - { email: tech@solavis.vn,     password: demo1234, name: Field Tech,    job_title: Field technician,     department: operations, role: Field technician }
 inventory: { count: 8, model: Solavis Cam 4G, prefix: SOL-2611, cost_vnd: 2000000 }   # total stock units to keep
 tenants:
   - name: Demo Home (Hanoi)

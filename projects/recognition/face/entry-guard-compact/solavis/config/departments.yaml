@@ -1,0 +1,59 @@
+# The company's departments. Loaded into the database when missing; after that the President and department heads
+# manage them in the console. "ceiling" is the most any person in the department can ever hold.
+# Roles are starting templates: a head can create more and change them within the ceiling.
+# Permissions are listed in solavis/permissions.py.
+departments:
+  - code: executive
+    name: Executive Office
+    description: President and executive assistants. Oversight and reporting.
+    ceiling: [accounts.read, billing.read, support.read, inventory.read, audit.read, security.read, system.read, staff.read, tasks]
+    roles:
+      - { name: Executive assistant, permissions: [accounts.read, billing.read, support.read, tasks] }
+  - code: sales
+    name: Sales & Marketing
+    description: Leads, trials, quotes and new customers.
+    ceiling: [accounts.read, accounts.write, billing.read, support.read, inventory.read, tasks]
+    roles:
+      - { name: Sales representative, permissions: [accounts.read, accounts.write, tasks] }
+      - { name: Marketing analyst, permissions: [accounts.read] }
+  - code: support
+    name: Customer Support & Success
+    description: Tickets, onboarding and keeping customers happy.
+    ceiling: [accounts.read, accounts.write, billing.read, support.read, support.write, inventory.read, devices.revoke, audit.read, tasks]
+    roles:
+      - { name: Support agent, permissions: [accounts.read, support.read, support.write, tasks] }
+      - { name: Onboarding specialist, permissions: [accounts.read, accounts.write, support.read, support.write, inventory.read, tasks] }
+  - code: finance
+    name: Finance & Accounting
+    description: Plans, invoices, payments and collections.
+    ceiling: [accounts.read, billing.read, billing.write, plans.write, support.read, inventory.read, tasks]
+    roles:
+      - { name: Accountant, permissions: [accounts.read, billing.read, billing.write, tasks] }
+      - { name: Billing clerk, permissions: [billing.read, billing.write] }
+  - code: operations
+    name: Operations & Logistics
+    description: Stock, assembly, shipping, installation support and returns.
+    ceiling: [accounts.read, support.read, inventory.read, inventory.write, devices.revoke, tasks]
+    roles:
+      - { name: Warehouse staff, permissions: [inventory.read, inventory.write] }
+      - { name: Field technician, permissions: [accounts.read, support.read, inventory.read, devices.revoke, tasks] }
+  - code: engineering
+    name: Engineering (Device & Platform)
+    description: Firmware, cloud platform, fleet health and configuration.
+    ceiling: [accounts.read, support.read, inventory.read, audit.read, system.read, tasks]
+    roles:
+      - { name: Platform engineer, permissions: [system.read, inventory.read, audit.read] }
+      - { name: Firmware engineer, permissions: [inventory.read, system.read] }
+  - code: compliance
+    name: Security & Compliance
+    description: Data protection, access reviews, audit and incident response.
+    ceiling: [accounts.read, support.read, audit.read, security.read, system.read, staff.read, tasks]
+    roles:
+      - { name: Compliance officer, permissions: [accounts.read, audit.read, security.read, staff.read] }
+      - { name: Security analyst, permissions: [audit.read, security.read, system.read] }
+  - code: people
+    name: People & Administration
+    description: Hiring, onboarding of staff and office administration.
+    ceiling: [staff.read, tasks]
+    roles:
+      - { name: HR officer, permissions: [staff.read, tasks] }

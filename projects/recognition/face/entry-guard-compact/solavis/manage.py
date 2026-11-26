@@ -14,7 +14,7 @@ import sys
 
 from sqlalchemy import select
 
-from . import db, settings
+from . import db, security, settings
 
 
 def cmd_check(a):
@@ -48,11 +48,27 @@ def cmd_seed(a):
     rnd = random.Random(7)
     with db.tx() as c:
         db.sync_plans(c, cfg.plans.plans)
+        services.sync_departments(c, cfg.org.departments)
+        # heads are created after their staff exist only when listed; create everyone, then appoint heads
         for s_ in pkg.get("staff", []):
-            if not c.execute(select(db.users.c.id).where(db.users.c.email == s_["email"].lower())).first():
-                services.create_user(c, s_["email"], s_["password"], "staff", name=s_.get("name", ""), actor="seed", must_change=bool(s_.get("must_change")),
-                                     staff_role=s_.get("staff_role", "admin"))
-                bump("staff")
+            if c.execute(select(db.users.c.id).where(db.users.c.email == s_["email"].lower())).first():
+                continue
+            dept = db.one(c, select(db.departments).where(db.departments.c.code == s_.get("department", "executive")))
+            if not dept:
+                raise SystemExit(f"package error: unknown department '{s_.get('department')}' for {s_['email']}")
+            role = db.one(c, select(db.dept_roles).where(db.dept_roles.c.department_id == dept["id"], db.dept_roles.c.name == s_["role"])) if s_.get("role") else None
+            if s_.get("role") and not role:
+                raise SystemExit(f"package error: department '{dept['code']}' has no role '{s_['role']}'")
+            uid, pw = services.create_staff(c, s_["email"], dept["id"], s_.get("password"), s_.get("name", ""), s_.get("job_title", ""), role["id"] if role else None, "seed",
+                                            is_super=bool(s_.get("president")), head=bool(s_.get("head")), must_change=bool(s_.get("must_change")))
+            made["staff"] = made.get("staff", 0) + 1
+            if s_.get("president"):
+                if s_.get("enroll_code"):          # demo packages may fix the code; production prints a random one
+                    code = s_["enroll_code"]
+                    c.execute(db.users.update().where(db.users.c.id == uid).values(enroll_hash=security.hash_token(code), enroll_expires=now() + 365 * 86400))
+                else:
+                    code = services.issue_enroll_code(c, uid)
+                print(f"\n  PRESIDENT {s_['email']}: one-time face enrollment code  {code}\n  (sign in with the password, then enrol your face with this code)\n")
         inv_def = pkg.get("inventory", {})
         for t in pkg.get("tenants", []):
             row = db.one(c, select(tenants).where(tenants.c.name == t["name"]))
@@ -132,7 +148,7 @@ def cmd_seed(a):
                     bump("inventory")
     print(f"Package '{pkg.get('name', a.package)}' loaded: " + (", ".join(f"{v} {k}" for k, v in made.items()) or "nothing new"))
     for s_ in pkg.get("staff", []):
-        print(f"  staff : {s_['email']} ({s_.get('staff_role', 'admin')})")
+        print(f"  staff : {s_['email']} ({s_.get('department', 'executive')}{', head' if s_.get('head') else ''}{', PRESIDENT' if s_.get('president') else ''})")
     for t in pkg.get("tenants", []):
         for u in t.get("users", []):
             print(f"  {t['name']}: {u['email']} ({u.get('role', 'owner')})")
@@ -151,8 +167,18 @@ def cmd_staff(a):
     pw = a.password or getpass.getpass("Password (empty = generate): ") or None
     db.create_tables()
     with db.tx() as c:
-        _, pw = services.create_user(c, a.email, pw, "staff", name=a.name or "", actor="cli", must_change=True if a.password is None and pw else None, staff_role=a.role)
-    print(f"Staff user created: {a.email}" + (f"\nTemporary password: {pw}" if not a.password else ""))
+        services.sync_departments(c, settings.get().org.departments)
+        dept = db.one(c, select(db.departments).where(db.departments.c.code == a.department))
+        if not dept:
+            sys.exit(f"unknown department '{a.department}'")
+        role = db.one(c, select(db.dept_roles).where(db.dept_roles.c.department_id == dept["id"], db.dept_roles.c.name == a.role)) if a.role else None
+        uid, pw2 = services.create_staff(c, a.email, dept["id"], pw, a.name or "", "", role["id"] if role else None, "cli", is_super=a.president, head=a.head, must_change=True if not a.password else None)
+        code = services.issue_enroll_code(c, uid) if a.president else None
+    print(f"Staff user created: {a.email} ({dept['name']}{', PRESIDENT' if a.president else ''}{', head' if a.head else ''})")
+    if not pw:                              # only show a password we generated; never echo one the operator typed
+        print(f"Temporary password: {pw2}  (must be changed at first sign-in)")
+    if code:
+        print(f"One-time face enrollment code: {code}  (valid {settings.get().security.face.enroll_code_hours} h)")
 
 
 def cmd_reset(a):
@@ -176,7 +202,8 @@ def main():
     sub.add_parser("check-config").set_defaults(fn=cmd_check)
     sub.add_parser("init-db").set_defaults(fn=cmd_init)
     s = sub.add_parser("seed"); s.add_argument("--package", required=True); s.set_defaults(fn=cmd_seed)
-    s = sub.add_parser("create-staff"); s.add_argument("email"); s.add_argument("--name"); s.add_argument("--role", default="admin"); s.add_argument("--password"); s.set_defaults(fn=cmd_staff)
+    s = sub.add_parser("create-staff"); s.add_argument("email"); s.add_argument("--name"); s.add_argument("--department", default="executive"); s.add_argument("--role")
+    s.add_argument("--head", action="store_true"); s.add_argument("--president", action="store_true"); s.add_argument("--password"); s.set_defaults(fn=cmd_staff)
     s = sub.add_parser("reset"); s.add_argument("--yes", action="store_true"); s.set_defaults(fn=cmd_reset)
     sub.add_parser("run").set_defaults(fn=cmd_run)
     a = p.parse_args()

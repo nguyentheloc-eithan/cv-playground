@@ -13,3 +13,22 @@ login_protection:
 device:
   key_bytes: 24
   clock_skew_seconds: 0          # 0 = do not check device clock. Set e.g. 300 once firmware sends timestamps.
+
+# ---- super administrator (the President) and staff sessions ----
+face:                            # live face check: look straight, then turn the head (a held-up photo cannot turn)
+  required_for_super_admin: true # the President can only sign in with password AND face
+  threshold: 0.50                # similarity needed to accept a face
+  require_head_turn: true
+  head_turn_min_yaw: 0.20
+  max_failures: 3                # wrong faces in a row before face checks are blocked...
+  lock_minutes: 15               # ...for this long
+  reverify_minutes: 10           # sensitive actions need a face check newer than this
+  enroll_code_hours: 24          # how long a one-time enrollment code (printed by the CLI) stays valid
+  max_frames: 3
+  snapshot_retention_days: 90    # captured frames of sign-in attempts are deleted after this
+super_admin:
+  session_minutes: 60            # the President's session is short
+staff:
+  session_hours: 8
+  idle_minutes: 30               # staff are signed out after this long without activity
+admin_ip_allowlist: []           # e.g. ["203.0.113.5", "10.0.0.0/8"]; empty = any address. Applies to staff only.

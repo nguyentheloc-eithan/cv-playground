@@ -10,6 +10,7 @@ import httpx
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from .. import settings
 
@@ -72,6 +73,7 @@ def create_app(package="demo"):
     CFG.update(pkg.get("simulator", {}))
     CFG.setdefault("cloud_url", "http://127.0.0.1:8100")
     app = FastAPI(title="Solavis camera simulator")
+    app.mount("/assets", StaticFiles(directory=HERE.parent / "web" / "assets"), name="assets")   # same design tokens as the product
 
     def loop():
         while True:

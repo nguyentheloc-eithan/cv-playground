@@ -22,14 +22,19 @@ tenants = Table("tenants", md,
                 Column("contact_name", S(160)), Column("phone", S(40)), Column("address", S(300)), Column("tax_code", S(40)),
                 Column("industry", S(80)), Column("source", S(60)), Column("account_manager", S(190)))
 users = Table("users", md,
-              Column("staff_role", S(20)),
+              Column("staff_role", S(20)),   # legacy, no longer used
+              Column("department_id", Integer, index=True), Column("role_id", Integer), Column("is_super", Boolean, default=False),
+              Column("job_title", S(120)), Column("extra_perms", Text), Column("denied_perms", Text),
+              Column("face_required", Boolean, default=False), Column("enroll_hash", S(64)), Column("enroll_expires", Float),
               Column("id", Integer, primary_key=True, autoincrement=True), Column("tenant_id", Integer, ForeignKey("tenants.id")),
               Column("email", S(190), unique=True), Column("name", S(120)), Column("pw_hash", S(300)),
               Column("role", S(20)), Column("active", Boolean, default=True), Column("must_change_pw", Boolean, default=False),
               Column("created", Float), Column("last_login", Float))
 sessions = Table("sessions", md,
                  Column("token_hash", S(64), primary_key=True), Column("user_id", Integer, ForeignKey("users.id")),
-                 Column("created", Float), Column("expires", Float))
+                 Column("created", Float), Column("expires", Float),
+                 Column("face_pending", Boolean, default=False), Column("face_verified_at", Float), Column("ip", S(64)),
+                 Column("ua", S(200)), Column("last_seen", Float))
 cameras = Table("cameras", md,
                 Column("id", Integer, primary_key=True, autoincrement=True), Column("tenant_id", Integer, ForeignKey("tenants.id")),
                 Column("name", S(120)), Column("claim_code", S(40), unique=True), Column("key_hash", S(64), index=True),
@@ -89,6 +94,20 @@ inventory = Table("inventory", md,
                   Column("id", Integer, primary_key=True, autoincrement=True), Column("serial", S(60), unique=True), Column("model", S(60)),
                   Column("status", S(12), default="in_stock"), Column("tenant_id", Integer, index=True), Column("camera_id", Integer),
                   Column("warranty_until", Float), Column("cost_vnd", Integer), Column("notes", Text), Column("created", Float), Column("assigned_at", Float))
+departments = Table("departments", md,
+                    Column("id", Integer, primary_key=True, autoincrement=True), Column("code", S(40), unique=True), Column("name", S(120)),
+                    Column("description", Text), Column("head_user_id", Integer), Column("ceiling", Text), Column("active", Boolean, default=True),
+                    Column("created", Float))
+dept_roles = Table("dept_roles", md,
+                   Column("id", Integer, primary_key=True, autoincrement=True), Column("department_id", Integer, ForeignKey("departments.id"), index=True),
+                   Column("name", S(120)), Column("permissions", Text), Column("created_by", S(190)), Column("created", Float))
+face_vectors = Table("face_vectors", md,
+                     Column("id", Integer, primary_key=True, autoincrement=True), Column("user_id", Integer, ForeignKey("users.id"), index=True),
+                     Column("vec", LargeBinary), Column("created", Float))
+security_log = Table("security_log", md,
+                     Column("id", Integer, primary_key=True, autoincrement=True), Column("ts", Float), Column("prev_hash", S(64)), Column("hash", S(64)),
+                     Column("user_id", Integer, index=True), Column("actor", S(190)), Column("event", S(60)), Column("ok", Boolean),
+                     Column("detail", Text), Column("ip", S(64)), Column("ua", S(200)), Column("snap", S(120)))
 Index("ix_events_tenant_ts", events.c.tenant_id, events.c.ts)
 Index("ix_alerts_tenant_ts", alerts.c.tenant_id, alerts.c.ts)
 

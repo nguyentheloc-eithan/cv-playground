@@ -113,12 +113,38 @@ class DeviceSec(Strict):
     clock_skew_seconds: int = 0
 
 
+class FaceCfg(Strict):
+    required_for_super_admin: bool = True
+    threshold: float = 0.50
+    require_head_turn: bool = True
+    head_turn_min_yaw: float = 0.20
+    max_failures: int = 3
+    lock_minutes: int = 15
+    reverify_minutes: int = 10
+    enroll_code_hours: int = 24
+    max_frames: int = 3
+    snapshot_retention_days: int = 90
+
+
+class SuperAdminCfg(Strict):
+    session_minutes: int = 60
+
+
+class StaffCfg(Strict):
+    session_hours: int = 8
+    idle_minutes: int = 30
+
+
 class Security(Strict):
     secret_key: str = "dev-only-change-me"
     session: Session = Session()
     password: Password = Password()
     login_protection: LoginProtection = LoginProtection()
     device: DeviceSec = DeviceSec()
+    face: FaceCfg = FaceCfg()
+    super_admin: SuperAdminCfg = SuperAdminCfg()
+    staff: StaffCfg = StaffCfg()
+    admin_ip_allowlist: list[str] = []
 
 
 class Telegram(Strict):
@@ -233,8 +259,21 @@ class Billing(Strict):
     qr_enabled: bool = False
 
 
-class Roles(Strict):
-    roles: dict[str, list[str]] = Field(default_factory=lambda: {"admin": ["*"]})
+class RoleCfg(Strict):
+    name: str
+    permissions: list[str] = []
+
+
+class DepartmentCfg(Strict):
+    code: str
+    name: str
+    description: str = ""
+    ceiling: list[str] = []
+    roles: list[RoleCfg] = []
+
+
+class Departments(Strict):
+    departments: list[DepartmentCfg] = Field(default_factory=list)
 
 
 class Settings(Strict):
@@ -248,7 +287,7 @@ class Settings(Strict):
     tenancy: Tenancy = Tenancy()
     plans: Plans = Plans()
     billing: Billing = Billing()
-    staff_roles: Roles = Roles()
+    org: Departments = Departments()
 
 
 _ENV = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
@@ -288,7 +327,7 @@ def read_yaml(name, directory=None):
 def load_settings() -> Settings:
     raw = {s: read_yaml(f"{s}.yaml") for s in
            ("server", "database", "storage", "security", "notifications", "recognition", "tamper", "tenancy", "plans", "billing")}
-    raw["staff_roles"] = {"roles": read_yaml("roles.yaml")}
+    raw["org"] = read_yaml("departments.yaml")
     try:
         cfg = Settings(**raw)
     except ValidationError as e:
@@ -314,6 +353,15 @@ def check(cfg: Settings):
             out.append("production should use PostgreSQL or MySQL, not SQLite (database.driver)")
         if cfg.server.api_docs:
             out.append("server.api_docs should be false in production")
+    from .permissions import unknown
+    for d in cfg.org.departments:
+        bad = unknown(d.ceiling) + [p for r in d.roles for p in unknown(r.permissions)]
+        if bad:
+            out.append(f"departments.yaml: unknown permission(s) in {d.code}: {sorted(set(bad))}")
+        for r in d.roles:
+            over = [p for p in r.permissions if p not in d.ceiling]
+            if over:
+                out.append(f"departments.yaml: role '{r.name}' in {d.code} exceeds the department ceiling: {over}")
     if cfg.storage.driver == "s3" and not cfg.storage.s3.bucket:
         out.append("storage.s3.bucket is required when storage.driver is s3")
     if cfg.notifications.telegram.enabled and not cfg.notifications.telegram.bot_token:

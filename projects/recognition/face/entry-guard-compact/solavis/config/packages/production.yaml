@@ -1,6 +1,8 @@
-# PRODUCTION BOOTSTRAP. Creates no demo data; only the first staff admin.
-# python -m solavis.manage seed --package production      (reads SOLAVIS_ADMIN_EMAIL / SOLAVIS_ADMIN_PASSWORD)
+# PRODUCTION BOOTSTRAP. Creates no demo data; only the President.
+# SOLAVIS_ADMIN_EMAIL / SOLAVIS_ADMIN_PASSWORD must be set. A random one-time face-enrollment code is printed once.
+#   python -m solavis.manage seed --package production
+# Then sign in at /erp with the password and enrol the President's face. The President then creates department heads.
 name: production
 staff:
-  - { email: "${SOLAVIS_ADMIN_EMAIL}", password: "${SOLAVIS_ADMIN_PASSWORD}", name: Administrator, must_change: true }
+  - { email: "${SOLAVIS_ADMIN_EMAIL}", password: "${SOLAVIS_ADMIN_PASSWORD}", name: President, job_title: President, department: executive, president: true, head: true, must_change: true }
 tenants: []

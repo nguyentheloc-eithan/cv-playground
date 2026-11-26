@@ -28,22 +28,19 @@ venv/bin/python -m solavis.sim --package demo
 
 | What | Address |
 |---|---|
-| Customer app | http://127.0.0.1:8100 |
-| Admin console | http://127.0.0.1:8100/admin |
+| Customer app (devices and ticket support) | http://127.0.0.1:8100 |
+| Solavis ERP (our company's console) | http://127.0.0.1:8100/erp  (also `/admin`) |
 | Camera simulator | http://127.0.0.1:8101 |
 
-Logins (password `demo1234` for all):
+**Customer app logins** (password `demo1234`): `owner@demo.vn` (full control), `family@demo.vn` (view only), `other@demo.vn` (second customer, overdue invoice), `pho@demo.vn` (trial, no device yet).
 
-| Account | View | Use it for |
+**ERP logins** (password `demo1234`). Each person sees and can do only what their department and role allow:
+
+| Account | Who | Notes |
 |---|---|---|
-| `owner@demo.vn` | Customer app `/` | full control of the "Demo Home (Hanoi)" account |
-| `family@demo.vn` | Customer app `/` | view only (cannot change cameras, people, billing) |
-| `other@demo.vn` | Customer app `/` | second customer, overdue invoice (proves data stays separate) |
-| `pho@demo.vn` | Customer app `/` | a trial customer with no device yet |
-| `staff@solavis.vn` | Admin `/admin` | role **admin**: everything |
-| `sales@solavis.vn` | Admin `/admin` | role **sales**: customers, notes, tasks; no billing changes |
-| `support@solavis.vn` | Admin `/admin` | role **support**: tickets, inventory returns; cannot see invoices |
-| `finance@solavis.vn` | Admin `/admin` | role **finance**: invoices and payments; cannot see tickets |
+| `president@solavis.vn` | President (super admin) | Password **and live face check**. First sign-in: enrol your face with the code `DEMO-FACE-2026` (demo only). Needs a webcam. |
+| `sales.head@` `support.head@` `finance.head@` `ops.head@` `eng.head@` `compliance.head@` `people.head@` `@solavis.vn` | Department heads | Hold their department's full ceiling; manage their own people's roles and rights |
+| `sales@` `support@` `finance@` `tech@` `@solavis.vn` | Staff | Hold one role from their department |
 
 Stop a server: press `Ctrl+C` in its terminal.
 
@@ -51,20 +48,25 @@ Stop a server: press `Ctrl+C` in its terminal.
 
 **Customer app** (`owner@demo.vn`): Dashboard, Devices, Alerts, Visitors (confirm/dismiss), People (add with consent), Reports (charts), Activity log, Support (open a ticket), Billing (plan, invoices, how to pay), Team, Settings.
 
-**Admin** (`staff@solavis.vn`):
-1. Dashboard: MRR, pipeline, overdue invoices, trials ending, tasks, tickets.
-2. Customers: filter by stage, open a customer (tabs: Overview, Billing, Support, Devices, Contacts & users, Notes & tasks, Activity).
-3. Billing: create an invoice, "Mark paid" (an overdue or suspended customer becomes active).
-4. Support: reply to the ticket; tick "Internal note" to see it stays hidden from the customer.
-5. Inventory: assign a stock unit to a customer (creates a claim code), mark a unit returned/lost (needs a reason).
-6. Staff: change a role; log in as `finance@` or `support@` to see the permission limits.
+**ERP** (start as `president@solavis.vn`):
+1. Sign in with the password, then enrol your face (code `DEMO-FACE-2026`; turn your head when asked). Next time it is password + face. Every attempt, with the captured frame, is in Security.
+2. Dashboard, Customers, Billing, Support, Inventory, Tasks as before. The President sees everything.
+3. **Organization:** 8 departments, each with a head, roles and a **ceiling** (the most anyone there can hold). Open one: add people, create roles, edit a person's rights (role + extra rights - withheld rights). Only the President changes ceilings, appoints heads and moves people; these need a fresh face check (a camera dialog pops up).
+4. Sign out and sign in as `sales.head@solavis.vn`: you can manage only the Sales team, and cannot grant anything outside Sales' ceiling. Then `sales@solavis.vn`: a plain member sees only what the role allows.
+5. **Access review** (President, DPO): who holds what, with CSV export. **Security** (President, DPO): tamper-evident log with integrity check, sessions, face re-enrolment.
 
 **Camera story** (simulator on 8101 + customer app):
 1. Simulator: **Claim camera**. 2. Customer app, Devices: **Arm here**. 3. Simulator: click a face (visitor shows in the app).
 4. Simulator: **Turn 40°**. The camera locks and a critical alert appears. 5. Devices: **Unlock…**, then **Arm now**.
-6. Admin, Customers, Demo Home: set the stage to **Suspended**. The next visitor is refused.
+6. ERP, Customers, Demo Home: set the stage to **Suspended**. The next visitor is refused.
+
+## Look and feel
+
+All screens follow the Solavis design system (`.claude/rules/solavis-ui-design.md`, copied from `docs/style-ui.md`). Tokens live in `solavis/web/assets/solavis-tokens.css`; components in `app.css`. Dark mode follows your OS, or use the sun/moon button in the top bar.
 
 ## 4. Reset to a clean demo
+
+**After updating to the department/President model you must reset** (old staff accounts have no department): stop the servers, `rm -rf data/solavis`, then seed again.
 
 Stop both servers first, then:
 ```bash
@@ -77,12 +79,13 @@ venv/bin/python -m solavis.manage seed --package demo
 
 ```bash
 venv/bin/python -m pytest tests/test_solavis.py -q                 # run the tests
-venv/bin/python -m solavis.manage create-staff you@company.com     # add an admin
+venv/bin/python -m solavis.manage create-staff you@company.com --department executive --president   # a President (prints a face enrollment code)
+venv/bin/python -m solavis.manage create-staff boss@company.com --department sales --head          # a department head
 venv/bin/python -m solavis.manage init-db                          # create tables only, no demo data
 venv/bin/python -m solavis.manage seed --package production        # first admin only (needs env, see below)
 ```
 
-Production bootstrap needs these set first:
+Production bootstrap (creates only the President, prints a one-time face-enrollment code) needs these set first:
 ```bash
 export SOLAVIS_ADMIN_EMAIL=you@company.com
 export SOLAVIS_ADMIN_PASSWORD='ChooseAStrong1Password'

@@ -1,7 +1,0 @@
-# What each staff role may do. "*" = everything.
-# Permissions: accounts.read accounts.write billing.read billing.write plans.write support.read support.write
-#              inventory.read inventory.write devices.revoke tasks staff.manage audit.read system.read
-admin:   ["*"]
-sales:   [accounts.read, accounts.write, billing.read, support.read, inventory.read, tasks]
-support: [accounts.read, support.read, support.write, inventory.read, devices.revoke, tasks, audit.read]
-finance: [accounts.read, billing.read, billing.write, tasks]

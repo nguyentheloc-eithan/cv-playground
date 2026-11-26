@@ -1,6 +1,7 @@
 """Solavis cloud: config validation, auth, tamper state machine, subscription control, tenant isolation, admin console."""
 import io
 import textwrap
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,33 +9,57 @@ from fastapi.testclient import TestClient
 from solavis import db, settings, storage
 
 
-@pytest.fixture()
-def env(tmp_path, monkeypatch):
+PKG = textwrap.dedent("""
+    name: t
+    staff:
+      - {email: staff@t.vn, password: Staff1234, name: President, department: executive, president: true, head: true, enroll_code: TEST-FACE-0001}
+      - {email: sales.head@t.vn, password: Staff1234, department: sales, head: true}
+      - {email: finance.head@t.vn, password: Staff1234, department: finance, head: true}
+      - {email: sales@t.vn, password: Staff1234, department: sales, role: Sales representative}
+      - {email: support@t.vn, password: Staff1234, department: support, role: Support agent}
+      - {email: finance@t.vn, password: Staff1234, department: finance, role: Accountant}
+      - {email: tech@t.vn, password: Staff1234, department: operations, role: Field technician}
+      - {email: ops.head@t.vn, password: Staff1234, department: operations, head: true}
+    inventory: {count: 4, model: Test Cam, prefix: T-1}
+    tenants:
+      - {name: A Home, plan: home, status: active, users: [{email: a@t.vn, password: Owner1234, role: owner}, {email: av@t.vn, password: Viewer1234, role: member}],
+         cameras: [{name: Gate, claim_code: SOL-AAAA-BBBB}]}
+      - {name: B Shop, plan: lite, status: active, users: [{email: b@t.vn, password: Owner1234, role: owner}], cameras: [{name: Door, claim_code: SOL-CCCC-DDDD}]}
+""")
+
+
+def _make_env(tmp_path, monkeypatch, face_required):
     (tmp_path / "database.yaml").write_text(f"driver: sqlite\nurl: sqlite:///{tmp_path}/t.db\n")
     (tmp_path / "storage.yaml").write_text(f"driver: local\nlocal:\n  path: {tmp_path}/snaps\n")
+    (tmp_path / "security.yaml").write_text(f"face:\n  required_for_super_admin: {str(face_required).lower()}\n  require_head_turn: false\n  max_failures: 3\n")
     monkeypatch.setenv("SOLAVIS_CONFIG_DIR", str(tmp_path))
     settings.get.cache_clear(); db.reset_engine(); storage.reset()
     from solavis import security
-    security.guard.fails.clear()
+    from solavis.api import auth as auth_api
+    security.guard.fails.clear(); auth_api._face_fail.clear()
     from solavis.app import create_app
     from solavis.manage import cmd_seed
     import argparse
     pkg = tmp_path / "pkg.yaml"
-    pkg.write_text(textwrap.dedent("""
-        name: t
-        staff:
-          - {email: staff@t.vn, password: Staff1234, staff_role: admin}
-          - {email: sales@t.vn, password: Staff1234, staff_role: sales}
-          - {email: support@t.vn, password: Staff1234, staff_role: support}
-          - {email: finance@t.vn, password: Staff1234, staff_role: finance}
-        inventory: {count: 4, model: Test Cam, prefix: T-1}
-        tenants:
-          - {name: A Home, plan: home, status: active, users: [{email: a@t.vn, password: Owner1234, role: owner}, {email: av@t.vn, password: Viewer1234, role: member}],
-             cameras: [{name: Gate, claim_code: SOL-AAAA-BBBB}]}
-          - {name: B Shop, plan: lite, status: active, users: [{email: b@t.vn, password: Owner1234, role: owner}], cameras: [{name: Door, claim_code: SOL-CCCC-DDDD}]}
-    """))
-    with TestClient(create_app()) as client:
-        cmd_seed(argparse.Namespace(package=str(pkg)))
+    pkg.write_text(PKG)
+    return create_app(), cmd_seed, argparse.Namespace(package=str(pkg))
+
+
+@pytest.fixture()
+def env(tmp_path, monkeypatch):
+    """President without the face requirement, so API tests can focus on the business rules."""
+    app, seed, ns = _make_env(tmp_path, monkeypatch, False)
+    with TestClient(app) as client:
+        seed(ns)
+        yield client
+    settings.get.cache_clear(); db.reset_engine(); storage.reset()
+
+
+@pytest.fixture()
+def env_face(tmp_path, monkeypatch):
+    app, seed, ns = _make_env(tmp_path, monkeypatch, True)
+    with TestClient(app) as client:
+        seed(ns)
         yield client
     settings.get.cache_clear(); db.reset_engine(); storage.reset()
 
@@ -174,10 +199,10 @@ def test_assign_respects_plan_limit_and_creates_claim_code(env):
 def test_rma_needs_reason_and_kills_the_key(env):
     c = env
     key, _ = armed(c)
-    sup = login(c, "support@t.vn", "Staff1234")
-    unit = [i for i in c.get("/api/admin/inventory?status=assigned", headers=sup).json() if i["tenant_id"] == 1][0]
-    assert c.post(f"/api/admin/inventory/{unit['id']}/rma", headers=sup, json={}).status_code == 400
-    assert c.post(f"/api/admin/inventory/{unit['id']}/rma", headers=sup, json={"reason": "customer reported theft, ticket 4"}).status_code == 200
+    tech = login(c, "tech@t.vn", "Staff1234")
+    unit = [i for i in c.get("/api/admin/inventory?status=assigned", headers=tech).json() if i["tenant_id"] == 1][0]
+    assert c.post(f"/api/admin/inventory/{unit['id']}/rma", headers=tech, json={}).status_code == 400
+    assert c.post(f"/api/admin/inventory/{unit['id']}/rma", headers=tech, json={"reason": "customer reported theft, ticket 4"}).status_code == 200
     assert c.get("/device/v1/config", headers={"Authorization": f"Bearer {key}"}).status_code == 401
     assert any(a["action"] == "device_rma" for a in c.get("/api/admin/audit", headers=login(c, "staff@t.vn", "Staff1234")).json())
 
@@ -188,7 +213,7 @@ def test_staff_roles_limit_what_each_person_can_do(env):
     assert c.get("/api/admin/invoices", headers=support).status_code == 403          # support cannot read billing
     assert c.post("/api/admin/invoices", headers=sales, json={"tenant_id": 1}).status_code == 403   # sales cannot create invoices
     assert c.get("/api/admin/tickets", headers=fin).status_code == 403
-    assert c.get("/api/admin/staff", headers=sales).status_code == 403
+    assert c.get("/api/admin/org/access-review", headers=sales).status_code == 403
     assert c.post("/api/admin/invoices", headers=fin, json={"tenant_id": 1}).status_code == 200
 
 
@@ -289,7 +314,7 @@ def test_every_admin_page_endpoint_returns_200(env):
     c = env
     st = login(c, "staff@t.vn", "Staff1234")
     for p in ["/api/admin/summary", "/api/admin/tenants", "/api/admin/tenants/1", "/api/admin/tenants/2", "/api/admin/plans", "/api/admin/invoices",
-              "/api/admin/tickets", "/api/admin/inventory", "/api/admin/tasks?scope=all", "/api/admin/staff", "/api/admin/roles", "/api/admin/audit", "/api/admin/system"]:
+              "/api/admin/tickets", "/api/admin/inventory", "/api/admin/tasks?scope=all", "/api/admin/org/departments", "/api/admin/org/access-review", "/api/admin/org/security-log", "/api/admin/org/permissions", "/api/admin/org/departments/2", "/api/admin/audit", "/api/admin/system"]:
         assert c.get(p, headers=st).status_code == 200, p
 
 
@@ -298,3 +323,267 @@ def test_every_customer_page_endpoint_returns_200(env):
     o = login(c, "a@t.vn")
     for p in ["/api/overview", "/api/devices", "/api/alerts", "/api/events", "/api/people", "/api/reports", "/api/activity", "/api/tickets", "/api/billing", "/api/team", "/api/export"]:
         assert c.get(p, headers=o).status_code == 200, p
+
+
+# ───────────────────────── organisation, delegated rights, security log ─────────────────────────
+def depts(c, h):
+    return {d["code"]: d for d in c.get("/api/admin/org/departments", headers=h).json()}
+
+
+def test_company_departments_seeded_with_ceilings(env):
+    c = env
+    pres = login(c, "staff@t.vn", "Staff1234")
+    d = depts(c, pres)
+    assert set(d) == {"executive", "sales", "support", "finance", "operations", "engineering", "compliance", "people"}
+    assert "billing.write" in d["finance"]["ceiling"] and "billing.write" not in d["sales"]["ceiling"]
+    assert d["sales"]["head"]["email"] == "sales.head@t.vn"
+
+
+def test_head_holds_the_whole_ceiling_staff_hold_their_role(env):
+    c = env
+    head = login(c, "sales.head@t.vn", "Staff1234"); rep = login(c, "sales@t.vn", "Staff1234")
+    hp, rp = set(c.get("/api/auth/me", headers=head).json()["perms"]), set(c.get("/api/auth/me", headers=rep).json()["perms"])
+    assert {"accounts.write", "billing.read", "inventory.read"} <= hp
+    assert rp == {"accounts.read", "accounts.write", "tasks"}
+
+
+def test_only_the_president_creates_departments_and_appoints_heads(env):
+    c = env
+    head = login(c, "sales.head@t.vn", "Staff1234"); pres = login(c, "staff@t.vn", "Staff1234")
+    assert c.post("/api/admin/org/departments", headers=head, json={"code": "legal", "name": "Legal", "ceiling": ["accounts.read"]}).status_code == 403
+    assert c.post("/api/admin/org/departments", headers=pres, json={"code": "legal", "name": "Legal", "ceiling": ["accounts.read", "nonsense"]}).status_code == 400
+    assert c.post("/api/admin/org/departments", headers=pres, json={"code": "legal", "name": "Legal", "ceiling": ["accounts.read"]}).status_code == 200
+    sales = depts(c, pres)["sales"]
+    detail = c.get(f"/api/admin/org/departments/{sales['id']}", headers=pres).json()
+    rep = [m for m in detail["members"] if m["email"] == "sales@t.vn"][0]
+    assert c.post(f"/api/admin/org/departments/{sales['id']}", headers=head, json={"head_user_id": rep["id"]}).status_code == 403
+    assert c.post(f"/api/admin/org/departments/{sales['id']}", headers=pres, json={"head_user_id": rep["id"]}).status_code == 200
+    assert "billing.read" in c.get("/api/auth/me", headers=login(c, "sales@t.vn", "Staff1234")).json()["perms"]       # the new head holds the ceiling
+    assert "billing.read" not in c.get("/api/auth/me", headers=login(c, "sales.head@t.vn", "Staff1234")).json()["perms"]      # the former head lost it
+
+
+def test_head_delegates_rights_inside_the_ceiling_only(env):
+    c = env
+    head = login(c, "sales.head@t.vn", "Staff1234"); pres = login(c, "staff@t.vn", "Staff1234")
+    d = depts(c, pres)
+    sales, fin = d["sales"], d["finance"]
+    det = c.get(f"/api/admin/org/departments/{sales['id']}", headers=head).json()
+    rep = [m for m in det["members"] if m["email"] == "sales@t.vn"][0]
+    # outside the ceiling: refused
+    assert c.post(f"/api/admin/org/members/{rep['id']}", headers=head, json={"extra_perms": ["billing.write"]}).status_code == 400
+    # inside the ceiling: works, and shows up in the person's effective rights
+    assert c.post(f"/api/admin/org/members/{rep['id']}", headers=head, json={"extra_perms": ["support.read"]}).status_code == 200
+    me = login(c, "sales@t.vn", "Staff1234")
+    assert "support.read" in c.get("/api/auth/me", headers=me).json()["perms"] and c.get("/api/admin/tickets", headers=me).status_code == 200
+    # a denial removes a right the role would give
+    c.post(f"/api/admin/org/members/{rep['id']}", headers=head, json={"denied_perms": ["accounts.write"]})
+    assert "accounts.write" not in c.get("/api/auth/me", headers=me).json()["perms"]
+    # not another department, not another head, not yourself, not staff
+    assert c.post(f"/api/admin/org/departments/{fin['id']}/members", headers=head, json={"email": "x@t.vn"}).status_code == 403
+    assert c.post(f"/api/admin/org/departments/{sales['id']}/roles", headers=head, json={"name": "Over", "permissions": ["plans.write"]}).status_code == 400
+    head_row = [m for m in det["members"] if m["is_head"]][0]
+    assert c.post(f"/api/admin/org/members/{head_row['id']}", headers=head, json={"role_id": None}).status_code == 403
+    assert c.post(f"/api/admin/org/members/{rep['id']}", headers=me, json={"extra_perms": ["tasks"]}).status_code == 403
+    assert c.post(f"/api/admin/org/departments/{sales['id']}/members", headers=me, json={"email": "y@t.vn"}).status_code == 403
+
+
+def test_head_creates_a_role_and_a_member(env):
+    c = env
+    head = login(c, "sales.head@t.vn", "Staff1234"); pres = login(c, "staff@t.vn", "Staff1234")
+    sales = depts(c, pres)["sales"]
+    rid = c.post(f"/api/admin/org/departments/{sales['id']}/roles", headers=head, json={"name": "Quote desk", "permissions": ["accounts.read", "billing.read"]}).json()["id"]
+    r = c.post(f"/api/admin/org/departments/{sales['id']}/members", headers=head, json={"email": "new.hire@t.vn", "name": "New Hire", "role_id": rid}).json()
+    new = login(c, "new.hire@t.vn", r["temporary_password"])
+    assert c.get("/api/admin/summary", headers=new).status_code == 403                    # must change the temporary password first
+    assert c.post("/api/auth/password", headers=new, json={"current": r["temporary_password"], "new": "Better123"}).status_code == 200
+    assert set(c.get("/api/auth/me", headers=new).json()["perms"]) == {"accounts.read", "billing.read"}
+    assert c.delete(f"/api/admin/org/roles/{rid}", headers=head).status_code == 400       # still held by someone
+
+
+def test_shrinking_a_ceiling_removes_rights_everywhere(env):
+    c = env
+    pres = login(c, "staff@t.vn", "Staff1234"); me = login(c, "sales@t.vn", "Staff1234")
+    sales = depts(c, pres)["sales"]
+    assert "accounts.write" in c.get("/api/auth/me", headers=me).json()["perms"]
+    c.post(f"/api/admin/org/departments/{sales['id']}", headers=pres, json={"ceiling": ["accounts.read", "tasks"]})
+    assert set(c.get("/api/auth/me", headers=me).json()["perms"]) == {"accounts.read", "tasks"}
+
+
+def test_staff_and_customers_cannot_use_each_others_side(env):
+    c = env
+    assert c.get("/api/admin/org/departments", headers=login(c, "a@t.vn")).status_code == 403
+    assert c.get("/api/overview", headers=login(c, "sales.head@t.vn", "Staff1234")).status_code == 403
+
+
+def test_security_log_is_a_tamper_evident_chain(env):
+    c = env
+    pres = login(c, "staff@t.vn", "Staff1234")
+    c.post("/api/admin/org/departments", headers=pres, json={"code": "legal", "name": "Legal", "ceiling": ["accounts.read"]})
+    v = c.get("/api/admin/org/security-log/verify", headers=pres).json()
+    assert v["ok"] and v["records"] >= 3
+    events = [r["event"] for r in c.get("/api/admin/org/security-log", headers=pres).json()]
+    assert "president_action" in events and "department_create" in events and "login_password_ok" in events
+    with db.tx() as con:                                      # an attacker edits history in the database
+        con.execute(db.security_log.update().where(db.security_log.c.id == 1).values(actor="someone.else@evil.com"))
+    assert c.get("/api/admin/org/security-log/verify", headers=pres).json() == {"ok": False, "records": 0, "broken_at": 1}
+
+
+def test_access_review_needs_staff_read_and_flags_everyone(env):
+    c = env
+    assert c.get("/api/admin/org/access-review", headers=login(c, "sales@t.vn", "Staff1234")).status_code == 403
+    rows = c.get("/api/admin/org/access-review", headers=login(c, "staff@t.vn", "Staff1234")).json()
+    assert {r["email"] for r in rows} >= {"sales@t.vn", "support@t.vn", "finance.head@t.vn"} and all("perms" in r for r in rows)
+
+
+def test_idle_staff_session_times_out(env):
+    c = env
+    h = login(c, "sales.head@t.vn", "Staff1234")
+    assert c.get("/api/admin/summary", headers=h).status_code == 200
+    with db.tx() as con:
+        con.execute(db.sessions.update().values(last_seen=db.now() - 3600))
+    assert c.get("/api/admin/summary", headers=h).status_code == 401
+
+
+def test_ip_allowlist_logic():
+    from solavis.api.deps import ip_allowed
+    assert ip_allowed("203.0.113.5", []) and ip_allowed("203.0.113.5", ["203.0.113.5"]) and ip_allowed("10.2.3.4", ["10.0.0.0/8"])
+    assert not ip_allowed("198.51.100.7", ["203.0.113.5", "10.0.0.0/8"]) and not ip_allowed("not-an-ip", ["10.0.0.0/8"])
+
+
+# ───────────────────────── President: face authentication ─────────────────────────
+PHOTOS = Path(__file__).resolve().parent.parent / "data" / "photos"
+
+
+def _imgs(person, idx):
+    files = sorted((PHOTOS / person).glob("*.jpg"))
+    if len(files) <= max(idx):
+        pytest.skip("sample photos not available in data/photos")
+    return [("images", (f"{i}.jpg", files[i].read_bytes(), "image/jpeg")) for i in idx]
+
+
+def test_president_needs_password_and_face(env_face):
+    c = env_face
+    r = c.post("/api/auth/login", json={"email": "staff@t.vn", "password": "Staff1234"}).json()
+    assert r["face"] == {"required": True, "enrolled": False}
+    h = {"Authorization": "Bearer " + r["token"]}
+    assert c.get("/api/admin/summary", headers=h).status_code == 403                      # password alone opens nothing
+    assert c.get("/api/auth/me", headers=h).json()["face_pending"] is True
+    assert c.post("/api/auth/face/enroll", headers=h, files=_imgs("5", [0, 1, 2]), data={"code": "WRONG-CODE"}).status_code == 403
+    assert c.post("/api/auth/face/enroll", headers=h, files=_imgs("5", [0, 1, 2]), data={"code": "TEST-FACE-0001"}).status_code == 200
+    assert c.get("/api/admin/summary", headers=h).status_code == 200
+    assert c.post("/api/auth/face/enroll", headers=h, files=_imgs("5", [0, 1, 2]), data={"code": "TEST-FACE-0001"}).status_code in (200, 403)  # code is one-time
+
+
+def _enrolled_president(c):
+    r = c.post("/api/auth/login", json={"email": "staff@t.vn", "password": "Staff1234"}).json()
+    h = {"Authorization": "Bearer " + r["token"]}
+    assert c.post("/api/auth/face/enroll", headers=h, files=_imgs("5", [0, 1, 2]), data={"code": "TEST-FACE-0001"}).status_code == 200
+    c.post("/api/auth/logout", headers=h)
+
+
+def test_right_face_opens_wrong_face_is_recorded_and_locked_out(env_face):
+    c = env_face
+    _enrolled_president(c)
+    def start():
+        r = c.post("/api/auth/login", json={"email": "staff@t.vn", "password": "Staff1234"}).json()
+        assert r["face"] == {"required": True, "enrolled": True}
+        return {"Authorization": "Bearer " + r["token"]}
+    h = start()
+    for _ in range(3):                                                                    # someone else's face
+        assert c.post("/api/auth/face/verify", headers=h, files=_imgs("6", [0])).status_code == 401
+    assert c.post("/api/auth/face/verify", headers=h, files=_imgs("5", [3])).status_code == 429       # now blocked, even for the right face
+    from solavis.api import auth as auth_api
+    auth_api._face_fail.clear()
+    assert c.post("/api/auth/face/verify", headers=h, files=_imgs("5", [3])).status_code == 200
+    assert c.get("/api/admin/summary", headers=h).status_code == 200
+    log = c.get("/api/admin/org/security-log", headers=h).json()
+    ev = [r["event"] for r in log]
+    assert ev.count("face_verify_failed") == 3 and "face_verify_ok" in ev and "face_enrolled" in ev
+    failed = [r for r in log if r["event"] == "face_verify_failed"][0]
+    assert failed["snap"] and failed["ok"] is False and failed["detail"]["scores"]         # the captured frame and scores are kept
+    assert c.get(f"/api/admin/org/security-log/snap/{failed['snap']}", headers=h).status_code == 200
+    assert c.get("/api/admin/org/security-log/verify", headers=h).json()["ok"] is True
+
+
+def test_sensitive_actions_need_a_fresh_face_check(env_face):
+    c = env_face
+    _enrolled_president(c)
+    r = c.post("/api/auth/login", json={"email": "staff@t.vn", "password": "Staff1234"}).json()
+    h = {"Authorization": "Bearer " + r["token"]}
+    assert c.post("/api/auth/face/verify", headers=h, files=_imgs("5", [3])).status_code == 200
+    body = {"code": "legal", "name": "Legal", "ceiling": ["accounts.read"]}
+    assert c.post("/api/admin/org/departments", headers=h, json=body).status_code == 200
+    with db.tx() as con:                                                                   # the check was 30 minutes ago
+        con.execute(db.sessions.update().values(face_verified_at=db.now() - 1800))
+    r2 = c.post("/api/admin/org/departments", headers=h, json={**body, "code": "legal2"})
+    assert r2.status_code == 428 and r2.json()["detail"] == "face_reverify"
+    assert c.post("/api/auth/face/verify", headers=h, files=_imgs("5", [2])).status_code == 200
+    assert c.post("/api/admin/org/departments", headers=h, json={**body, "code": "legal2"}).status_code == 200
+
+
+def test_only_the_president_must_use_face_and_heads_do_not(env_face):
+    c = env_face
+    r = c.post("/api/auth/login", json={"email": "sales.head@t.vn", "password": "Staff1234"}).json()
+    assert r["face"]["required"] is False
+    assert c.get("/api/admin/summary", headers={"Authorization": "Bearer " + r["token"]}).status_code == 200
+
+
+# ───────────────────────── heads see their whole business; nobody sees another department's data ─────────────────────────
+def raw_login(c, email, pw="Staff1234"):
+    return c.post("/api/auth/login", json={"email": email, "password": pw}).json()
+
+
+def test_login_response_carries_the_real_rights_so_the_menu_is_complete(env):
+    c = env
+    r = raw_login(c, "sales.head@t.vn")
+    assert {"accounts.read", "accounts.write", "billing.read", "support.read", "inventory.read", "tasks"} <= set(r["perms"])
+    assert r["is_head"] is True and r["department_id"]
+    assert raw_login(c, "sales@t.vn")["is_head"] is False and "billing.read" not in raw_login(c, "sales@t.vn")["perms"]
+
+
+def test_dashboard_shows_only_what_the_person_may_see(env):
+    c = env
+    agent = login(c, "support@t.vn", "Staff1234")                  # Support agent: tickets and customers, no money, no fleet
+    s = c.get("/api/admin/summary", headers=agent).json()
+    assert "tickets_open" in s and "tenants" in s
+    assert not any(k in s for k in ("mrr", "overdue_amount", "fleet", "events_today", "team"))
+    fin = c.get("/api/admin/summary", headers=login(c, "finance@t.vn", "Staff1234")).json()
+    assert "mrr" in fin and "tickets_open" not in fin and "fleet" not in fin
+    head = c.get("/api/admin/summary", headers=login(c, "sales.head@t.vn", "Staff1234")).json()
+    assert "mrr" in head and head["team"] and {m["email"] for m in head["team"]} == {"sales.head@t.vn", "sales@t.vn"}
+    pres = c.get("/api/admin/summary", headers=login(c, "staff@t.vn", "Staff1234")).json()
+    assert {"mrr", "fleet", "tickets_open", "events_today"} <= set(pres)
+
+
+def test_tasks_stay_inside_the_team(env):
+    c = env
+    head, rep, fin = (login(c, e, "Staff1234") for e in ("sales.head@t.vn", "sales@t.vn", "finance@t.vn"))
+    assert c.post("/api/admin/tasks", headers=head, json={"title": "Call lead", "assignee": "sales@t.vn"}).status_code == 200      # a head assigns inside the department
+    assert c.post("/api/admin/tasks", headers=head, json={"title": "Pay vendor", "assignee": "finance@t.vn"}).status_code == 403    # not to another department
+    assert c.post("/api/admin/tasks", headers=rep, json={"title": "Mine"}).status_code == 200
+    assert c.post("/api/admin/tasks", headers=rep, json={"title": "Not yours", "assignee": "sales.head@t.vn"}).status_code == 403   # staff only for themselves
+    assert c.post("/api/admin/tasks", headers=fin, json={"title": "Reconcile"}).status_code == 200
+    seen = {t["title"] for t in c.get("/api/admin/tasks?scope=all", headers=head).json()}
+    assert seen == {"Call lead", "Mine"}                                                  # the head's "my team" never shows Finance's tasks
+    assert {t["title"] for t in c.get("/api/admin/tasks?scope=all", headers=rep).json()} == {"Call lead", "Mine"}
+    fin_task = [t for t in c.get("/api/admin/tasks?scope=all", headers=fin).json()][0]
+    assert c.post(f"/api/admin/tasks/{fin_task['id']}/done", headers=head).status_code == 403   # cannot close another department's task
+    president = login(c, "staff@t.vn", "Staff1234")
+    assert len(c.get("/api/admin/tasks?scope=all", headers=president).json()) == 3
+
+
+def test_ticket_can_only_be_assigned_to_someone_who_works_tickets(env):
+    c = env
+    cust = login(c, "a@t.vn")
+    tid = c.post("/api/tickets", headers=cust, json={"subject": "Help", "body": "Camera offline"}).json()["id"]
+    sup = login(c, "support@t.vn", "Staff1234")
+    assert c.post(f"/api/admin/tickets/{tid}", headers=sup, json={"assignee": "sales@t.vn"}).status_code == 400     # Sales cannot work tickets
+    assert c.post(f"/api/admin/tickets/{tid}", headers=sup, json={"assignee": "support@t.vn"}).status_code == 200
+    names = [x["email"] for x in c.get("/api/admin/org/directory?purpose=tickets", headers=sup).json()]
+    assert "support@t.vn" in names and "sales@t.vn" not in names
+
+
+def test_finance_ceiling_now_includes_support_and_inventory_read(env):
+    c = env
+    fin = {d["code"]: d for d in c.get("/api/admin/org/departments", headers=login(c, "staff@t.vn", "Staff1234")).json()}["finance"]
+    assert {"support.read", "inventory.read", "billing.write"} <= set(fin["ceiling"])

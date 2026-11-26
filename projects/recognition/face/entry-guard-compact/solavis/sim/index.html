@@ -1,34 +1,24 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Solavis camera simulator</title>
-<style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#16202a;--mut:#667;--line:#e3e6ea;--acc:#e8890c}
-@media(prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171d24;--ink:#e8ecf0;--mut:#8b96a3;--line:#262e38}}
-body{margin:0;font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-main{max-width:620px;margin:auto;padding:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
-h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:0 0 8px}.mut{color:var(--mut)}
-button,input{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink)}
-button{cursor:pointer}button:hover{border-color:var(--acc)}button.p{background:var(--acc);border-color:var(--acc);color:#fff}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.pill{padding:2px 9px;border-radius:99px;background:#d6f1e1;color:#0d5c2f;font-size:12px;font-weight:600}.pill.bad{background:#fbd9d9;color:#8f1d1d}
-img.t{width:70px;height:70px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid transparent}img.t:hover{border-color:var(--acc)}
-.log{font:12px ui-monospace,monospace;max-height:220px;overflow:auto;background:var(--bg);padding:8px;border-radius:6px}
-</style></head><body><main>
-<h1>Camera simulator</h1><p class="mut" style="margin-top:0">A stand-in for the Solavis box. It talks to the cloud <b id="cu"></b> only through the device API.</p>
-<div class="card"><h2>1. Provision</h2><div id="prov"></div></div>
-<div class="card"><h2>2. The physical world</h2><div id="phys"></div></div>
-<div class="card"><h2>3. A visitor at the gate</h2><div id="vis"></div><div class="mut" id="vres">Click a face to send it.</div></div>
-<div class="card"><h2>Camera log</h2><div class="log" id="log"></div></div>
-</main><script>
-const $=i=>document.getElementById(i);let S={};
-const post=(p,b)=>fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})}).then(async r=>{const j=await r.json();if(!r.ok)alert(j.detail);load();return j});
+<title>Camera simulator · Solavis</title><meta name="theme-color" content=""><link rel="stylesheet" href="/assets/solavis-tokens.css"><link rel="stylesheet" href="/assets/app.css"></head><body>
+<div style="max-width:720px;margin:0 auto;padding:var(--sv-space-8) var(--sv-space-4)">
+<div class="row nowrap" style="margin-bottom:var(--sv-space-6)"><div class="logo" style="padding:0"><span class="mark" id="mark"></span><div><b>Solavis</b><small>Camera simulator</small></div></div><div class="sp"></div><button class="iconbtn" id="themebtn" aria-label="Toggle dark mode"></button></div>
+<p class="sec" style="margin-bottom:var(--sv-space-6)">A stand-in for the Solavis box. It talks to the cloud at <b id="cu"></b> only through the device API.</p>
+<div class="card" style="margin-bottom:var(--sv-space-6)"><div class="card-h"><h2>1. Provision</h2></div><div id="prov"></div></div>
+<div class="card" style="margin-bottom:var(--sv-space-6)"><div class="card-h"><h2>2. The physical world</h2></div><div id="phys"></div></div>
+<div class="card" style="margin-bottom:var(--sv-space-6)"><div class="card-h"><h2>3. A visitor at the gate</h2></div><div id="vis"></div><div class="caption" id="vres" style="margin-top:var(--sv-space-3)">Click a face to send it.</div></div>
+<div class="card"><div class="card-h"><h2>Camera log</h2></div><div id="log" style="font:400 12px/18px ui-monospace,Menlo,monospace;max-height:240px;overflow:auto"></div></div></div>
+<script src="/assets/common.js"></script>
+<script>
+$('mark').innerHTML=ico('sun');$('themebtn').innerHTML=ico(themeNow()==='dark'?'sun':'moon');$('themebtn').onclick=()=>{toggleTheme();$('themebtn').innerHTML=ico(themeNow()==='dark'?'sun':'moon')};
+let S={};
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})}).then(async r=>{const j=await r.json();if(!r.ok)toast(j.detail,'danger');load();return j});
 async function load(){S=await (await fetch('/state')).json();$('cu').textContent=S.cloud_url;
-$('prov').innerHTML=S.claimed?'<span class="pill">claimed</span> <span class="mut">The owner now arms it in the customer app.</span>':`<div class="row"><input id="cc" value="${S.claim_code}" style="width:170px"><button class="p" onclick="post('/claim',{claim_code:cc.value})">Claim camera</button></div><span class="mut">The code is printed on the box (and shown in the customer app).</span>`;
-$('phys').innerHTML=`<div class="row">${S.power?'':'<span class="pill bad">power cut</span>'} <span class="mut">tilt ${S.tilt}° · heading ${S.heading}° · cover ${S.cover_closed?'closed':'OPEN'} · lens ${S.covered?'COVERED':'clear'}</span></div>
-<div class="row"><button onclick="post('/set',{heading:(S.heading+40)%360})">Turn 40°</button><button onclick="post('/set',{tilt:S.tilt+15})">Tilt 15°</button>
-<button onclick="post('/set',{cover_closed:${S.cover_closed?0:1}})">${S.cover_closed?'Open cover':'Close cover'}</button><button onclick="post('/set',{covered:${!S.covered}})">${S.covered?'Uncover lens':'Cover lens'}</button>
-<button onclick="post('/set',{scene:${S.scene?0:1}})">Change view</button><button onclick="post('/set',{power:${!S.power}})">${S.power?'Cut power':'Restore power'}</button>
-<button onclick="post('/set',{tilt:2,heading:90,cover_closed:1,covered:false,scene:0})">Reset to mounted</button></div>`;
-const v=Object.keys(S.visitors);$('vis').innerHTML=v.length?`<div class="row">${v.map(k=>`<div style="text-align:center"><img class="t" src="/photo/${encodeURIComponent(k)}" onclick="visit('${k}')"><div>${k}</div></div>`).join('')}</div>`:'<span class="mut">No visitor photos found. Check simulator.visitors in the package.</span>';
-$('log').innerHTML=S.log.map(x=>x.replace(/</g,'&lt;')).join('<br>')||'—'}
+$('prov').innerHTML=S.claimed?`${badge('active','Claimed')} <span class="sec">The owner now arms it in the customer app.</span>`:`<div class="row"><input id="cc" value="${esc(S.claim_code)}" style="width:200px" aria-label="Claim code"><button class="btn primary" onclick="post('/claim',{claim_code:$('cc').value})">Claim camera</button></div><div class="caption" style="margin-top:8px">The code is printed on the box and shown in the customer app.</div>`;
+$('phys').innerHTML=`<div class="row" style="margin-bottom:var(--sv-space-3)">${S.power?'':badge('critical','Power cut')}<span class="sec">Tilt <b>${S.tilt}°</b> · Heading <b>${S.heading}°</b> · Cover <b>${S.cover_closed?'closed':'OPEN'}</b> · Lens <b>${S.covered?'COVERED':'clear'}</b></span></div>
+<div class="row"><button class="btn" onclick="post('/set',{heading:(S.heading+40)%360})">Turn 40°</button><button class="btn" onclick="post('/set',{tilt:S.tilt+15})">Tilt 15°</button><button class="btn" onclick="post('/set',{cover_closed:${S.cover_closed?0:1}})">${S.cover_closed?'Open cover':'Close cover'}</button><button class="btn" onclick="post('/set',{covered:${!S.covered}})">${S.covered?'Uncover lens':'Cover lens'}</button>
+<button class="btn" onclick="post('/set',{scene:${S.scene?0:1}})">Change view</button><button class="btn" onclick="post('/set',{power:${!S.power}})">${S.power?'Cut power':'Restore power'}</button><button class="btn ghost" onclick="post('/set',{tilt:2,heading:90,cover_closed:1,covered:false,scene:0})">Reset to mounted</button></div>`;
+const v=Object.keys(S.visitors);$('vis').innerHTML=v.length?`<div class="row" style="gap:var(--sv-space-4)">${v.map(k=>`<button class="btn ghost" style="height:auto;flex-direction:column;padding:8px" onclick="visit('${esc(k)}')" aria-label="Send ${esc(k)} to the gate"><img class="thumb" style="width:72px;height:72px" alt="" src="/photo/${encodeURIComponent(k)}"><span>${esc(k)}</span></button>`).join('')}</div>`:empty({icon:'people',title:'No visitor photos found',text:'Check simulator.visitors in the package.'});
+$('log').innerHTML=S.log.map(x=>esc(x)).join('<br>')||'<span class="muted">Nothing yet.</span>'}
 async function visit(k){const r=await post('/visit',{label:k,index:Math.floor(Math.random()*S.visitors[k])});if(r&&r.result)$('vres').textContent='HTTP '+r.status+' → '+JSON.stringify(r.result)}
 load();setInterval(load,2500)
 </script></body></html>

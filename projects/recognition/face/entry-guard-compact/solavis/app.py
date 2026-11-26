@@ -62,6 +62,7 @@ def create_app() -> FastAPI:
             db.create_tables()
         with db.tx() as c:
             db.sync_plans(c, cfg.plans.plans)
+            services.sync_departments(c, cfg.org.departments)
         t = threading.Thread(target=run_jobs, args=(cfg, stop), daemon=True, name="jobs")
         t.start()
         log.info("Solavis started: env=%s db=%s storage=%s", cfg.server.environment, cfg.database.driver, cfg.storage.driver)
@@ -82,6 +83,14 @@ def create_app() -> FastAPI:
         except Exception:
             log.exception("unhandled error", extra={"request_id": rid, "path": request.url.path})
             return JSONResponse({"detail": "internal error", "request_id": rid}, status_code=500)
+        u = getattr(request.state, "user", None)
+        if u and u.get("is_super") and request.method in ("POST", "PUT", "PATCH", "DELETE") and not request.url.path.startswith("/api/auth/"):
+            try:                                  # everything the President changes is written to the tamper-evident log
+                with db.tx() as c:
+                    services.sec_log(c, "president_action", response.status_code < 400, user=u, ip=request.client.host if request.client else "",
+                                     ua=request.headers.get("user-agent", ""), detail={"method": request.method, "path": request.url.path, "status": response.status_code})
+            except Exception:
+                log.exception("could not write the president action log")
         response.headers["X-Request-ID"] = rid
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
@@ -103,9 +112,9 @@ def create_app() -> FastAPI:
         except Exception as e:
             return JSONResponse({"status": "not ready", "error": str(e)[:120]}, status_code=503)
 
-    from .api import admin, auth, billing, customer, device, inventory, support
+    from .api import admin, auth, billing, customer, device, inventory, org, support
     for r in (auth.router, customer.router, admin.router, device.router, billing.admin, billing.customer,
-              support.admin, support.customer, inventory.router):
+              support.admin, support.customer, inventory.router, org.router):
         app.include_router(r)
 
     if cfg.server.serve_ui:
@@ -117,6 +126,7 @@ def create_app() -> FastAPI:
             return FileResponse(web / "customer.html")
 
         @app.get("/admin", include_in_schema=False)
+        @app.get("/erp", include_in_schema=False)
         def admin_app():
             return FileResponse(web / "admin.html")
 

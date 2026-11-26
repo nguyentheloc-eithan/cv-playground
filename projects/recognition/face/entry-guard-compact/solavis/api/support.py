@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 
 from .. import db, services
-from ..db import many, now, one, ticket_messages, tickets, tenants
+from ..db import many, now, one, ticket_messages, tickets, tenants, users
 from .deps import member, need
 
 admin = APIRouter(prefix="/api/admin/tickets", tags=["support"])
@@ -58,6 +58,11 @@ def update_ticket(tid: int, body: dict, u=Depends(need("support.write"))):
     for k in ("priority", "assignee", "category"):
         if k in body:
             vals[k] = body[k] or None
+    if vals.get("assignee"):
+        with db.tx() as c:
+            a = one(c, select(users).where(users.c.email == vals["assignee"], users.c.role == "staff", users.c.active == True))  # noqa: E712
+            if not a or not services.can({"perms": services.effective_perms(c, a)}, "support.write"):
+                raise HTTPException(400, "that person cannot work support tickets")
     if not vals:
         raise HTTPException(400, "nothing to change")
     with db.tx() as c:
