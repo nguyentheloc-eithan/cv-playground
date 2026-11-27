@@ -34,7 +34,12 @@ sessions = Table("sessions", md,
                  Column("token_hash", S(64), primary_key=True), Column("user_id", Integer, ForeignKey("users.id")),
                  Column("created", Float), Column("expires", Float),
                  Column("face_pending", Boolean, default=False), Column("face_verified_at", Float), Column("ip", S(64)),
-                 Column("ua", S(200)), Column("last_seen", Float))
+                 Column("ua", S(200)), Column("last_seen", Float),
+                 Column("client", S(20)), Column("device_name", S(120)))
+push_tokens = Table("push_tokens", md,
+                    Column("id", Integer, primary_key=True, autoincrement=True), Column("user_id", Integer, ForeignKey("users.id"), index=True),
+                    Column("tenant_id", Integer, ForeignKey("tenants.id"), index=True), Column("token", S(300), unique=True),
+                    Column("platform", S(12)), Column("device_name", S(120)), Column("created", Float), Column("last_seen", Float))
 cameras = Table("cameras", md,
                 Column("id", Integer, primary_key=True, autoincrement=True), Column("tenant_id", Integer, ForeignKey("tenants.id")),
                 Column("name", S(120)), Column("claim_code", S(40), unique=True), Column("key_hash", S(64), index=True),

@@ -190,6 +190,18 @@ def cmd_reset(a):
     print("All tables dropped.")
 
 
+def cmd_openapi(a):
+    """Write the API contract so a mobile app (or any client) can generate its client code from it."""
+    import json
+    from pathlib import Path
+    from .app import create_app
+    spec = create_app().openapi()
+    out = Path(a.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(spec, indent=2, sort_keys=True))
+    print(f"wrote {out} ({len(spec['paths'])} paths)")
+
+
 def cmd_run(a):
     import uvicorn
     s = settings.get().server
@@ -205,6 +217,7 @@ def main():
     s = sub.add_parser("create-staff"); s.add_argument("email"); s.add_argument("--name"); s.add_argument("--department", default="executive"); s.add_argument("--role")
     s.add_argument("--head", action="store_true"); s.add_argument("--president", action="store_true"); s.add_argument("--password"); s.set_defaults(fn=cmd_staff)
     s = sub.add_parser("reset"); s.add_argument("--yes", action="store_true"); s.set_defaults(fn=cmd_reset)
+    s = sub.add_parser("export-openapi"); s.add_argument("--out", default="docs/api/openapi.json"); s.set_defaults(fn=cmd_openapi)
     sub.add_parser("run").set_defaults(fn=cmd_run)
     a = p.parse_args()
     a.fn(a)

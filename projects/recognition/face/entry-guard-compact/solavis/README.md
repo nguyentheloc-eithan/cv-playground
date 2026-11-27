@@ -45,6 +45,9 @@ A typo, wrong type, or unsafe production setting stops start-up with a clear mes
 - **Staff:** hold one role plus any personal grants minus personal denials, limited to the ceiling.
 - Also: idle sign-out, optional IP allowlist, session list and revoke, access-review export.
 
+## Mobile app
+The backend is ready for a phone app (versioned `/api/v1`, 30-day device sessions, push tokens and Expo push, signed picture links, cursor paging, OpenAPI export). See `docs/MOBILE.md` for the layout, flows and what is still to build.
+
 ## Not done yet (be aware)
 - Face check needs a webcam and a secure origin (localhost or HTTPS). Tests use real sample photos; a printed-photo attack is only partly covered by the head-turn check.
 - The security-log chain assumes one writer at a time (guarded on PostgreSQL; on SQLite the database lock does it).

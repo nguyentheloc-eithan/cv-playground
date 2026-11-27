@@ -86,3 +86,11 @@ class LoginGuard:
 
 
 guard = LoginGuard()
+
+
+def sign(msg: str) -> str:
+    return _digest("sign:" + msg)[:32]
+
+
+def verify_sig(msg: str, sig: str) -> bool:
+    return hmac.compare_digest(sign(msg), sig)

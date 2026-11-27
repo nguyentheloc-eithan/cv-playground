@@ -35,7 +35,7 @@ def _load(request: Request):
     cfg = settings.get().security
     th = security.hash_token(tok)
     with db.tx() as c:
-        u = one(c, select(users, sessions.c.token_hash.label("_sid"), sessions.c.face_pending, sessions.c.face_verified_at, sessions.c.last_seen)
+        u = one(c, select(users, sessions.c.token_hash.label("_sid"), sessions.c.face_pending, sessions.c.face_verified_at, sessions.c.last_seen, sessions.c.client)
                 .join(sessions, sessions.c.user_id == users.c.id)
                 .where(sessions.c.token_hash == th, sessions.c.expires > now(), users.c.active == True))  # noqa: E712
         if not u:
@@ -48,7 +48,10 @@ def _load(request: Request):
                 services.sec_log(c, "session_idle_timeout", True, user=u, ip=client_ip(request))
                 raise HTTPException(401, "signed out after inactivity, please log in again")
         if not u["last_seen"] or now() - u["last_seen"] > 20:
-            c.execute(update(sessions).where(sessions.c.token_hash == th).values(last_seen=now()))
+            vals = {"last_seen": now()}
+            if u.get("client") == "mobile":                       # sliding expiry: an app in regular use stays signed in
+                vals["expires"] = now() + cfg.session.mobile_days * 86400
+            c.execute(update(sessions).where(sessions.c.token_hash == th).values(**vals))
         if u["tenant_id"]:
             st = c.execute(select(tenants.c.status).where(tenants.c.id == u["tenant_id"])).scalar()
             if st == "closed":

@@ -38,8 +38,12 @@ def login(body: dict, request: Request, response: Response):
         security.guard.ok(key)
         pending = bool(u["role"] == "staff" and u["face_required"])
         life = cfg.super_admin.session_minutes * 60 if u["is_super"] else cfg.staff.session_hours * 3600 if u["role"] == "staff" else cfg.session.hours * 3600
+        mobile = body.get("client") == "mobile" and u["role"] != "staff"      # staff use the web ERP; phones get long, sliding, revocable sessions
+        if mobile:
+            life = cfg.session.mobile_days * 86400
         tok = security.new_token()
-        c.execute(sessions.insert().values(token_hash=security.hash_token(tok), user_id=u["id"], created=now(), expires=now() + life, face_pending=pending, ip=ip, ua=ua[:200], last_seen=now()))
+        c.execute(sessions.insert().values(token_hash=security.hash_token(tok), user_id=u["id"], created=now(), expires=now() + life, face_pending=pending, ip=ip, ua=ua[:200], last_seen=now(),
+                                           client="mobile" if mobile else "web", device_name=str(body.get("device_name", ""))[:120]))
         c.execute(update(users).where(users.c.id == u["id"]).values(last_login=now()))
         services.record(c, email, "login", "", u["tenant_id"])
         if u["role"] == "staff":

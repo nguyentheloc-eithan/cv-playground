@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+dist/
+build/
+android/
+ios/
+src-tauri/target/
+src-tauri/gen/
+*.keystore
+*.jks
+*.p12
+*.pfx
+.env*
+!.env.example

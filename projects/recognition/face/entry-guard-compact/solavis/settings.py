@@ -28,6 +28,18 @@ class Jobs(Strict):
     session_cleanup_seconds: int = 3600
 
 
+class Mobile(Strict):
+    min_version: str = "1.0.0"        # apps older than this are told to update (force-update gate)
+    latest_version: str = "1.0.0"
+    maintenance: bool = False
+    message: str = ""
+    ios_url: str = ""
+    android_url: str = ""
+    windows_url: str = ""             # desktop installer page
+    macos_url: str = ""
+    min_version_by_platform: dict[str, str] = {}   # e.g. {windows: "1.2.0"}; falls back to min_version
+
+
 class Server(Strict):
     host: str = "127.0.0.1"
     port: int = 8100
@@ -41,6 +53,7 @@ class Server(Strict):
     max_upload_mb: int = 8
     serve_ui: bool = True
     jobs: Jobs = Jobs()
+    mobile: Mobile = Mobile()
 
 
 class SqliteCfg(Strict):
@@ -93,6 +106,7 @@ class Storage(Strict):
 
 class Session(Strict):
     hours: int = 8
+    mobile_days: int = 30             # phone sessions stay signed in this long (sliding), customers only
     cookie_name: str = "solavis_session"
     cookie_secure: bool = False
     cookie_samesite: Literal["strict", "lax"] = "strict"
@@ -145,6 +159,7 @@ class Security(Strict):
     super_admin: SuperAdminCfg = SuperAdminCfg()
     staff: StaffCfg = StaffCfg()
     admin_ip_allowlist: list[str] = []
+    snap_link_minutes: int = 15       # lifetime of signed picture links (push notifications, mobile image views)
 
 
 class Telegram(Strict):
@@ -158,7 +173,14 @@ class Webhook(Strict):
     secret: str = ""
 
 
+class Push(Strict):
+    enabled: bool = False
+    provider: Literal["expo"] = "expo"       # Expo Push service (works for React Native / Expo apps; FCM and APNs direct can be added)
+    expo_access_token: str = ""
+
+
 class Notifications(Strict):
+    push: Push = Push()
     telegram: Telegram = Telegram()
     webhook: Webhook = Webhook()
     min_level: Literal["info", "high", "critical"] = "info"

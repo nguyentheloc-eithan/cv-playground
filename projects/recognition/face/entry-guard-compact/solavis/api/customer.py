@@ -37,11 +37,13 @@ def overview(u=Depends(member)):
 
 
 @router.get("/events")
-def list_events(limit: int = 60, verdict: str | None = None, u=Depends(member)):
+def list_events(limit: int = 60, verdict: str | None = None, before: int | None = None, u=Depends(member)):
     q = (select(events, cameras.c.name.label("camera")).join(cameras, cameras.c.id == events.c.camera_id)
          .where(events.c.tenant_id == u["tenant_id"]).order_by(events.c.id.desc()).limit(min(limit, 200)))
     if verdict:
         q = q.where(events.c.verdict == verdict)
+    if before:                                      # cursor paging for phones: pass the smallest id you already have
+        q = q.where(events.c.id < before)
     with db.tx() as c:
         return many(c, q)
 
@@ -59,10 +61,13 @@ def review(eid: int, body: dict, u=Depends(member)):
 
 
 @router.get("/alerts")
-def list_alerts(limit: int = 60, u=Depends(member)):
+def list_alerts(limit: int = 60, before: int | None = None, u=Depends(member)):
+    q = (select(alerts, cameras.c.name.label("camera")).join(cameras, cameras.c.id == alerts.c.camera_id, isouter=True)
+         .where(alerts.c.tenant_id == u["tenant_id"]).order_by(alerts.c.id.desc()).limit(min(limit, 200)))
+    if before:
+        q = q.where(alerts.c.id < before)
     with db.tx() as c:
-        return many(c, select(alerts, cameras.c.name.label("camera")).join(cameras, cameras.c.id == alerts.c.camera_id, isouter=True)
-                    .where(alerts.c.tenant_id == u["tenant_id"]).order_by(alerts.c.id.desc()).limit(min(limit, 200)))
+        return many(c, q)
 
 
 @router.post("/alerts/{aid}/ack")

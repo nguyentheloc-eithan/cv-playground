@@ -39,10 +39,21 @@ def entitlement(c, tenant_id):
 
 
 # ───────── alerts ─────────
+def signed_snap_url(name, minutes=None):
+    """A short-lived link to one picture that needs no login: for push notification images and phone image views."""
+    cfg = settings.get()
+    exp = int(now() + 60 * (minutes or cfg.security.snap_link_minutes))
+    sig = security.sign(f"{name}|{exp}")
+    return f"{cfg.server.base_url.rstrip('/')}/s/{name}.{exp}.{sig}", exp
+
+
 def add_alert(c, tenant_id, camera_id, level, kind, text, snap=None):
     c.execute(alerts.insert().values(tenant_id=tenant_id, camera_id=camera_id, ts=now(), level=level, kind=kind, text=text, snap=snap, acked=False))
     chat = c.execute(select(tenants.c.telegram_chat).where(tenants.c.id == tenant_id)).scalar()
-    notify.send(level, text, chat, tenant_id)
+    tokens = []
+    if settings.get().notifications.push.enabled:
+        tokens = [r[0] for r in c.execute(select(db.push_tokens.c.token).where(db.push_tokens.c.tenant_id == tenant_id)).all()]
+    notify.send(level, text, chat, tenant_id, push_tokens=tokens, data={"kind": kind, "camera_id": camera_id, "image": signed_snap_url(snap)[0] if snap else None})
 
 
 # ───────── tamper ─────────

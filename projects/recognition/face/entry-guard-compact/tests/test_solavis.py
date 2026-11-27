@@ -587,3 +587,105 @@ def test_finance_ceiling_now_includes_support_and_inventory_read(env):
     c = env
     fin = {d["code"]: d for d in c.get("/api/admin/org/departments", headers=login(c, "staff@t.vn", "Staff1234")).json()}["finance"]
     assert {"support.read", "inventory.read", "billing.write"} <= set(fin["ceiling"])
+
+
+# ───────── mobile foundation ─────────
+def test_app_config_knows_desktop_platforms(env):
+    old = env.get("/api/app-config", params={"platform": "windows", "app_version": "0.1.0"}).json()
+    cur = env.get("/api/app-config", params={"platform": "windows", "app_version": "1.0.0"}).json()
+    assert old["update_required"] is True and cur["update_required"] is False and cur["store_url"] == ""
+
+
+def test_app_config_is_public_and_gates_old_versions(env):
+    r = env.get("/api/app-config", params={"platform": "ios"}).json()
+    assert r["api"] == "v1" and r["update_required"] is False and r["features"]["push"] is False
+    assert env.get("/api/app-config", params={"app_version": "0.9.0"}).json()["update_required"] is True
+    assert env.get("/api/app-config", params={"app_version": "1.0.0"}).json()["update_required"] is False
+
+
+def test_api_v1_is_an_alias_of_api(env):
+    h = login(env, "a@t.vn")
+    strip = lambda d: {k: v for k, v in d.items() if k != "now"}
+    assert strip(env.get("/api/v1/overview", headers=h).json()) == strip(env.get("/api/overview", headers=h).json())
+    assert env.post("/api/v1/auth/login", json={"email": "a@t.vn", "password": "Owner1234"}).status_code == 200
+
+
+def test_mobile_login_gives_a_long_sliding_session_and_staff_cannot_use_it(env):
+    from sqlalchemy import select
+    r = env.post("/api/auth/login", json={"email": "a@t.vn", "password": "Owner1234", "client": "mobile", "device_name": "Pixel 9"})
+    tok = r.json()["token"]
+    with db.tx() as c:
+        s = c.execute(select(db.sessions).where(db.sessions.c.token_hash == __import__("solavis").security.hash_token(tok))).mappings().first()
+    assert s["client"] == "mobile" and s["device_name"] == "Pixel 9"
+    assert s["expires"] - s["created"] > 29 * 86400                              # 30 days, not 8 hours
+    web = env.post("/api/auth/login", json={"email": "b@t.vn", "password": "Owner1234"}).json()["token"]
+    with db.tx() as c:
+        w = c.execute(select(db.sessions).where(db.sessions.c.token_hash == __import__("solavis").security.hash_token(web))).mappings().first()
+    assert w["expires"] - w["created"] < 9 * 3600
+    st = env.post("/api/auth/login", json={"email": "sales@t.vn", "password": "Staff1234", "client": "mobile"}).json()["token"]
+    with db.tx() as c:
+        x = c.execute(select(db.sessions).where(db.sessions.c.token_hash == __import__("solavis").security.hash_token(st))).mappings().first()
+    assert x["client"] == "web" and x["expires"] - x["created"] < 9 * 3600       # staff stay on the short web session
+
+
+def test_push_tokens_register_move_and_unregister(env):
+    a, b = login(env, "a@t.vn"), login(env, "b@t.vn")
+    tok = "ExponentPushToken[abcdefghijklmnop]"
+    assert env.post("/api/push/register", headers=a, json={"token": tok, "platform": "ios", "device_name": "iPhone"}).status_code == 200
+    assert env.post("/api/push/register", headers=a, json={"token": "x"}).status_code == 400
+    env.post("/api/push/register", headers=b, json={"token": tok, "platform": "ios"})        # same phone, another customer signs in
+    from sqlalchemy import select
+    with db.tx() as c:
+        rows = c.execute(select(db.push_tokens)).mappings().all()
+    assert len(rows) == 1 and rows[0]["tenant_id"] == 2
+    assert env.post("/api/push/unregister", headers=a, json={"token": tok}).status_code == 200      # not a's any more: stays
+    with db.tx() as c:
+        assert len(c.execute(select(db.push_tokens)).all()) == 1
+    env.post("/api/push/unregister", headers=b, json={"token": tok})
+    with db.tx() as c:
+        assert not c.execute(select(db.push_tokens)).all()
+
+
+def test_alert_sends_push_to_every_token_of_that_tenant_only(env, monkeypatch):
+    from solavis import notify
+    sent = []
+    monkeypatch.setattr(notify, "send", lambda level, text, chat, tid, push_tokens=None, data=None: sent.append((tid, list(push_tokens or []), data)))
+    s = settings.get()
+    s.notifications.push.enabled = True
+    a, b = login(env, "a@t.vn"), login(env, "b@t.vn")
+    env.post("/api/push/register", headers=a, json={"token": "ExponentPushToken[aaaaaaaaaaaa]", "platform": "android"})
+    env.post("/api/push/register", headers=b, json={"token": "ExponentPushToken[bbbbbbbbbbbb]", "platform": "ios"})
+    key = env.post("/device/v1/claim", json={"claim_code": "SOL-AAAA-BBBB"}).json()["device_key"]
+    beat(env, key)
+    assert env.post("/api/cameras/1/arm", headers=a).status_code == 200
+    beat(env, key, heading=200)                                                   # turned: critical alert
+    assert sent and sent[-1][0] == 1 and sent[-1][1] == ["ExponentPushToken[aaaaaaaaaaaa]"]
+    assert sent[-1][2]["kind"] == "tamper"
+
+
+def test_signed_snapshot_links_work_without_login_and_cannot_be_forged(env):
+    key, o = armed(env)
+    from solavis import storage as st
+    st.store().put("abc123.jpg", b"\xff\xd8fakejpeg")
+    with db.tx() as c:
+        c.execute(db.events.insert().values(tenant_id=1, camera_id=1, ts=db.now(), kind="unknown", verdict="unknown", snap="abc123.jpg", review="new", idem="i1"))
+    other = login(env, "b@t.vn")
+    assert env.get("/api/snap-url/abc123.jpg", headers=other).status_code == 404          # another customer's picture
+    link = env.get("/api/snap-url/abc123.jpg", headers=o).json()["url"]
+    path = "/s/" + link.split("/s/")[1]
+    assert env.get(path).content.startswith(b"\xff\xd8")                                   # no login needed
+    assert env.get(path[:-3] + "xyz").status_code == 404                                   # signature tampered
+    name, exp, sig = path[3:].rsplit(".", 2)
+    assert env.get(f"/s/{name}.{int(exp) + 9999}.{sig}").status_code == 404                # expiry extended
+    assert env.get(f"/s/{name}.1.{sig}").status_code == 404                                # expired
+
+
+def test_events_and_alerts_page_with_a_cursor(env):
+    key, o = armed(env)
+    with db.tx() as c:
+        for i in range(5):
+            c.execute(db.events.insert().values(tenant_id=1, camera_id=1, ts=db.now(), kind="unknown", verdict="unknown", review="new", idem=f"p{i}"))
+    first = env.get("/api/events", headers=o, params={"limit": 2}).json()
+    assert len(first) == 2
+    nxt = env.get("/api/events", headers=o, params={"limit": 2, "before": first[-1]["id"]}).json()
+    assert len(nxt) == 2 and max(e["id"] for e in nxt) < min(e["id"] for e in first)

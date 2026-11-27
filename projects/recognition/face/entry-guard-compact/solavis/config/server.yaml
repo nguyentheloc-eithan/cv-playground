@@ -14,3 +14,13 @@ jobs:                           # background jobs
   quiet_check_seconds: 5        # look for cameras that stopped checking in
   retention_seconds: 3600       # delete expired events and snapshots
   session_cleanup_seconds: 3600
+mobile:                         # phone apps read this on start (GET /api/app-config)
+  min_version: "1.0.0"          # apps older than this are told to update
+  latest_version: "1.0.0"
+  maintenance: false
+  message: ""
+  ios_url: ""
+  android_url: ""
+  windows_url: ""
+  macos_url: ""
+  min_version_by_platform: {}   # per-app override, e.g. {windows: "1.2.0"}

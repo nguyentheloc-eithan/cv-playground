@@ -1,0 +1,11 @@
+{
+  "name": "solavis-clients",
+  "private": true,
+  "packageManager": "pnpm@10",
+  "scripts": {
+    "gen:api": "pnpm --filter @solavis/api-client gen",
+    "gen:tokens": "pnpm --filter @solavis/ui-tokens gen",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}

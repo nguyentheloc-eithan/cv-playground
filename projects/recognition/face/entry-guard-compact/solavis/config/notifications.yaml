@@ -1,5 +1,9 @@
 # Alert delivery. In-app alerts always work; these add outside channels.
 # Per-customer Telegram chat ids are set by the customer in the app; the bot token is yours.
+push:                            # mobile app notifications through the Expo Push service (iOS and Android)
+  enabled: false
+  provider: expo
+  expo_access_token: ${SOLAVIS_EXPO_TOKEN:-}
 telegram:
   enabled: false
   bot_token: ${SOLAVIS_TG_TOKEN:-}

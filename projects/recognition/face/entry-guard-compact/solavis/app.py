@@ -76,6 +76,10 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def wrap(request: Request, call_next):
+        path = request.scope["path"]
+        if path.startswith("/api/v1/"):               # versioned alias for apps: /api/v1/x is /api/x today, so /api/v2 can differ later
+            request.scope["path"] = "/api/" + path[len("/api/v1/"):]
+            request.scope["raw_path"] = request.scope["path"].encode()
         rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:12]
         t0 = time.time()
         try:
@@ -112,9 +116,9 @@ def create_app() -> FastAPI:
         except Exception as e:
             return JSONResponse({"status": "not ready", "error": str(e)[:120]}, status_code=503)
 
-    from .api import admin, auth, billing, customer, device, inventory, org, support
+    from .api import admin, auth, billing, customer, device, inventory, mobile, org, support
     for r in (auth.router, customer.router, admin.router, device.router, billing.admin, billing.customer,
-              support.admin, support.customer, inventory.router, org.router):
+              support.admin, support.customer, inventory.router, org.router, mobile.router, mobile.public):
         app.include_router(r)
 
     if cfg.server.serve_ui:

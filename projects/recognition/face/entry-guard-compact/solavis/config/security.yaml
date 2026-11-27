@@ -1,6 +1,7 @@
 secret_key: ${SOLAVIS_SECRET:-dev-only-change-me}   # REQUIRED in production (32+ random characters)
 session:
   hours: 8
+  mobile_days: 30                # phone apps stay signed in this long (sliding); customers only, staff use the web ERP
   cookie_name: solavis_session
   cookie_secure: false           # true when served over HTTPS
   cookie_samesite: strict
@@ -32,3 +33,4 @@ staff:
   session_hours: 8
   idle_minutes: 30               # staff are signed out after this long without activity
 admin_ip_allowlist: []           # e.g. ["203.0.113.5", "10.0.0.0/8"]; empty = any address. Applies to staff only.
+snap_link_minutes: 15            # lifetime of signed picture links (push notification images, phone image views)
